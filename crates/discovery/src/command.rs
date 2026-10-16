@@ -26,6 +26,21 @@ pub fn executable_path(command: &str) -> Option<String> {
     Some(command[..end].trim().to_string())
 }
 
+/// 제거 명령을 실행 파일과 인자 문자열로 나눈다. MSI 명령이면 `None`.
+///
+/// 셸(cmd)을 거치지 않고 직접 실행하기 위해 쓴다. 인자는 원본 그대로 넘긴다.
+pub fn split_command(command: &str) -> Option<(String, String)> {
+    let command = command.trim();
+    let exe = executable_path(command)?;
+    let rest = if command.starts_with('"') {
+        // 따옴표 + 경로 + 따옴표 다음부터
+        &command[exe.len() + 2..]
+    } else {
+        &command[exe.len()..]
+    };
+    Some((exe, rest.trim().to_string()))
+}
+
 /// `DisplayIcon` 값(`path,index` 형식)을 경로와 아이콘 인덱스로 나눈다.
 pub fn icon_location(display_icon: &str) -> Option<(String, i32)> {
     let raw = display_icon.trim().trim_matches('"');
@@ -119,6 +134,32 @@ mod tests {
         );
         assert_eq!(
             executable_path(r"C:\Windows\System32\msiexec.exe /x {X}"),
+            None
+        );
+    }
+
+    #[test]
+    fn splits_exe_and_args() {
+        assert_eq!(
+            split_command(r#""C:\Program Files\App\unins000.exe" /SILENT /X"#),
+            Some((
+                r"C:\Program Files\App\unins000.exe".into(),
+                "/SILENT /X".into()
+            ))
+        );
+        assert_eq!(
+            split_command(r"C:\Program Files\App\Uninstall.exe --uninstall"),
+            Some((
+                r"C:\Program Files\App\Uninstall.exe".into(),
+                "--uninstall".into()
+            ))
+        );
+        assert_eq!(
+            split_command(r#""C:\a\u.exe""#),
+            Some((r"C:\a\u.exe".into(), String::new()))
+        );
+        assert_eq!(
+            split_command("MsiExec.exe /X{11111111-2222-3333-4444-555555555555}"),
             None
         );
     }

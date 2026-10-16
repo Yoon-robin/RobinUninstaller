@@ -1,0 +1,10 @@
+[package]
+name = "robin-fixture"
+description = "제거 기능 테스트용 가짜 프로그램 (HKCU에만 등록)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish = false
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"

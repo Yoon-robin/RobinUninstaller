@@ -24,3 +24,6 @@ pnpm-debug.log*
 .idea/
 .DS_Store
 Thumbs.db
+
+# 분석용 외부 프로그램 (상용 소프트웨어 — 절대 커밋하지 않음)
+*.zip

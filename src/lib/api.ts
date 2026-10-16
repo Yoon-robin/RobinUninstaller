@@ -1,4 +1,4 @@
-import { invoke } from "@tauri-apps/api/core"
+import { Channel, invoke } from "@tauri-apps/api/core"
 
 // crates/core 의 InstalledApplication 과 맞춰야 한다 (serde camelCase).
 export type InstallScope = "machine64" | "machine32" | "user"
@@ -22,8 +22,31 @@ export interface InstalledApplication {
   uninstaller: UninstallerStatus
 }
 
+// crates/execution 의 UninstallEvent / UninstallOutcome 과 맞춰야 한다.
+export type UninstallEvent =
+  | { kind: "launching"; file: string }
+  | { kind: "running"; processCount: number }
+  | { kind: "verifying" }
+
+export type UninstallOutcome =
+  | { kind: "removed" }
+  | { kind: "removedRebootRequired" }
+  | { kind: "stillInstalled"; exitCode: number | null }
+  | { kind: "elevationDenied" }
+  | { kind: "failed"; message: string }
+
 export const api = {
   listInstalledApps: () => invoke<InstalledApplication[]>("list_installed_apps"),
   getAppIcon: (id: string) => invoke<string | null>("get_app_icon", { id }),
   openInstallLocation: (id: string) => invoke<void>("open_install_location", { id }),
+  uninstallApp: (id: string, onEvent: (event: UninstallEvent) => void) => {
+    const channel = new Channel<UninstallEvent>()
+    channel.onmessage = onEvent
+    return invoke<UninstallOutcome>("uninstall_app", { id, onEvent: channel })
+  },
+}
+
+/** 기본 언인스톨러를 실행할 수 있는지. 언인스톨러 파일이 없으면 강제 제거(이후 버전) 대상이다. */
+export function canUninstall(app: InstalledApplication) {
+  return app.uninstaller === "available" || app.uninstaller === "unknown"
 }

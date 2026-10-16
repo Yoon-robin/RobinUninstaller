@@ -3,7 +3,7 @@ import { Check, Copy, FolderOpen, Trash2 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
-import { api, type InstalledApplication } from "@/lib/api"
+import { api, canUninstall, type InstalledApplication } from "@/lib/api"
 import { formatInstallDate, formatSize } from "@/lib/format"
 import { FadeUp, Stagger } from "@/components/motion"
 import { Button } from "@/components/ui/button"
@@ -20,9 +20,11 @@ const scopeLabels = {
 export function AppDetailsSheet({
   app,
   onOpenChange,
+  onUninstall,
 }: {
   app: InstalledApplication | null
   onOpenChange: (open: boolean) => void
+  onUninstall: (app: InstalledApplication) => void
 }) {
   const openFolder = async () => {
     if (!app) return
@@ -50,9 +52,15 @@ export function AppDetailsSheet({
               </div>
               <UninstallerBadge status={app.uninstaller} />
               <div className="mt-2 grid w-full grid-cols-2 gap-2">
-                <Button disabled className="rounded-lg">
+                <Button
+                  variant="destructive"
+                  className="rounded-lg"
+                  disabled={!canUninstall(app)}
+                  title={canUninstall(app) ? undefined : "언인스톨러가 없어요. 강제 제거는 이후 버전에서 지원해요."}
+                  onClick={() => onUninstall(app)}
+                >
                   <Trash2 />
-                  제거 (곧 지원)
+                  제거
                 </Button>
                 <Button variant="outline" className="rounded-lg" onClick={openFolder} disabled={!app.installLocation}>
                   <FolderOpen />

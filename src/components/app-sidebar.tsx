@@ -93,8 +93,8 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
         <div className="flex items-start gap-2.5 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-3">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
           <div className="text-xs leading-relaxed">
-            <p className="font-medium">읽기 전용 모드</p>
-            <p className="text-muted-foreground">PC를 아직 바꾸지 않아요.</p>
+            <p className="font-medium">안전 모드</p>
+            <p className="text-muted-foreground">프로그램의 언인스톨러만 실행하고, 파일은 직접 지우지 않아요.</p>
           </div>
         </div>
       </SidebarFooter>

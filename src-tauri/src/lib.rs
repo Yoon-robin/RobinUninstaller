@@ -8,6 +8,8 @@ use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
 use robin_core::InstalledApplication;
+use robin_execution::{UninstallEvent, UninstallOutcome};
+use tauri::ipc::Channel;
 use tauri::window::{Effect, EffectsBuilder};
 use tauri::{Manager, State};
 
@@ -56,6 +58,42 @@ async fn get_app_icon(id: String, cache: State<'_, AppCache>) -> Result<Option<S
         map.insert(id, icon.clone());
     }
     Ok(icon)
+}
+
+/// 한 번에 하나만 제거한다 (Windows Installer도 동시에 하나만 처리한다).
+static UNINSTALLING: AtomicBool = AtomicBool::new(false);
+
+/// 기본 언인스톨러를 실행하고 끝날 때까지 기다린다. 진행 상황은 `on_event`로 보낸다.
+#[tauri::command]
+async fn uninstall_app(
+    id: String,
+    on_event: Channel<UninstallEvent>,
+    cache: State<'_, AppCache>,
+) -> Result<UninstallOutcome, String> {
+    let app = cache
+        .get(&id)
+        .ok_or("알 수 없는 프로그램이에요. 목록을 새로고침해 주세요")?;
+    if UNINSTALLING.swap(true, Ordering::SeqCst) {
+        return Err("이미 다른 프로그램을 제거하고 있어요".into());
+    }
+
+    let result = tauri::async_runtime::spawn_blocking(move || {
+        robin_execution::run_uninstaller(
+            &app,
+            |event| {
+                let _ = on_event.send(event);
+            },
+            || {
+                robin_discovery::list_installed()
+                    .iter()
+                    .any(|a| a.id == app.id)
+            },
+        )
+    })
+    .await;
+
+    UNINSTALLING.store(false, Ordering::SeqCst);
+    result.map_err(|e| e.to_string())
 }
 
 /// 설치 폴더를 탐색기로 연다.
@@ -127,6 +165,7 @@ pub fn run() {
             list_installed_apps,
             get_app_icon,
             open_install_location,
+            uninstall_app,
             window_material
         ])
         .run(tauri::generate_context!())

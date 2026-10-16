@@ -19,7 +19,7 @@ import {
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
-import { api, type InstalledApplication } from "@/lib/api"
+import { api, canUninstall, type InstalledApplication } from "@/lib/api"
 import { formatInstallDate, formatSize, installDateSortKey } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
@@ -38,6 +38,7 @@ import { CountUp, FadeUp, Stagger, staggerContainer } from "@/components/motion"
 import { AppDetailsSheet } from "./app-details-sheet"
 import { AppIcon } from "./app-icon"
 import { ProgramGrid } from "./program-grid"
+import { UninstallDialog } from "./uninstall-dialog"
 
 type SortKey = "name" | "size" | "date"
 type ViewMode = "list" | "grid"
@@ -85,6 +86,7 @@ export function ProgramsPage() {
     }
   }
   const [selected, setSelected] = useState<InstalledApplication | null>(null)
+  const [uninstallTarget, setUninstallTarget] = useState<InstalledApplication | null>(null)
   const apps = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
 
   const visible = useMemo(() => {
@@ -273,6 +275,7 @@ export function ProgramsPage() {
                       app={app}
                       maxKb={stats.maxKb}
                       onSelect={setSelected}
+                      onUninstall={setUninstallTarget}
                       introIndex={intro && i < 16 ? i : undefined}
                     />
                   ))}
@@ -286,7 +289,16 @@ export function ProgramsPage() {
       </section>
       </FadeUp>
 
-      <AppDetailsSheet app={selected} onOpenChange={(open) => !open && setSelected(null)} />
+      <AppDetailsSheet
+        app={selected}
+        onOpenChange={(open) => !open && setSelected(null)}
+        onUninstall={setUninstallTarget}
+      />
+      <UninstallDialog
+        app={uninstallTarget}
+        onClose={() => setUninstallTarget(null)}
+        onRemoved={(app) => setSelected((current) => (current?.id === app.id ? null : current))}
+      />
     </Stagger>
   )
 }
@@ -295,11 +307,13 @@ function ProgramRow({
   app,
   maxKb,
   onSelect,
+  onUninstall,
   introIndex,
 }: {
   app: InstalledApplication
   maxKb: number
   onSelect: (app: InstalledApplication) => void
+  onUninstall: (app: InstalledApplication) => void
   /** 첫 등장 애니메이션 순서. undefined면 애니메이션 없음. */
   introIndex?: number
 }) {
@@ -390,9 +404,13 @@ function ProgramRow({
               설치 폴더 열기
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled variant="destructive">
+            <DropdownMenuItem
+              variant="destructive"
+              disabled={!canUninstall(app)}
+              onClick={() => onUninstall(app)}
+            >
               <Trash2 />
-              제거 (곧 지원)
+              {canUninstall(app) ? "제거" : "제거 불가 (언인스톨러 없음)"}
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>

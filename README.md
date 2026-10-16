@@ -39,5 +39,17 @@ pnpm check          # 타입 검사 + fmt + clippy + 테스트 (커밋 전에 �
 - `src-tauri/` — Tauri 앱 (엔진을 호출하는 얇은 command 계층)
 - `crates/core` — 공통 모델
 - `crates/discovery` — 설치된 프로그램 탐색 (레지스트리 + MSI, 아이콘 추출, 읽기 전용)
+- `crates/execution` — 기본 언인스톨러 실행, 자식 프로세스 추적, 제거 결과 확인
+- `crates/fixture` — 제거 테스트용 가짜 앱 (현재 사용자 영역에만 등록)
 
 탐색 결과만 빠르게 보려면: `cargo run -p robin-discovery --example dump`
+
+### 제거 기능 테스트
+
+실제 프로그램을 지우지 말고 테스트 앱으로 확인하세요.
+
+```bash
+cargo run -p robin-fixture -- install            # 테스트 앱 등록 (취소 흉내: --cancel)
+cargo run -p robin-execution --example uninstall_fixture
+cargo run -p robin-fixture -- remove             # 정리
+```
