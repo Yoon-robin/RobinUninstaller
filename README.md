@@ -21,3 +21,21 @@ Windows용 언인스톨러. 프로그램을 제거한 뒤 남은 파일과 레�
 ## 지원 환경
 
 Windows 10 / 11 (x64)
+
+## 개발
+
+필요한 것: Node 24 + pnpm, Rust(stable), Visual Studio C++ Build Tools, WebView2
+
+```bash
+pnpm install
+pnpm tauri dev      # 개발 모드로 실행
+pnpm tauri build    # 설치 파일(NSIS) 만들기
+cargo test --workspace
+```
+
+### 폴더 구조
+
+- `src/` — React + shadcn/ui 화면
+- `src-tauri/` — Tauri 앱 (엔진을 호출하는 얇은 command 계층)
+- `crates/core` — 공통 모델
+- `crates/discovery` — 설치된 프로그램 탐색 (레지스트리, 읽기 전용)

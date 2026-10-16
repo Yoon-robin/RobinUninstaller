@@ -1,0 +1,13 @@
+[package]
+name = "robin-discovery"
+description = "설치된 프로그램 탐색 (레지스트리 Uninstall 키)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+robin-core.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"
+
