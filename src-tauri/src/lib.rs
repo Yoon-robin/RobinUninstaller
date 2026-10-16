@@ -5,9 +5,11 @@
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
+use std::sync::atomic::{AtomicBool, Ordering};
 
 use robin_core::InstalledApplication;
-use tauri::State;
+use tauri::window::{Effect, EffectsBuilder};
+use tauri::{Manager, State};
 
 #[derive(Default)]
 struct AppCache {
@@ -42,14 +44,13 @@ async fn get_app_icon(id: String, cache: State<'_, AppCache>) -> Result<Option<S
     if let Some(hit) = cache.icons.lock().ok().and_then(|m| m.get(&id).cloned()) {
         return Ok(hit);
     }
-    let Some(icon_source) = cache.get(&id).and_then(|a| a.display_icon) else {
+    let Some(app) = cache.get(&id) else {
         return Ok(None);
     };
 
-    let icon =
-        tauri::async_runtime::spawn_blocking(move || robin_discovery::icon_data_url(&icon_source))
-            .await
-            .map_err(|e| e.to_string())?;
+    let icon = tauri::async_runtime::spawn_blocking(move || robin_discovery::app_icon(&app))
+        .await
+        .map_err(|e| e.to_string())?;
 
     if let Ok(mut map) = cache.icons.lock() {
         map.insert(id, icon.clone());
@@ -76,14 +77,57 @@ fn open_install_location(id: String, cache: State<'_, AppCache>) -> Result<(), S
         .map_err(|e| e.to_string())
 }
 
+/// Mica 배경이 켜졌는지. 프론트엔드는 이 값을 보고 배경을 반투명하게 그린다.
+static MICA_ENABLED: AtomicBool = AtomicBool::new(false);
+
+#[tauri::command]
+fn window_material() -> &'static str {
+    if MICA_ENABLED.load(Ordering::Relaxed) {
+        "mica"
+    } else {
+        "solid"
+    }
+}
+
+/// Mica는 Windows 11(빌드 22000 이상)에서만 지원된다.
+#[cfg(windows)]
+fn supports_mica() -> bool {
+    use winreg::RegKey;
+    use winreg::enums::HKEY_LOCAL_MACHINE;
+
+    RegKey::predef(HKEY_LOCAL_MACHINE)
+        .open_subkey(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion")
+        .and_then(|k| k.get_value::<String, _>("CurrentBuildNumber"))
+        .ok()
+        .and_then(|b| b.parse::<u32>().ok())
+        .is_some_and(|build| build >= 22000)
+}
+
+#[cfg(not(windows))]
+fn supports_mica() -> bool {
+    false
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
         .manage(AppCache::default())
+        .setup(|app| {
+            if supports_mica()
+                && let Some(window) = app.get_webview_window("main")
+                && window
+                    .set_effects(EffectsBuilder::new().effect(Effect::Mica).build())
+                    .is_ok()
+            {
+                MICA_ENABLED.store(true, Ordering::Relaxed);
+            }
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![
             list_installed_apps,
             get_app_icon,
-            open_install_location
+            open_install_location,
+            window_material
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

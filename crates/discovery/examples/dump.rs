@@ -4,8 +4,7 @@ fn main() {
     println!("{}", serde_json::to_string_pretty(&apps).unwrap());
     let icons = apps
         .iter()
-        .filter_map(|a| a.display_icon.as_deref())
-        .filter(|i| robin_discovery::icon_data_url(i).is_some())
+        .filter(|a| robin_discovery::app_icon(a).is_some())
         .count();
     eprintln!("icons extracted: {icons}");
 }

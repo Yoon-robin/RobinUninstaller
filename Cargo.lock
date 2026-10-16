@@ -2513,6 +2513,7 @@ dependencies = [
  "serde_json",
  "tauri",
  "tauri-build",
+ "winreg 0.55.0",
 ]
 
 [[package]]

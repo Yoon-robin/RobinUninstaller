@@ -8,6 +8,7 @@ use robin_core::InstalledApplication;
 pub mod command;
 #[cfg(windows)]
 mod icon;
+mod icon_source;
 #[cfg(windows)]
 mod msi;
 #[cfg(windows)]
@@ -24,13 +25,15 @@ pub fn list_installed() -> Vec<InstalledApplication> {
     apps
 }
 
-/// `DisplayIcon` 값에서 아이콘을 PNG data URL로 추출한다.
-pub fn icon_data_url(display_icon: &str) -> Option<String> {
+/// 프로그램 아이콘을 PNG data URL로 추출한다. 여러 후보 중 처음 성공한 것을 쓴다.
+pub fn app_icon(app: &InstalledApplication) -> Option<String> {
     #[cfg(windows)]
-    return icon::extract_data_url(display_icon);
+    return icon_source::icon_sources(app)
+        .iter()
+        .find_map(|source| icon::extract_data_url(source));
     #[cfg(not(windows))]
     {
-        let _ = display_icon;
+        let _ = app;
         None
     }
 }

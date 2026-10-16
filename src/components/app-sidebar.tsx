@@ -39,7 +39,6 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
       <SidebarMenuItem key={item.page}>
         <SidebarMenuButton
           isActive={page === item.page}
-          disabled={item.soon}
           onClick={() => onNavigate(item.page)}
           tooltip={item.label}
           className="relative isolate h-9 data-[active=true]:bg-transparent data-[active=true]:font-semibold"

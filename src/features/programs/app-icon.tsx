@@ -14,7 +14,6 @@ export function AppIcon({ app, className }: { app: InstalledApplication; classNa
   const icon = useQuery({
     queryKey: ["app-icon", app.id],
     queryFn: () => api.getAppIcon(app.id),
-    enabled: app.displayIcon != null,
     staleTime: Infinity,
   })
 

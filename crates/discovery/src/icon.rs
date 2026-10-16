@@ -11,9 +11,10 @@ use windows::core::HSTRING;
 
 use crate::command::{expand_env, icon_location};
 
-const SIZE: u32 = 32;
+// 카드 보기와 고해상도 화면에서도 선명하도록 64px로 뽑는다.
+const SIZE: u32 = 64;
 
-/// `DisplayIcon` 값에서 32×32 아이콘을 뽑아 `data:image/png;base64,...`로 돌려준다.
+/// `DisplayIcon` 형식(`path,index`) 값에서 아이콘을 뽑아 `data:image/png;base64,...`로 돌려준다.
 pub fn extract_data_url(display_icon: &str) -> Option<String> {
     let expanded = expand_env(display_icon, |name| std::env::var(name).ok());
     let (path, index) = icon_location(&expanded)?;

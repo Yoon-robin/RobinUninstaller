@@ -139,6 +139,9 @@
     overflow: hidden;
     user-select: none;
     -webkit-font-smoothing: antialiased;
+    /* 한국어는 단어 중간에서 줄이 바뀌지 않게 한다. */
+    word-break: keep-all;
+    overflow-wrap: anywhere;
     font-feature-settings: "tnum" 0;
   }
   input,
@@ -223,4 +226,29 @@
   [data-slot="dropdown-menu-content"] {
     animation-duration: 1ms !important;
   }
+}
+
+/* ── Windows 11 Mica ──────────────────────────────────────
+ * 창 뒤 배경화면 색이 은은하게 비치도록 바탕과 사이드바만 반투명하게 만든다.
+ * 카드와 패널은 읽기 좋게 거의 불투명하게 둔다. Mica가 없으면(.mica 없음) 그대로 불투명.
+ */
+.mica body {
+  background: transparent;
+}
+.mica:not(.dark) {
+  --background: oklch(0.985 0.003 250 / 62%);
+  --sidebar: oklch(0.97 0.005 250 / 30%);
+  --card: oklch(1 0 0 / 82%);
+}
+.mica.dark {
+  --background: oklch(0.16 0.012 260 / 70%);
+  --sidebar: oklch(0.13 0.012 260 / 35%);
+  --card: oklch(0.2 0.014 260 / 80%);
+}
+
+/* 테마 전환: 새 테마가 원형으로 퍼지는 동안 기존 화면은 그대로 둔다. */
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation: none;
+  mix-blend-mode: normal;
 }

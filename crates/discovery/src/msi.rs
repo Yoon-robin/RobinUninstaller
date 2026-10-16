@@ -21,6 +21,16 @@ pub fn install_location(product_code: &str, per_user: bool) -> Option<String> {
     product_info(product_code, context, "InstallLocation")
 }
 
+/// MSI가 등록한 제품 아이콘 파일 경로 (보통 `C:\Windows\Installer\{GUID}\*.ico`).
+pub fn product_icon(product_code: &str, per_user: bool) -> Option<String> {
+    let context = if per_user {
+        MSIINSTALLCONTEXT_USERUNMANAGED
+    } else {
+        MSIINSTALLCONTEXT_MACHINE
+    };
+    product_info(product_code, context, "ProductIcon")
+}
+
 fn product_info(product_code: &str, context: MSIINSTALLCONTEXT, property: &str) -> Option<String> {
     let code = HSTRING::from(product_code);
     let prop = HSTRING::from(property);

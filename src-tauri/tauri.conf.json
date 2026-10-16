@@ -19,7 +19,8 @@
         "minHeight": 600,
         "decorations": false,
         "shadow": true,
-        "center": true
+        "center": true,
+        "transparent": true
       }
     ],
     "security": {

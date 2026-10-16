@@ -6,6 +6,8 @@ import {
   FolderOpen,
   HardDrive,
   Info,
+  LayoutGrid,
+  List,
   MoreHorizontal,
   Package,
   RefreshCw,
@@ -14,7 +16,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react"
-import { motion } from "motion/react"
+import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
 import { api, type InstalledApplication } from "@/lib/api"
@@ -35,8 +37,20 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { CountUp, FadeUp, Stagger, staggerContainer } from "@/components/motion"
 import { AppDetailsSheet } from "./app-details-sheet"
 import { AppIcon } from "./app-icon"
+import { ProgramGrid } from "./program-grid"
 
 type SortKey = "name" | "size" | "date"
+type ViewMode = "list" | "grid"
+
+const VIEW_KEY = "robin.programs.view"
+
+function loadView(): ViewMode {
+  try {
+    return localStorage.getItem(VIEW_KEY) === "grid" ? "grid" : "list"
+  } catch {
+    return "list"
+  }
+}
 
 const sortLabels: Record<SortKey, string> = {
   name: "이름순",
@@ -61,6 +75,15 @@ export function ProgramsPage() {
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("name")
   const [onlyBroken, setOnlyBroken] = useState(false)
+  const [view, setViewState] = useState<ViewMode>(loadView)
+  const setView = (next: ViewMode) => {
+    setViewState(next)
+    try {
+      localStorage.setItem(VIEW_KEY, next)
+    } catch {
+      // 저장이 막혀 있어도 보기 전환은 그대로 동작한다.
+    }
+  }
   const [selected, setSelected] = useState<InstalledApplication | null>(null)
   const apps = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
 
@@ -183,6 +206,7 @@ export function ProgramsPage() {
               ))}
             </DropdownMenuContent>
           </DropdownMenu>
+          <ViewToggle value={view} onChange={setView} />
           <Button
             variant="outline"
             size="icon"
@@ -194,14 +218,16 @@ export function ProgramsPage() {
           </Button>
         </div>
 
-        <div className={cn(GRID, "border-b bg-muted/30 px-5 py-2.5 text-xs font-medium text-muted-foreground")}>
-          <span>이름</span>
-          <span>게시자</span>
-          <span>크기</span>
-          <span>설치일</span>
-          <span>형식</span>
-          <span />
-        </div>
+        {view === "list" && (
+          <div className={cn(GRID, "border-b bg-muted/30 px-5 py-2.5 text-xs font-medium text-muted-foreground")}>
+            <span>이름</span>
+            <span>게시자</span>
+            <span>크기</span>
+            <span>설치일</span>
+            <span>형식</span>
+            <span />
+          </div>
+        )}
 
         {apps.isError ? (
           <p className="px-5 py-16 text-center text-sm text-destructive">
@@ -230,17 +256,32 @@ export function ProgramsPage() {
             <p className="text-sm text-muted-foreground">다른 이름이나 게시자로 검색해 보세요.</p>
           </div>
         ) : (
-          <div className="divide-y">
-            {visible.map((app, i) => (
-              <ProgramRow
-                key={app.id}
-                app={app}
-                maxKb={stats.maxKb}
-                onSelect={setSelected}
-                introIndex={intro && i < 16 ? i : undefined}
-              />
-            ))}
-          </div>
+          // 보기를 바꿀 때만 짧게 교차 전환한다. 검색·필터로 항목이 바뀔 때는 움직이지 않는다.
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={view}
+              initial={{ opacity: 0, filter: "blur(4px)" }}
+              animate={{ opacity: 1, filter: "blur(0px)" }}
+              exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.1 } }}
+              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+            >
+              {view === "list" ? (
+                <div className="divide-y">
+                  {visible.map((app, i) => (
+                    <ProgramRow
+                      key={app.id}
+                      app={app}
+                      maxKb={stats.maxKb}
+                      onSelect={setSelected}
+                      introIndex={intro && i < 16 ? i : undefined}
+                    />
+                  ))}
+                </div>
+              ) : (
+                <ProgramGrid apps={visible} onSelect={setSelected} intro={intro} />
+              )}
+            </motion.div>
+          </AnimatePresence>
         )}
       </section>
       </FadeUp>
@@ -427,5 +468,40 @@ function StatCard({
         </div>
       </div>
     </FadeUp>
+  )
+}
+
+function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
+  const options = [
+    { value: "list" as const, icon: List, label: "목록 보기" },
+    { value: "grid" as const, icon: LayoutGrid, label: "카드 보기" },
+  ]
+  return (
+    <div className="flex h-9 items-center rounded-lg border bg-background/60 p-0.5" role="radiogroup" aria-label="보기 방식">
+      {options.map((o) => (
+        <button
+          key={o.value}
+          type="button"
+          role="radio"
+          aria-checked={value === o.value}
+          aria-label={o.label}
+          title={o.label}
+          onClick={() => onChange(o.value)}
+          className={cn(
+            "relative flex h-full w-8 items-center justify-center rounded-md transition-colors",
+            value === o.value ? "text-foreground" : "text-muted-foreground hover:text-foreground",
+          )}
+        >
+          {value === o.value && (
+            <motion.span
+              layoutId="view-toggle"
+              className="absolute inset-0 rounded-md bg-muted shadow-sm"
+              transition={{ type: "spring", duration: 0.3, bounce: 0.15 }}
+            />
+          )}
+          <o.icon className="relative size-4" />
+        </button>
+      ))}
+    </div>
   )
 }
