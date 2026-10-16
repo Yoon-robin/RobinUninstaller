@@ -23,6 +23,7 @@ serde_json.workspace = true
 robin-core.workspace = true
 robin-discovery.workspace = true
 robin-execution.workspace = true
+robin-scanner.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"

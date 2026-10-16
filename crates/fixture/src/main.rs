@@ -1,15 +1,26 @@
-//! 제거 기능을 실제 프로그램 없이 시험하기 위한 가짜 프로그램.
+//! 제거·잔여물 기능을 실제 프로그램 없이 시험하기 위한 가짜 프로그램 "Fixture Notes" (게시자 "Robin Test Labs").
 //!
-//! 현재 사용자(HKCU) 영역에만 등록하므로 관리자 권한이 필요 없고 다른 프로그램에 영향을 주지 않는다.
+//! 현재 사용자(HKCU)와 사용자 AppData에만 쓰므로 관리자 권한이 필요 없고 다른 프로그램에 영향을 주지 않는다.
 //!
 //! ```text
-//! robin-fixture install [--cancel|--hang]   가짜 앱 "RobinUninstaller 테스트 앱"을 등록
-//! robin-fixture remove               등록과 폴더를 바로 지움 (정리용)
+//! robin-fixture install [--cancel|--hang]   등록 + 일부러 흔적과 미끼를 만든다
+//! robin-fixture remove                      만든 것을 전부 지운다 (정리용)
 //! ```
 //!
 //! 등록되는 언인스톨러는 NSIS처럼 동작한다: 자기 자신을 임시 폴더에 복사해 다시 실행하고 원본은 바로 끝난다.
-//! 복사본이 몇 초 뒤 등록 정보와 폴더를 지운다. `--cancel`로 설치하면 아무것도 지우지 않고 끝난다(취소 흉내).
-//! `--hang`으로 설치하면 언인스톨러가 2분 동안 끝나지 않는다("기다리지 않고 확인" 시험용).
+//! 복사본은 몇 초 뒤 **설치 폴더와 등록 정보만** 지운다. 아래 흔적은 일부러 남긴다:
+//!
+//! - 남는 흔적 (잔여물 스캔이 찾아야 함)
+//!   - `%APPDATA%\Robin Test Labs\Fixture Notes\settings.json`
+//!   - `%LOCALAPPDATA%\Fixture Notes\cache\a.bin`
+//!   - `HKCU\Software\Robin Test Labs\Fixture Notes`
+//!   - `HKCU\...\Run` 값 `FixtureNotes` (설치 폴더를 가리킴)
+//! - 미끼 (확실 후보가 되면 안 됨)
+//!   - `%APPDATA%\Robin Test Labs\Other Product\data.txt`, `HKCU\Software\Robin Test Labs\Other Product`
+//!   - `%APPDATA%\Fixture Notes 2019\old.txt` (다른 버전)
+//!   - `HKCU\Software\Fixture Viewer` (비슷한 이름의 다른 프로그램)
+//!
+//! `--cancel`: 아무것도 지우지 않고 끝난다(취소 흉내). `--hang`: 2분 동안 끝나지 않는다.
 
 #[cfg(windows)]
 fn main() {
@@ -30,10 +41,48 @@ mod imp {
     use winreg::RegKey;
     use winreg::enums::HKEY_CURRENT_USER;
 
-    const KEY: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\RobinFixtureApp";
+    const UNINSTALL_KEY: &str =
+        r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\RobinFixtureApp";
+    const RUN_KEY: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
+    const RUN_VALUE: &str = "FixtureNotes";
+    const PUBLISHER: &str = "Robin Test Labs";
+    const PRODUCT: &str = "Fixture Notes";
+
+    fn env_dir(var: &str) -> PathBuf {
+        PathBuf::from(std::env::var(var).unwrap_or_else(|_| panic!("{var}")))
+    }
 
     fn install_dir() -> PathBuf {
-        PathBuf::from(std::env::var("LOCALAPPDATA").expect("LOCALAPPDATA")).join("RobinFixtureApp")
+        env_dir("LOCALAPPDATA").join(PUBLISHER).join(PRODUCT)
+    }
+
+    /// 일부러 남기는 흔적과 미끼 파일들 (설치 폴더 밖)
+    fn extra_files() -> Vec<(PathBuf, &'static str)> {
+        let roaming = env_dir("APPDATA");
+        let local = env_dir("LOCALAPPDATA");
+        vec![
+            (
+                roaming.join(PUBLISHER).join(PRODUCT).join("settings.json"),
+                "{\"theme\":\"dark\"}",
+            ),
+            (local.join(PRODUCT).join("cache").join("a.bin"), "cache"),
+            (
+                roaming
+                    .join(PUBLISHER)
+                    .join("Other Product")
+                    .join("data.txt"),
+                "decoy",
+            ),
+            (roaming.join("Fixture Notes 2019").join("old.txt"), "decoy"),
+        ]
+    }
+
+    fn extra_keys() -> [String; 3] {
+        [
+            format!(r"Software\{PUBLISHER}\{PRODUCT}"),
+            format!(r"Software\{PUBLISHER}\Other Product"),
+            r"Software\Fixture Viewer".to_string(),
+        ]
     }
 
     pub fn main() {
@@ -55,19 +104,32 @@ mod imp {
         std::fs::create_dir_all(&dir).expect("폴더 생성");
         let uninstaller = dir.join("uninstall.exe");
         std::fs::copy(std::env::current_exe().unwrap(), &uninstaller).expect("언인스톨러 복사");
-        std::fs::write(dir.join("data.txt"), "RobinUninstaller fixture").unwrap();
+        std::fs::write(dir.join("notes.exe"), "not a real program").unwrap();
 
-        let (key, _) = RegKey::predef(HKEY_CURRENT_USER)
-            .create_subkey(KEY)
-            .expect("레지스트리 등록");
+        for (path, content) in extra_files() {
+            std::fs::create_dir_all(path.parent().unwrap()).unwrap();
+            std::fs::write(path, content).unwrap();
+        }
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        for key in extra_keys() {
+            let (k, _) = hkcu.create_subkey(&key).unwrap();
+            k.set_value("Theme", &"dark").unwrap();
+        }
+        let (run, _) = hkcu.create_subkey(RUN_KEY).unwrap();
+        run.set_value(
+            RUN_VALUE,
+            &format!("\"{}\" --tray", dir.join("notes.exe").display()),
+        )
+        .unwrap();
+
+        let (key, _) = hkcu.create_subkey(UNINSTALL_KEY).expect("레지스트리 등록");
         let mut cmd = format!("\"{}\" --uninstall", uninstaller.display());
         if let Some(mode) = mode {
             cmd.push(' ');
             cmd.push_str(mode);
         }
-        key.set_value("DisplayName", &"RobinUninstaller 테스트 앱")
-            .unwrap();
-        key.set_value("Publisher", &"RobinUninstaller").unwrap();
+        key.set_value("DisplayName", &PRODUCT).unwrap();
+        key.set_value("Publisher", &PUBLISHER).unwrap();
         key.set_value("DisplayVersion", &"1.0.0").unwrap();
         key.set_value("InstallLocation", &dir.display().to_string())
             .unwrap();
@@ -101,16 +163,40 @@ mod imp {
         exit(0);
     }
 
+    /// 설치 폴더와 등록 정보만 지운다 (흔적은 일부러 남김).
     fn stage2(dir: &Path) {
         std::thread::sleep(Duration::from_secs(3));
-        let _ = RegKey::predef(HKEY_CURRENT_USER).delete_subkey_all(KEY);
+        let _ = RegKey::predef(HKEY_CURRENT_USER).delete_subkey_all(UNINSTALL_KEY);
         let _ = std::fs::remove_dir_all(dir);
         exit(0);
     }
 
     fn remove_all() {
-        let _ = RegKey::predef(HKEY_CURRENT_USER).delete_subkey_all(KEY);
+        let hkcu = RegKey::predef(HKEY_CURRENT_USER);
+        let _ = hkcu.delete_subkey_all(UNINSTALL_KEY);
+        for key in extra_keys() {
+            let _ = hkcu.delete_subkey_all(&key);
+        }
+        let _ = hkcu.delete_subkey(format!(r"Software\{PUBLISHER}"));
+        if let Ok(run) = hkcu.open_subkey_with_flags(RUN_KEY, winreg::enums::KEY_SET_VALUE) {
+            let _ = run.delete_value(RUN_VALUE);
+        }
         let _ = std::fs::remove_dir_all(install_dir());
+        for (path, _) in extra_files() {
+            if let Some(parent) = path.parent() {
+                let _ = std::fs::remove_dir_all(parent);
+            }
+        }
+        let roaming = env_dir("APPDATA");
+        let local = env_dir("LOCALAPPDATA");
+        for dir in [
+            roaming.join(PUBLISHER),
+            local.join(PUBLISHER),
+            local.join(PRODUCT),
+            local.join("RobinFixtureApp"), // 예전 버전의 테스트 앱 폴더
+        ] {
+            let _ = std::fs::remove_dir_all(dir);
+        }
         let _ = std::fs::remove_file(std::env::temp_dir().join("robin_fixture_Au_.exe"));
         println!("정리함");
     }

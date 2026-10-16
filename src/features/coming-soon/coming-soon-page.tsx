@@ -1,4 +1,4 @@
-import { ArchiveRestore, Check, Radar, Rocket, Settings, Trash2, type LucideIcon } from "lucide-react"
+import { ArchiveRestore, Check, Radar, Rocket, Settings, type LucideIcon } from "lucide-react"
 
 import { FadeUp, Stagger } from "@/components/motion"
 import type { Page } from "@/components/app-sidebar"
@@ -11,14 +11,7 @@ type Info = {
   points: string[]
 }
 
-const pages: Record<Exclude<Page, "programs">, Info> = {
-  leftovers: {
-    icon: Trash2,
-    title: "잔여물 정리",
-    description: "프로그램을 지운 뒤 남은 파일과 레지스트리를 찾아, 왜 그 프로그램 것인지 근거와 함께 보여 줘요.",
-    phase: "Phase 3",
-    points: ["설치 폴더·AppData·레지스트리 스캔", "확실한 것만 미리 선택, 애매한 건 검토", "지우기 전에 자동 백업"],
-  },
+const pages: Record<Exclude<Page, "programs" | "leftovers">, Info> = {
   startup: {
     icon: Rocket,
     title: "시작프로그램",
@@ -49,7 +42,7 @@ const pages: Record<Exclude<Page, "programs">, Info> = {
   },
 }
 
-export function ComingSoonPage({ page }: { page: Exclude<Page, "programs"> }) {
+export function ComingSoonPage({ page }: { page: Exclude<Page, "programs" | "leftovers"> }) {
   const info = pages[page]
   const Icon = info.icon
 

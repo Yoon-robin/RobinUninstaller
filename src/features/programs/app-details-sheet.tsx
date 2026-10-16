@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react"
-import { Check, Copy, FolderOpen, Trash2 } from "lucide-react"
+import { Check, Copy, FolderOpen, Sparkles, Trash2 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
@@ -21,10 +21,12 @@ export function AppDetailsSheet({
   app,
   onOpenChange,
   onUninstall,
+  onFindLeftovers,
 }: {
   app: InstalledApplication | null
   onOpenChange: (open: boolean) => void
   onUninstall: (app: InstalledApplication) => void
+  onFindLeftovers: (app: InstalledApplication) => void
 }) {
   const openFolder = async () => {
     if (!app) return
@@ -65,6 +67,14 @@ export function AppDetailsSheet({
                 <Button variant="outline" className="rounded-lg" onClick={openFolder} disabled={!app.installLocation}>
                   <FolderOpen />
                   폴더 열기
+                </Button>
+                <Button
+                  variant="ghost"
+                  className="col-span-2 rounded-lg text-muted-foreground"
+                  onClick={() => onFindLeftovers(app)}
+                >
+                  <Sparkles />
+                  {app.uninstaller === "missing" ? "남은 흔적 찾기 (언인스톨러 없음)" : "흔적 미리 보기"}
                 </Button>
               </div>
             </SheetHeader>

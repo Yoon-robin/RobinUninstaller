@@ -1,0 +1,17 @@
+[package]
+name = "robin-scanner"
+description = "제거 후 남은 파일·레지스트리 후보를 찾고 근거와 함께 점수를 매긴다 (읽기 전용)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+robin-core.workspace = true
+robin-discovery.workspace = true
+serde.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"
+
+[dev-dependencies]
+robin-execution.workspace = true

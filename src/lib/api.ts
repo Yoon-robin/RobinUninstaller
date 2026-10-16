@@ -55,3 +55,45 @@ export function uninstallCommandPreview(app: InstalledApplication): string | nul
 export function canUninstall(app: InstalledApplication) {
   return app.uninstaller === "available" || app.uninstaller === "unknown"
 }
+
+// crates/scanner 의 Leftover / ScanReport 와 맞춰야 한다.
+export type LeftoverKind = "folder" | "file" | "registryKey" | "registryValue"
+export type Confidence = "low" | "review" | "strong"
+
+export type Evidence =
+  | { kind: "installLocation" }
+  | { kind: "pointsIntoInstallLocation" }
+  | { kind: "uninstallEntry" }
+  | { kind: "msiProductCode" }
+  | { kind: "publisherAndProduct" }
+  | { kind: "publisherAndPartialName" }
+  | { kind: "exactName" }
+  | { kind: "partialName" }
+  | { kind: "emptyPublisherFolder" }
+  | { kind: "sharedWithOtherApp"; appName: string }
+  | { kind: "containsUserDocuments"; count: number }
+
+export interface Leftover {
+  id: string
+  kind: LeftoverKind
+  location: string
+  valueName: string | null
+  sizeBytes: number | null
+  evidence: Evidence[]
+  score: number
+  confidence: Confidence
+  note: string | null
+}
+
+export interface ScanReport {
+  appName: string
+  items: Leftover[]
+  protectedSkipped: number
+  durationMs: number
+}
+
+export const scanApi = {
+  scanLeftovers: (id: string) => invoke<ScanReport>("scan_leftovers", { id }),
+  recentlyRemoved: () => invoke<InstalledApplication[]>("recently_removed"),
+  revealLeftover: (itemId: string) => invoke<void>("reveal_leftover", { itemId }),
+}

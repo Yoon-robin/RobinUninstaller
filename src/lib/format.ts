@@ -24,3 +24,10 @@ export function installDateSortKey(raw: string | null): string {
   const formatted = formatInstallDate(raw)
   return /^\d{4}-\d{2}-\d{2}$/.test(formatted) ? formatted : ""
 }
+
+export function formatBytes(bytes: number | null): string {
+  if (bytes == null) return "—"
+  if (bytes === 0) return "0 KB"
+  if (bytes < 1024) return "1 KB 미만"
+  return formatSize(Math.round(bytes / 1024))
+}

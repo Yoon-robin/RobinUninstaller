@@ -8,6 +8,7 @@ import { IconTooltip } from "@/components/icon-tooltip"
 import { ThemeProvider, ThemeToggle } from "@/components/theme"
 import { WindowControls } from "@/components/window-controls"
 import { ComingSoonPage } from "@/features/coming-soon/coming-soon-page"
+import { LeftoversPage } from "@/features/leftovers/leftovers-page"
 import { ProgramsPage } from "@/features/programs/programs-page"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
@@ -77,7 +78,8 @@ export default function App() {
                   <div hidden={page !== "programs"} className="min-h-full">
                     <ProgramsPage />
                   </div>
-                  {page !== "programs" && <ComingSoonPage page={page} />}
+                  {page === "leftovers" && <LeftoversPage />}
+                  {page !== "programs" && page !== "leftovers" && <ComingSoonPage page={page} />}
                 </main>
               </SidebarInset>
             </SidebarProvider>

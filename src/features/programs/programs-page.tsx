@@ -39,6 +39,7 @@ import { LIST_GRID, ProgramRow } from "./program-row"
 import { FilterChips, IconSegmented } from "./segmented"
 import { StatCard } from "./stat-card"
 import { UninstallDialog } from "./uninstall-dialog"
+import { LeftoversDialog, type LeftoverTarget } from "@/features/leftovers/leftovers-dialog"
 
 type ViewMode = "list" | "grid"
 
@@ -64,6 +65,7 @@ export function ProgramsPage() {
   const [view, setViewState] = useState<ViewMode>(loadView)
   const [selected, setSelected] = useState<InstalledApplication | null>(null)
   const [uninstallTarget, setUninstallTarget] = useState<InstalledApplication | null>(null)
+  const [leftoversTarget, setLeftoversTarget] = useState<LeftoverTarget | null>(null)
   // 방금 제거된 항목. 목록에서 빠질 때만 접히는 모션을 준다.
   const [removingId, setRemovingId] = useState<string | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
@@ -122,7 +124,12 @@ export function ProgramsPage() {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
-  const handlers = { onSelect: setSelected, onUninstall: setUninstallTarget }
+  const handlers = {
+    onSelect: setSelected,
+    onUninstall: setUninstallTarget,
+    onFindLeftovers: (app: InstalledApplication) =>
+      setLeftoversTarget({ id: app.id, name: app.displayName, removed: false }),
+  }
   const resetFilters = () => {
     setQuery("")
     setFilter("all")
@@ -346,16 +353,19 @@ export function ProgramsPage() {
         app={selected}
         onOpenChange={(open) => !open && setSelected(null)}
         onUninstall={setUninstallTarget}
+        onFindLeftovers={handlers.onFindLeftovers}
       />
       <UninstallDialog
         app={uninstallTarget}
         onClose={() => setUninstallTarget(null)}
+        onFindLeftovers={(app) => setLeftoversTarget({ id: app.id, name: app.displayName, removed: true })}
         onRemoved={(app) => {
           setRemovingId(app.id)
           setTimeout(() => setRemovingId((id) => (id === app.id ? null : id)), 1500)
           setSelected((current) => (current?.id === app.id ? null : current))
         }}
       />
+      <LeftoversDialog target={leftoversTarget} onClose={() => setLeftoversTarget(null)} />
     </Stagger>
   )
 }

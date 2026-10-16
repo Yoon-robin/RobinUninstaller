@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { Check, ChevronRight, CircleAlert, Loader2, RotateCcw, ShieldAlert, Trash2, X } from "lucide-react"
+import { Check, ChevronRight, CircleAlert, Loader2, RotateCcw, Sparkles, ShieldAlert, Trash2, X } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 
 import {
@@ -24,10 +24,12 @@ export function UninstallDialog({
   app,
   onClose,
   onRemoved,
+  onFindLeftovers,
 }: {
   app: InstalledApplication | null
   onClose: () => void
   onRemoved: (app: InstalledApplication) => void
+  onFindLeftovers: (app: InstalledApplication) => void
 }) {
   const [phase, setPhase] = useState<Phase>({ step: "confirm" })
   const queryClient = useQueryClient()
@@ -46,6 +48,7 @@ export function UninstallDialog({
     if (outcome.kind === "removed" || outcome.kind === "removedRebootRequired") {
       onRemoved(app)
       queryClient.invalidateQueries({ queryKey: ["installed-apps"] })
+      queryClient.invalidateQueries({ queryKey: ["recently-removed"] })
     }
   }
 
@@ -81,7 +84,17 @@ export function UninstallDialog({
               >
                 {phase.step === "confirm" && <ConfirmBody app={app} onCancel={close} onStart={start} />}
                 {phase.step === "running" && <RunningBody event={phase.event} />}
-                {phase.step === "done" && <ResultBody outcome={phase.outcome} onClose={close} onRetry={start} />}
+                {phase.step === "done" && (
+                  <ResultBody
+                    outcome={phase.outcome}
+                    onClose={close}
+                    onRetry={start}
+                    onFindLeftovers={() => {
+                      close()
+                      onFindLeftovers(app)
+                    }}
+                  />
+                )}
               </motion.div>
             </AnimatePresence>
           </>
@@ -262,11 +275,14 @@ function ResultBody({
   outcome,
   onClose,
   onRetry,
+  onFindLeftovers,
 }: {
   outcome: UninstallOutcome
   onClose: () => void
   onRetry: () => void
+  onFindLeftovers: () => void
 }) {
+  const removed = outcome.kind === "removed" || outcome.kind === "removedRebootRequired"
   const view = describe(outcome)
   return (
     <div className="flex flex-col items-center gap-3 p-6 text-center">
@@ -289,7 +305,19 @@ function ResultBody({
             다시 시도
           </Button>
         )}
-        <Button onClick={onClose}>닫기</Button>
+        {removed ? (
+          <>
+            <Button variant="outline" onClick={onClose}>
+              닫기
+            </Button>
+            <Button onClick={onFindLeftovers}>
+              <Sparkles />
+              남은 흔적 찾기
+            </Button>
+          </>
+        ) : (
+          <Button onClick={onClose}>닫기</Button>
+        )}
       </div>
     </div>
   )
@@ -302,7 +330,7 @@ function describe(outcome: UninstallOutcome) {
         icon: Check,
         toneClass: "bg-primary/15 text-primary",
         title: "제거했어요",
-        body: "설치 정보에서 사라진 것을 확인했어요. 남은 파일 찾기는 다음 업데이트에서 지원해요.",
+        body: "설치 정보에서 사라진 것을 확인했어요. 언인스톨러가 남긴 파일과 레지스트리를 찾아볼까요?",
         retry: false,
       }
     case "removedRebootRequired":

@@ -2521,12 +2521,24 @@ dependencies = [
 ]
 
 [[package]]
+name = "robin-scanner"
+version = "0.1.0"
+dependencies = [
+ "robin-core",
+ "robin-discovery",
+ "robin-execution",
+ "serde",
+ "winreg 0.55.0",
+]
+
+[[package]]
 name = "robin-uninstaller"
 version = "0.1.0"
 dependencies = [
  "robin-core",
  "robin-discovery",
  "robin-execution",
+ "robin-scanner",
  "serde",
  "serde_json",
  "tauri",

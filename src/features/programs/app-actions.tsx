@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { Copy, FolderOpen, Info, Trash2 } from "lucide-react"
+import { Copy, FolderOpen, Info, Sparkles, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { api, canUninstall, type InstalledApplication } from "@/lib/api"
@@ -21,6 +21,7 @@ import {
 export type AppActionHandlers = {
   onSelect: (app: InstalledApplication) => void
   onUninstall: (app: InstalledApplication) => void
+  onFindLeftovers: (app: InstalledApplication) => void
 }
 
 type Action = {
@@ -33,7 +34,10 @@ type Action = {
   separatorBefore?: boolean
 }
 
-function actionsFor(app: InstalledApplication, { onSelect, onUninstall }: AppActionHandlers): Action[] {
+function actionsFor(
+  app: InstalledApplication,
+  { onSelect, onUninstall, onFindLeftovers }: AppActionHandlers,
+): Action[] {
   return [
     { key: "info", label: "세부 정보", icon: Info, run: () => onSelect(app) },
     {
@@ -49,6 +53,7 @@ function actionsFor(app: InstalledApplication, { onSelect, onUninstall }: AppAct
       icon: Copy,
       run: () => navigator.clipboard.writeText(app.displayName).then(() => toast.success("이름을 복사했어요")),
     },
+    { key: "leftovers", label: "흔적 미리 보기", icon: Sparkles, run: () => onFindLeftovers(app) },
     {
       key: "uninstall",
       label: canUninstall(app) ? "제거" : "제거 불가 (언인스톨러 없음)",
