@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowDownAZ, HardDrive, MoreHorizontal, Package, RefreshCw, Search, Trash2, User } from "lucide-react"
+import { ArrowDownAZ, FolderOpen, HardDrive, Info, MoreHorizontal, Package, RefreshCw, Search, Trash2, TriangleAlert } from "lucide-react"
+import { toast } from "sonner"
 
 import { api, type InstalledApplication } from "@/lib/api"
 import { formatInstallDate, formatSize, installDateSortKey } from "@/lib/format"
@@ -18,6 +19,9 @@ import {
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { cn } from "@/lib/utils"
+import { AppDetailsSheet } from "./app-details-sheet"
+import { AppIcon } from "./app-icon"
 
 type SortKey = "name" | "size" | "date"
 
@@ -41,11 +45,14 @@ function compare(a: InstalledApplication, b: InstalledApplication, key: SortKey)
 export function ProgramsPage() {
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("name")
+  const [onlyBroken, setOnlyBroken] = useState(false)
+  const [selected, setSelected] = useState<InstalledApplication | null>(null)
   const apps = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
 
   const visible = useMemo(() => {
     const q = query.trim().toLowerCase()
     return (apps.data ?? [])
+      .filter((a) => !onlyBroken || a.uninstaller === "missing")
       .filter(
         (a) =>
           !q ||
@@ -53,14 +60,14 @@ export function ProgramsPage() {
           (a.publisher ?? "").toLowerCase().includes(q),
       )
       .sort((a, b) => compare(a, b, sort))
-  }, [apps.data, query, sort])
+  }, [apps.data, query, sort, onlyBroken])
 
   const stats = useMemo(() => {
     const list = apps.data ?? []
     return {
       total: list.length,
       totalKb: list.reduce((sum, a) => sum + (a.estimatedSizeKb ?? 0), 0),
-      user: list.filter((a) => a.scope === "user").length,
+      broken: list.filter((a) => a.uninstaller === "missing").length,
     }
   }, [apps.data])
 
@@ -69,7 +76,13 @@ export function ProgramsPage() {
       <div className="grid gap-4 sm:grid-cols-3">
         <StatCard icon={Package} label="설치된 프로그램" value={apps.isLoading ? null : `${stats.total}개`} />
         <StatCard icon={HardDrive} label="전체 예상 용량" value={apps.isLoading ? null : formatSize(stats.totalKb)} />
-        <StatCard icon={User} label="현재 사용자 전용" value={apps.isLoading ? null : `${stats.user}개`} />
+        <StatCard
+          icon={TriangleAlert}
+          label="언인스톨러 없음"
+          value={apps.isLoading ? null : `${stats.broken}개`}
+          active={onlyBroken}
+          onClick={stats.broken > 0 || onlyBroken ? () => setOnlyBroken((v) => !v) : undefined}
+        />
       </div>
 
       <Card>
@@ -77,7 +90,9 @@ export function ProgramsPage() {
           <div>
             <CardTitle>설치된 프로그램</CardTitle>
             <CardDescription>
-              {apps.isLoading ? "목록을 불러오는 중…" : `${visible.length}개 표시 중`}
+              {apps.isLoading
+                ? "목록을 불러오는 중…"
+                : `${visible.length}개 표시 중${onlyBroken ? " · 언인스톨러 없는 항목만" : ""}`}
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
@@ -121,7 +136,6 @@ export function ProgramsPage() {
                 <TableRow>
                   <TableHead>이름</TableHead>
                   <TableHead>게시자</TableHead>
-                  <TableHead>버전</TableHead>
                   <TableHead className="text-right">크기</TableHead>
                   <TableHead>설치일</TableHead>
                   <TableHead>형식</TableHead>
@@ -132,15 +146,15 @@ export function ProgramsPage() {
                 {apps.isLoading
                   ? Array.from({ length: 8 }, (_, i) => (
                       <TableRow key={i}>
-                        <TableCell colSpan={7}>
+                        <TableCell colSpan={6}>
                           <Skeleton className="h-5 w-full" />
                         </TableCell>
                       </TableRow>
                     ))
-                  : visible.map((app) => <ProgramRow key={app.id} app={app} />)}
+                  : visible.map((app) => <ProgramRow key={app.id} app={app} onSelect={setSelected} />)}
                 {!apps.isLoading && visible.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={7} className="py-10 text-center text-muted-foreground">
+                    <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
                       검색 결과가 없어요
                     </TableCell>
                   </TableRow>
@@ -150,20 +164,37 @@ export function ProgramsPage() {
           )}
         </CardContent>
       </Card>
+
+      <AppDetailsSheet app={selected} onOpenChange={(open) => !open && setSelected(null)} />
     </div>
   )
 }
 
-function ProgramRow({ app }: { app: InstalledApplication }) {
+function ProgramRow({
+  app,
+  onSelect,
+}: {
+  app: InstalledApplication
+  onSelect: (app: InstalledApplication) => void
+}) {
+  const openFolder = () => api.openInstallLocation(app.id).catch((e) => toast.error(String(e)))
+
   return (
-    <TableRow>
-      <TableCell className="max-w-60 truncate font-medium" title={app.displayName}>
-        {app.displayName}
+    <TableRow className="cursor-pointer" onClick={() => onSelect(app)}>
+      <TableCell className="max-w-64">
+        <div className="flex items-center gap-3">
+          <AppIcon app={app} />
+          <div className="min-w-0">
+            <p className="truncate font-medium" title={app.displayName}>
+              {app.displayName}
+            </p>
+            {app.version && <p className="truncate text-xs text-muted-foreground">{app.version}</p>}
+          </div>
+        </div>
       </TableCell>
-      <TableCell className="max-w-36 truncate text-muted-foreground" title={app.publisher ?? undefined}>
+      <TableCell className="max-w-40 truncate text-muted-foreground" title={app.publisher ?? undefined}>
         {app.publisher ?? "—"}
       </TableCell>
-      <TableCell className="max-w-28 truncate text-muted-foreground">{app.version ?? "—"}</TableCell>
       <TableCell className="text-right tabular-nums">{formatSize(app.estimatedSizeKb)}</TableCell>
       <TableCell className="tabular-nums text-muted-foreground">{formatInstallDate(app.installDate)}</TableCell>
       <TableCell>
@@ -173,9 +204,10 @@ function ProgramRow({ app }: { app: InstalledApplication }) {
           </Badge>
           {app.scope === "machine32" && <Badge variant="outline">32bit</Badge>}
           {app.scope === "user" && <Badge variant="outline">사용자</Badge>}
+          {app.uninstaller === "missing" && <Badge variant="destructive">언인스톨러 없음</Badge>}
         </div>
       </TableCell>
-      <TableCell>
+      <TableCell onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="ghost" size="icon" aria-label="작업">
@@ -184,6 +216,15 @@ function ProgramRow({ app }: { app: InstalledApplication }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
             <DropdownMenuLabel className="max-w-64 truncate">{app.displayName}</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => onSelect(app)}>
+              <Info />
+              세부 정보
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={openFolder} disabled={!app.installLocation}>
+              <FolderOpen />
+              설치 폴더 열기
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem disabled>
               <Trash2 />
@@ -196,9 +237,24 @@ function ProgramRow({ app }: { app: InstalledApplication }) {
   )
 }
 
-function StatCard({ icon: Icon, label, value }: { icon: typeof Package; label: string; value: string | null }) {
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  active,
+  onClick,
+}: {
+  icon: typeof Package
+  label: string
+  value: string | null
+  active?: boolean
+  onClick?: () => void
+}) {
   return (
-    <Card>
+    <Card
+      onClick={onClick}
+      className={cn(onClick && "cursor-pointer transition-colors hover:bg-muted/50", active && "ring-2 ring-destructive/60")}
+    >
       <CardContent className="flex items-center gap-4">
         <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
           <Icon className="size-5 text-muted-foreground" />

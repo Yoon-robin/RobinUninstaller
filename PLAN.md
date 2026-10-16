@@ -22,7 +22,7 @@ Electron처럼 예쁜 웹 UI(shadcn/ui)를 쓰면서도 가볍게 가기 위해 
 | 엔진 (백엔드) | Rust: `windows` 크레이트(Win32/레지스트리/MSI/COM), `winreg` |
 | 저장소 | SQLite (`rusqlite`) + JSON 매니페스트 |
 | 로깅 | `tracing` |
-| 테스트 | Rust `cargo test` + Vitest + Windows VM (체크포인트로 되돌리며 테스트) |
+| 테스트 | `pnpm check`(tsc + fmt + clippy + cargo test)를 로컬에서 실행, 삭제 테스트는 Windows VM에서 |
 | 배포 | x64, NSIS 설치형 (Tauri 번들러) |
 
 GPT-6은 C# + WinUI 3를 추천했지만, shadcn을 쓰려면 웹 UI가 필요해서 Tauri로 바꿨다. 덕분에 시스템 코드가 Rust여서 메모리 안전성 면에서도 유리하다. 대신 Rust를 배우는 시간과 Windows API 바인딩 작업이 필요하다.
@@ -119,11 +119,11 @@ MVP 품질 목표: 앱 목록 2초 이내(캐시 먼저 표시), 일반 스캔 1
 
 ## 7. 첫 마일스톤 체크리스트
 
-- [ ] Tauri 2 + React + shadcn/ui 앱 골격, Rust 워크스페이스(crates/) 생성
-- [ ] `InstalledApplication` 구조체와 Provider 트레이트 정의
-- [ ] HKLM/HKCU 32·64비트 Uninstall 정보 수집
-- [ ] MSI 정보 수집 및 중복 통합
-- [ ] 프로그램 목록 화면 + 검색·정렬
+- [x] Tauri 2 + React + shadcn/ui 앱 골격, Rust 워크스페이스(crates/) 생성
+- [x] `InstalledApplication` 구조체와 Provider 트레이트 정의
+- [x] HKLM/HKCU 32·64비트 Uninstall 정보 수집
+- [x] MSI 정보 수집 및 중복 통합
+- [x] 프로그램 목록 화면 + 검색·정렬
 - [ ] 제거 워크플로 상태 머신
 - [ ] 읽기 전용 잔여물 스캐너 + 테스트 픽스처
 - [ ] 백업·복원 안전성 테스트를 통과한 뒤에 삭제 기능 활성화

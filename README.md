@@ -30,7 +30,7 @@ Windows 10 / 11 (x64)
 pnpm install
 pnpm tauri dev      # 개발 모드로 실행
 pnpm tauri build    # 설치 파일(NSIS) 만들기
-cargo test --workspace
+pnpm check          # 타입 검사 + fmt + clippy + 테스트 (커밋 전에 실행)
 ```
 
 ### 폴더 구조
@@ -38,4 +38,6 @@ cargo test --workspace
 - `src/` — React + shadcn/ui 화면
 - `src-tauri/` — Tauri 앱 (엔진을 호출하는 얇은 command 계층)
 - `crates/core` — 공통 모델
-- `crates/discovery` — 설치된 프로그램 탐색 (레지스트리, 읽기 전용)
+- `crates/discovery` — 설치된 프로그램 탐색 (레지스트리 + MSI, 아이콘 추출, 읽기 전용)
+
+탐색 결과만 빠르게 보려면: `cargo run -p robin-discovery --example dump`

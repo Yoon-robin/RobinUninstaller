@@ -1,6 +1,6 @@
 [package]
 name = "robin-discovery"
-description = "설치된 프로그램 탐색 (레지스트리 Uninstall 키)"
+description = "설치된 프로그램 탐색 (레지스트리 Uninstall 키, MSI, 아이콘)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,4 +10,15 @@ robin-core.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
+png = "0.18"
+base64 = "0.23"
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Graphics_Gdi",
+  "Win32_System_ApplicationInstallationAndServicing",
+  "Win32_UI_Shell",
+  "Win32_UI_WindowsAndMessaging",
+] }
 
+[dev-dependencies]
+serde_json.workspace = true

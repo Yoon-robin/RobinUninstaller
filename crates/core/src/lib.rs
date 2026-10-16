@@ -24,6 +24,20 @@ pub enum InstallTechnology {
     Msi,
 }
 
+/// 기본 언인스톨러를 실행할 수 있는 상태인지.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum UninstallerStatus {
+    /// 언인스톨러 파일이 있음 (MSI는 Windows Installer에 제품이 등록돼 있음)
+    Available,
+    /// 등록 정보는 있지만 언인스톨러 파일(또는 MSI 제품)이 없음 → 강제 제거 후보
+    Missing,
+    /// 제거 명령이 등록돼 있지 않음
+    NotRegistered,
+    /// 명령 형식을 해석하지 못해 확인할 수 없음
+    Unknown,
+}
+
 /// 설치된 프로그램 하나.
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -44,6 +58,7 @@ pub struct InstalledApplication {
     pub product_code: Option<String>,
     pub technology: InstallTechnology,
     pub scope: InstallScope,
+    pub uninstaller: UninstallerStatus,
 }
 
 impl InstallScope {
