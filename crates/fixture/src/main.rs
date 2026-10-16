@@ -3,7 +3,8 @@
 //! 현재 사용자(HKCU)와 사용자 AppData에만 쓰므로 관리자 권한이 필요 없고 다른 프로그램에 영향을 주지 않는다.
 //!
 //! ```text
-//! robin-fixture install [--cancel|--hang]   등록 + 일부러 흔적과 미끼를 만든다
+//! robin-fixture install [--cancel|--hang|--machine]   등록 + 일부러 흔적과 미끼를 만든다
+//!                                         (--machine: 관리자 권한 흔적도 만든다. 관리자로 실행해야 함)
 //! robin-fixture remove                      만든 것을 전부 지운다 (정리용)
 //! ```
 //!
@@ -21,6 +22,10 @@
 //!   - `HKCU\Software\Fixture Viewer` (비슷한 이름의 다른 프로그램)
 //!
 //! `--cancel`: 아무것도 지우지 않고 끝난다(취소 흉내). `--hang`: 2분 동안 끝나지 않는다.
+//!
+//! `--machine`(관리자 권한 필요)은 아래 흔적을 추가로 남긴다. 지우거나 되돌리려면 관리자 권한이 있어야 한다.
+//!   - `HKLM\SOFTWARE\Robin Test Labs\Fixture Notes`
+//!   - `C:\Program Files\Robin Test Labs\Fixture Notes\data.txt`
 
 #[cfg(windows)]
 fn main() {
@@ -39,7 +44,7 @@ mod imp {
     use std::time::Duration;
 
     use winreg::RegKey;
-    use winreg::enums::HKEY_CURRENT_USER;
+    use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
 
     const UNINSTALL_KEY: &str =
         r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\RobinFixtureApp";
@@ -99,7 +104,32 @@ mod imp {
         }
     }
 
+    fn machine_dir() -> PathBuf {
+        env_dir("ProgramFiles").join(PUBLISHER)
+    }
+
+    fn machine_key() -> String {
+        format!(r"SOFTWARE\{PUBLISHER}\{PRODUCT}")
+    }
+
+    /// 관리자 권한이 있어야 만들고 지울 수 있는 흔적
+    fn install_machine() {
+        let dir = machine_dir().join(PRODUCT);
+        std::fs::create_dir_all(&dir).expect("Program Files 폴더 생성 (관리자 권한 필요)");
+        std::fs::write(dir.join("data.txt"), "machine-wide data").unwrap();
+        let (k, _) = RegKey::predef(HKEY_LOCAL_MACHINE)
+            .create_subkey(machine_key())
+            .expect("HKLM 키 생성 (관리자 권한 필요)");
+        k.set_value("Theme", &"dark").unwrap();
+        k.set_value("Level", &7u32).unwrap();
+        println!("관리자 권한 흔적 만듦: {}", dir.display());
+    }
+
     fn install(mode: Option<&str>) {
+        if mode == Some("--machine") {
+            install_machine();
+        }
+        let mode = mode.filter(|m| *m != "--machine");
         let dir = install_dir();
         std::fs::create_dir_all(&dir).expect("폴더 생성");
         let uninstaller = dir.join("uninstall.exe");
@@ -172,6 +202,12 @@ mod imp {
     }
 
     fn remove_all() {
+        // 관리자 권한 흔적 (권한이 없으면 조용히 건너뛴다)
+        let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
+        let _ = hklm.delete_subkey_all(machine_key());
+        let _ = hklm.delete_subkey(format!(r"SOFTWARE\{PUBLISHER}"));
+        let _ = std::fs::remove_dir_all(machine_dir());
+
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
         let _ = hkcu.delete_subkey_all(UNINSTALL_KEY);
         for key in extra_keys() {
