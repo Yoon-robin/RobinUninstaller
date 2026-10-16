@@ -1,5 +1,6 @@
-import { ArchiveRestore, Package, Radar, Rocket, Settings, Trash2 } from "lucide-react"
+import { ArchiveRestore, Package, Radar, Rocket, Settings, ShieldCheck, Trash2 } from "lucide-react"
 
+import { Logo } from "@/components/logo"
 import {
   Sidebar,
   SidebarContent,
@@ -16,20 +17,22 @@ import {
 
 export type Page = "programs" | "leftovers" | "startup" | "tracking" | "restore" | "settings"
 
-const mainItems: { page: Page; label: string; icon: typeof Package; soon?: boolean }[] = [
+type Item = { page: Page; label: string; icon: typeof Package; soon?: boolean }
+
+const mainItems: Item[] = [
   { page: "programs", label: "프로그램", icon: Package },
   { page: "leftovers", label: "잔여물 정리", icon: Trash2, soon: true },
   { page: "startup", label: "시작프로그램", icon: Rocket, soon: true },
   { page: "tracking", label: "설치 추적", icon: Radar, soon: true },
 ]
 
-const toolItems: typeof mainItems = [
+const toolItems: Item[] = [
   { page: "restore", label: "복구 기록", icon: ArchiveRestore, soon: true },
   { page: "settings", label: "설정", icon: Settings, soon: true },
 ]
 
 export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page: Page) => void }) {
-  const renderItems = (items: typeof mainItems) =>
+  const renderItems = (items: Item[]) =>
     items.map((item) => (
       <SidebarMenuItem key={item.page}>
         <SidebarMenuButton
@@ -37,30 +40,29 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           disabled={item.soon}
           onClick={() => onNavigate(item.page)}
           tooltip={item.label}
+          className="h-9 data-[active=true]:font-semibold"
         >
           <item.icon />
           <span>{item.label}</span>
         </SidebarMenuButton>
-        {item.soon && <SidebarMenuBadge className="text-muted-foreground">준비 중</SidebarMenuBadge>}
+        {item.soon && (
+          <SidebarMenuBadge className="rounded-full bg-sidebar-foreground/5 px-1.5 text-[10px] font-normal text-muted-foreground">
+            준비 중
+          </SidebarMenuBadge>
+        )}
       </SidebarMenuItem>
     ))
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader>
-        <SidebarMenu>
-          <SidebarMenuItem>
-            <SidebarMenuButton size="lg" className="pointer-events-none">
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-                <Trash2 className="size-4" />
-              </div>
-              <div className="grid flex-1 text-left leading-tight">
-                <span className="truncate font-semibold">RobinUninstaller</span>
-                <span className="truncate text-xs text-muted-foreground">v0.1.0</span>
-              </div>
-            </SidebarMenuButton>
-          </SidebarMenuItem>
-        </SidebarMenu>
+      <SidebarHeader data-tauri-drag-region className="h-[4.5rem] justify-center">
+        <div data-tauri-drag-region className="flex items-center gap-2.5 px-1">
+          <Logo className="size-8 shrink-0" />
+          <div className="grid leading-tight group-data-[collapsible=icon]:hidden">
+            <span className="font-semibold tracking-tight">RobinUninstaller</span>
+            <span className="text-xs text-muted-foreground">v0.1.0 · 미리보기</span>
+          </div>
+        </div>
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
@@ -76,8 +78,14 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="px-4 pb-3 text-xs text-muted-foreground group-data-[collapsible=icon]:hidden">
-        읽기 전용 · 아직 아무것도 지우지 않아요
+      <SidebarFooter className="p-3 group-data-[collapsible=icon]:hidden">
+        <div className="flex items-start gap-2.5 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-3">
+          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+          <div className="text-xs leading-relaxed">
+            <p className="font-medium">읽기 전용 모드</p>
+            <p className="text-muted-foreground">PC를 아직 바꾸지 않아요.</p>
+          </div>
+        </div>
       </SidebarFooter>
     </Sidebar>
   )

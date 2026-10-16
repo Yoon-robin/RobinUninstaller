@@ -1,13 +1,26 @@
 import { useMemo, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowDownAZ, FolderOpen, HardDrive, Info, MoreHorizontal, Package, RefreshCw, Search, Trash2, TriangleAlert } from "lucide-react"
+import {
+  ArrowDownWideNarrow,
+  Check,
+  FolderOpen,
+  HardDrive,
+  Info,
+  MoreHorizontal,
+  Package,
+  RefreshCw,
+  Search,
+  Trash2,
+  TriangleAlert,
+  X,
+} from "lucide-react"
 import { toast } from "sonner"
 
 import { api, type InstalledApplication } from "@/lib/api"
 import { formatInstallDate, formatSize, installDateSortKey } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,8 +31,6 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
-import { cn } from "@/lib/utils"
 import { AppDetailsSheet } from "./app-details-sheet"
 import { AppIcon } from "./app-icon"
 
@@ -28,7 +39,7 @@ type SortKey = "name" | "size" | "date"
 const sortLabels: Record<SortKey, string> = {
   name: "이름순",
   size: "크기순",
-  date: "설치일순",
+  date: "최근 설치순",
 }
 
 function compare(a: InstalledApplication, b: InstalledApplication, key: SortKey) {
@@ -41,6 +52,8 @@ function compare(a: InstalledApplication, b: InstalledApplication, key: SortKey)
       return a.displayName.localeCompare(b.displayName, "ko")
   }
 }
+
+const GRID = "grid grid-cols-[minmax(0,1fr)_minmax(0,9rem)_6.5rem_5.75rem_5.5rem_2rem] items-center gap-4"
 
 export function ProgramsPage() {
   const [query, setQuery] = useState("")
@@ -67,103 +80,152 @@ export function ProgramsPage() {
     return {
       total: list.length,
       totalKb: list.reduce((sum, a) => sum + (a.estimatedSizeKb ?? 0), 0),
+      maxKb: Math.max(1, ...list.map((a) => a.estimatedSizeKb ?? 0)),
       broken: list.filter((a) => a.uninstaller === "missing").length,
+      msi: list.filter((a) => a.technology === "msi").length,
     }
   }, [apps.data])
 
+  const loading = apps.isLoading
+
   return (
-    <div className="flex min-w-0 flex-col gap-6 p-6">
+    <div className="mx-auto flex max-w-6xl min-w-0 flex-col gap-6 px-7 pt-7 pb-10">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight">프로그램</h1>
+        <p className="mt-1 text-sm text-muted-foreground">
+          이 PC에 설치된 프로그램이에요. 항목을 누르면 자세한 정보를 볼 수 있어요.
+        </p>
+      </div>
+
       <div className="grid gap-4 sm:grid-cols-3">
-        <StatCard icon={Package} label="설치된 프로그램" value={apps.isLoading ? null : `${stats.total}개`} />
-        <StatCard icon={HardDrive} label="전체 예상 용량" value={apps.isLoading ? null : formatSize(stats.totalKb)} />
+        <StatCard
+          icon={Package}
+          tone="chart-1"
+          label="설치된 프로그램"
+          value={loading ? null : stats.total.toLocaleString()}
+          unit="개"
+          hint={loading ? undefined : `EXE ${stats.total - stats.msi} · MSI ${stats.msi}`}
+        />
+        <StatCard
+          icon={HardDrive}
+          tone="chart-2"
+          label="전체 예상 용량"
+          value={loading ? null : formatSize(stats.totalKb)}
+          hint="설치 프로그램이 기록한 크기 기준"
+        />
         <StatCard
           icon={TriangleAlert}
+          tone={stats.broken > 0 ? "chart-3" : "chart-5"}
           label="언인스톨러 없음"
-          value={apps.isLoading ? null : `${stats.broken}개`}
+          value={loading ? null : stats.broken.toLocaleString()}
+          unit="개"
+          hint={
+            onlyBroken
+              ? "필터 적용 중 · 다시 누르면 해제"
+              : stats.broken > 0
+                ? "눌러서 해당 항목만 보기"
+                : "모두 정상이에요"
+          }
           active={onlyBroken}
           onClick={stats.broken > 0 || onlyBroken ? () => setOnlyBroken((v) => !v) : undefined}
         />
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-3">
-          <div>
-            <CardTitle>설치된 프로그램</CardTitle>
-            <CardDescription>
-              {apps.isLoading
-                ? "목록을 불러오는 중…"
-                : `${visible.length}개 표시 중${onlyBroken ? " · 언인스톨러 없는 항목만" : ""}`}
-            </CardDescription>
+      <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+        <div className="flex flex-wrap items-center gap-3 border-b px-5 py-4">
+          <div className="mr-auto flex items-center gap-2">
+            <h2 className="font-semibold">설치된 프로그램</h2>
+            <span className="text-sm text-muted-foreground tabular-nums">
+              {loading ? "불러오는 중…" : `${visible.length}개`}
+            </span>
+            {onlyBroken && (
+              <Badge variant="secondary" className="gap-1">
+                언인스톨러 없음
+                <button onClick={() => setOnlyBroken(false)} aria-label="필터 해제">
+                  <X className="size-3" />
+                </button>
+              </Badge>
+            )}
           </div>
-          <div className="flex items-center gap-2">
-            <div className="relative">
-              <Search className="pointer-events-none absolute top-1/2 left-2.5 size-4 -translate-y-1/2 text-muted-foreground" />
-              <Input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="이름 또는 게시자 검색"
-                className="w-56 pl-8"
-              />
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline">
-                  <ArrowDownAZ />
-                  {sortLabels[sort]}
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {(Object.keys(sortLabels) as SortKey[]).map((key) => (
-                  <DropdownMenuItem key={key} onClick={() => setSort(key)}>
-                    {sortLabels[key]}
-                  </DropdownMenuItem>
-                ))}
-              </DropdownMenuContent>
-            </DropdownMenu>
-            <Button variant="outline" size="icon" onClick={() => apps.refetch()} aria-label="새로고침">
-              <RefreshCw className={apps.isFetching ? "animate-spin" : undefined} />
-            </Button>
+          <div className="relative">
+            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="이름 또는 게시자 검색"
+              className="h-9 w-64 rounded-lg bg-background/60 pl-9"
+            />
           </div>
-        </CardHeader>
-        <CardContent>
-          {apps.isError ? (
-            <p className="py-10 text-center text-sm text-destructive">
-              목록을 불러오지 못했어요: {String(apps.error)}
-            </p>
-          ) : (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>이름</TableHead>
-                  <TableHead>게시자</TableHead>
-                  <TableHead className="text-right">크기</TableHead>
-                  <TableHead>설치일</TableHead>
-                  <TableHead>형식</TableHead>
-                  <TableHead className="w-10" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {apps.isLoading
-                  ? Array.from({ length: 8 }, (_, i) => (
-                      <TableRow key={i}>
-                        <TableCell colSpan={6}>
-                          <Skeleton className="h-5 w-full" />
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  : visible.map((app) => <ProgramRow key={app.id} app={app} onSelect={setSelected} />)}
-                {!apps.isLoading && visible.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={6} className="py-10 text-center text-muted-foreground">
-                      검색 결과가 없어요
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          )}
-        </CardContent>
-      </Card>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="h-9 rounded-lg">
+                <ArrowDownWideNarrow />
+                {sortLabels[sort]}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              {(Object.keys(sortLabels) as SortKey[]).map((key) => (
+                <DropdownMenuItem key={key} onClick={() => setSort(key)}>
+                  <Check className={cn(sort !== key && "invisible")} />
+                  {sortLabels[key]}
+                </DropdownMenuItem>
+              ))}
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <Button
+            variant="outline"
+            size="icon"
+            className="size-9 rounded-lg"
+            onClick={() => apps.refetch()}
+            aria-label="새로고침"
+          >
+            <RefreshCw className={cn(apps.isFetching && "animate-spin")} />
+          </Button>
+        </div>
+
+        <div className={cn(GRID, "border-b bg-muted/30 px-5 py-2.5 text-xs font-medium text-muted-foreground")}>
+          <span>이름</span>
+          <span>게시자</span>
+          <span>크기</span>
+          <span>설치일</span>
+          <span>형식</span>
+          <span />
+        </div>
+
+        {apps.isError ? (
+          <p className="px-5 py-16 text-center text-sm text-destructive">
+            목록을 불러오지 못했어요: {String(apps.error)}
+          </p>
+        ) : loading ? (
+          <div className="divide-y">
+            {Array.from({ length: 8 }, (_, i) => (
+              <div key={i} className={cn(GRID, "px-5 py-3")}>
+                <div className="flex items-center gap-3">
+                  <Skeleton className="size-9 rounded-lg" />
+                  <Skeleton className="h-4 w-40" />
+                </div>
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-4 w-20" />
+                <Skeleton className="h-5 w-12 rounded-full" />
+                <span />
+              </div>
+            ))}
+          </div>
+        ) : visible.length === 0 ? (
+          <div className="flex flex-col items-center gap-2 px-5 py-16 text-center">
+            <Search className="size-8 text-muted-foreground/50" />
+            <p className="font-medium">검색 결과가 없어요</p>
+            <p className="text-sm text-muted-foreground">다른 이름이나 게시자로 검색해 보세요.</p>
+          </div>
+        ) : (
+          <div className="divide-y">
+            {visible.map((app) => (
+              <ProgramRow key={app.id} app={app} maxKb={stats.maxKb} onSelect={setSelected} />
+            ))}
+          </div>
+        )}
+      </section>
 
       <AppDetailsSheet app={selected} onOpenChange={(open) => !open && setSelected(null)} />
     </div>
@@ -172,50 +234,84 @@ export function ProgramsPage() {
 
 function ProgramRow({
   app,
+  maxKb,
   onSelect,
 }: {
   app: InstalledApplication
+  maxKb: number
   onSelect: (app: InstalledApplication) => void
 }) {
   const openFolder = () => api.openInstallLocation(app.id).catch((e) => toast.error(String(e)))
+  // 큰 프로그램 몇 개가 막대를 독차지하지 않도록 제곱근 비율로 그린다.
+  const sizeRatio = app.estimatedSizeKb ? Math.max(0.03, Math.sqrt(app.estimatedSizeKb / maxKb)) : 0
 
   return (
-    <TableRow className="cursor-pointer" onClick={() => onSelect(app)}>
-      <TableCell className="max-w-64">
-        <div className="flex items-center gap-3">
-          <AppIcon app={app} />
-          <div className="min-w-0">
+    <div
+      role="button"
+      tabIndex={0}
+      onClick={() => onSelect(app)}
+      onKeyDown={(e) => e.key === "Enter" && onSelect(app)}
+      className={cn(
+        GRID,
+        "group cursor-pointer px-5 py-2.5 text-sm transition-colors outline-none hover:bg-accent/40 focus-visible:bg-accent/50",
+      )}
+    >
+      <div className="flex min-w-0 items-center gap-3">
+        <AppIcon app={app} />
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
             <p className="truncate font-medium" title={app.displayName}>
               {app.displayName}
             </p>
-            {app.version && <p className="truncate text-xs text-muted-foreground">{app.version}</p>}
+            {app.uninstaller === "missing" && (
+              <TriangleAlert className="size-3.5 shrink-0 text-chart-3" aria-label="언인스톨러 없음" />
+            )}
           </div>
+          <p className="truncate text-xs text-muted-foreground">{app.version ?? "버전 정보 없음"}</p>
         </div>
-      </TableCell>
-      <TableCell className="max-w-40 truncate text-muted-foreground" title={app.publisher ?? undefined}>
+      </div>
+
+      <span className="truncate text-muted-foreground" title={app.publisher ?? undefined}>
         {app.publisher ?? "—"}
-      </TableCell>
-      <TableCell className="text-right tabular-nums">{formatSize(app.estimatedSizeKb)}</TableCell>
-      <TableCell className="tabular-nums text-muted-foreground">{formatInstallDate(app.installDate)}</TableCell>
-      <TableCell>
-        <div className="flex gap-1">
-          <Badge variant={app.technology === "msi" ? "secondary" : "outline"}>
-            {app.technology.toUpperCase()}
-          </Badge>
-          {app.scope === "machine32" && <Badge variant="outline">32bit</Badge>}
-          {app.scope === "user" && <Badge variant="outline">사용자</Badge>}
-          {app.uninstaller === "missing" && <Badge variant="destructive">언인스톨러 없음</Badge>}
-        </div>
-      </TableCell>
-      <TableCell onClick={(e) => e.stopPropagation()}>
+      </span>
+
+      <div className="flex flex-col gap-1">
+        <span className="tabular-nums">{formatSize(app.estimatedSizeKb)}</span>
+        {sizeRatio > 0 && (
+          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+            <div className="h-full rounded-full bg-chart-2/70" style={{ width: `${sizeRatio * 100}%` }} />
+          </div>
+        )}
+      </div>
+
+      <span className="text-muted-foreground tabular-nums">{formatInstallDate(app.installDate)}</span>
+
+      <div className="flex gap-1">
+        <span className="rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
+          {app.technology.toUpperCase()}
+        </span>
+        {app.scope === "machine32" && (
+          <span className="rounded-md border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">x86</span>
+        )}
+        {app.scope === "user" && (
+          <span className="rounded-md border border-primary/30 px-1.5 py-0.5 text-[10px] text-primary">사용자</span>
+        )}
+      </div>
+
+      <div onClick={(e) => e.stopPropagation()}>
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon" aria-label="작업">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+              aria-label="작업"
+            >
               <MoreHorizontal />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel className="max-w-64 truncate">{app.displayName}</DropdownMenuLabel>
+          <DropdownMenuContent align="end" className="w-52">
+            <DropdownMenuLabel className="truncate">{app.displayName}</DropdownMenuLabel>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={() => onSelect(app)}>
               <Info />
@@ -226,44 +322,68 @@ function ProgramRow({
               설치 폴더 열기
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem disabled>
+            <DropdownMenuItem disabled variant="destructive">
               <Trash2 />
-              제거 (Phase 2에서 지원)
+              제거 (곧 지원)
             </DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </TableCell>
-    </TableRow>
+      </div>
+    </div>
   )
 }
 
+const toneClasses = {
+  "chart-1": "bg-chart-1/12 text-chart-1",
+  "chart-2": "bg-chart-2/12 text-chart-2",
+  "chart-3": "bg-chart-3/12 text-chart-3",
+  "chart-5": "bg-chart-5/12 text-chart-5",
+} as const
+
 function StatCard({
   icon: Icon,
+  tone,
   label,
   value,
+  unit,
+  hint,
   active,
   onClick,
 }: {
   icon: typeof Package
+  tone: keyof typeof toneClasses
   label: string
   value: string | null
+  unit?: string
+  hint?: string
   active?: boolean
   onClick?: () => void
 }) {
   return (
-    <Card
+    <div
+      role={onClick ? "button" : undefined}
       onClick={onClick}
-      className={cn(onClick && "cursor-pointer transition-colors hover:bg-muted/50", active && "ring-2 ring-destructive/60")}
+      className={cn(
+        "relative flex items-start gap-4 overflow-hidden rounded-2xl border bg-card p-5 shadow-sm transition-all",
+        onClick && "cursor-pointer hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-md",
+        active && "border-chart-3/60 ring-1 ring-chart-3/40",
+      )}
     >
-      <CardContent className="flex items-center gap-4">
-        <div className="flex size-10 items-center justify-center rounded-lg bg-muted">
-          <Icon className="size-5 text-muted-foreground" />
-        </div>
-        <div>
-          <p className="text-sm text-muted-foreground">{label}</p>
-          {value == null ? <Skeleton className="mt-1 h-6 w-16" /> : <p className="text-xl font-semibold">{value}</p>}
-        </div>
-      </CardContent>
-    </Card>
+      <div className={cn("flex size-10 shrink-0 items-center justify-center rounded-xl", toneClasses[tone])}>
+        <Icon className="size-5" />
+      </div>
+      <div className="min-w-0">
+        <p className="text-sm text-muted-foreground">{label}</p>
+        {value == null ? (
+          <Skeleton className="mt-1.5 h-7 w-20" />
+        ) : (
+          <p className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums">
+            {value}
+            {unit && <span className="ml-0.5 text-base font-medium text-muted-foreground">{unit}</span>}
+          </p>
+        )}
+        {hint && <p className="mt-1 truncate text-xs text-muted-foreground">{hint}</p>}
+      </div>
+    </div>
   )
 }
