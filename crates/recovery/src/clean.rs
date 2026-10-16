@@ -134,9 +134,13 @@ fn fs_error(e: FsError) -> ItemError {
 fn reg_error(e: RegError) -> ItemError {
     match e {
         RegError::NotFound => (ItemStatus::AlreadyGone, None),
-        RegError::AccessDenied => (
+        RegError::AccessDenied(detail) => (
             ItemStatus::NeedsAdmin,
-            Some("관리자 권한이 필요해요".into()),
+            Some(if detail.is_empty() {
+                "관리자 권한이 필요해요".into()
+            } else {
+                format!("관리자 권한이 필요해요 ({detail})")
+            }),
         ),
         RegError::TooLarge => (
             ItemStatus::Blocked,
@@ -216,7 +220,7 @@ pub fn restore(
                 .and_then(|b| {
                     registry::restore(&b).map_err(|e| match e {
                         RegError::Conflict(m) | RegError::Other(m) => m,
-                        RegError::AccessDenied => "관리자 권한이 필요해요".into(),
+                        RegError::AccessDenied(_) => "관리자 권한이 필요해요".into(),
                         other => format!("{other:?}"),
                     })
                 }),

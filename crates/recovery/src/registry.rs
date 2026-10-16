@@ -7,8 +7,14 @@ use base64::Engine;
 use base64::engine::general_purpose::STANDARD as B64;
 use serde::{Deserialize, Serialize};
 use winreg::enums::{
-    HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, KEY_READ, KEY_WOW64_64KEY, RegType,
+    HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_ALL_ACCESS, KEY_ENUMERATE_SUB_KEYS, KEY_QUERY_VALUE,
+    KEY_READ, KEY_SET_VALUE, KEY_WOW64_64KEY, RegType,
 };
+
+/// 표준 권한 DELETE (winreg에 상수가 없어 직접 정의)
+const DELETE: u32 = 0x0001_0000;
+/// 키를 지우는 데 필요한 권한만. 권한 변경(WRITE_DAC)·소유권(WRITE_OWNER)까지 달라고 하지 않는다.
+const DELETE_ACCESS: u32 = DELETE | KEY_ENUMERATE_SUB_KEYS | KEY_QUERY_VALUE | KEY_SET_VALUE;
 use winreg::{RegKey, RegValue};
 
 /// 너무 큰 키를 통째로 지우는 실수를 막기 위한 상한.
@@ -39,7 +45,8 @@ pub enum RegistryBackup {
 #[derive(Debug)]
 pub enum RegError {
     NotFound,
-    AccessDenied,
+    /// 어느 단계에서 거부됐는지 (진단용, 비어 있을 수 있음)
+    AccessDenied(String),
     TooLarge,
     Conflict(String),
     Other(String),
@@ -49,7 +56,7 @@ impl From<std::io::Error> for RegError {
     fn from(e: std::io::Error) -> Self {
         match e.raw_os_error() {
             Some(2) => RegError::NotFound,
-            Some(5) => RegError::AccessDenied,
+            Some(5) => RegError::AccessDenied(String::new()),
             _ => RegError::Other(e.to_string()),
         }
     }
@@ -161,6 +168,36 @@ pub fn backup_value(location: &str, value_name: &str) -> Result<RegistryBackup, 
     })
 }
 
+/// 실패한 단계와 Windows 오류 코드를 붙인다 (예: "부모 키 열기, 오류 5").
+fn at(stage: &str) -> impl Fn(std::io::Error) -> RegError + '_ {
+    move |e| {
+        let code = e.raw_os_error().unwrap_or(-1);
+        match RegError::from(e) {
+            RegError::AccessDenied(_) => RegError::AccessDenied(format!("{stage}, 오류 {code}")),
+            RegError::Other(m) => RegError::Other(format!("{stage}: {m}")),
+            other => other,
+        }
+    }
+}
+
+/// 하위 키부터 하나씩 지운다. RegDeleteTree가 거부될 때의 대체 방법.
+fn delete_tree_manually(parent: &RegKey, leaf: &str) -> Result<(), RegError> {
+    let key = parent
+        .open_subkey_with_flags(leaf, DELETE_ACCESS | KEY_WOW64_64KEY)
+        .map_err(at("하위 키 열기"))?;
+    let children: Vec<String> = key
+        .enum_keys()
+        .collect::<Result<_, _>>()
+        .map_err(at("하위 키 목록"))?;
+    for child in children {
+        delete_tree_manually(&key, &child)?;
+    }
+    drop(key);
+    parent
+        .delete_subkey_with_flags(leaf, KEY_WOW64_64KEY)
+        .map_err(at("키 삭제"))
+}
+
 /// 백업을 저장한 **뒤에만** 부른다.
 pub fn delete(backup: &RegistryBackup) -> Result<(), RegError> {
     match backup {
@@ -169,15 +206,38 @@ pub fn delete(backup: &RegistryBackup) -> Result<(), RegError> {
             let (parent, leaf) = path
                 .rsplit_once('\\')
                 .ok_or(RegError::Other("최상위 키는 지울 수 없어요".into()))?;
-            let parent = open(&root, parent, KEY_ALL_ACCESS)?;
-            parent.delete_subkey_all(leaf)?;
-            Ok(())
+            // 부모는 읽기 권한으로만 연다. HKLM\SOFTWARE 같은 하이브 루트는 관리자여도 DELETE 권한을 주지 않기 때문에,
+            // DELETE는 실제로 지울 키에만 요청한다.
+            let parent = root
+                .open_subkey_with_flags(parent, KEY_READ | KEY_WOW64_64KEY)
+                .map_err(at("부모 키 열기"))?;
+            let target = match parent.open_subkey_with_flags(leaf, DELETE_ACCESS | KEY_WOW64_64KEY)
+            {
+                Ok(k) => k,
+                Err(e) if e.raw_os_error() == Some(2) => return Err(RegError::NotFound),
+                Err(e) => return Err(at("키 열기")(e)),
+            };
+            // 키 안의 하위 키·값을 먼저 비우고 (실패하면 하나씩), 마지막에 키 자체를 지운다
+            if target.delete_subkey_all("").is_err() {
+                let children: Vec<String> = target
+                    .enum_keys()
+                    .collect::<Result<_, _>>()
+                    .map_err(at("하위 키 목록"))?;
+                for child in children {
+                    delete_tree_manually(&target, &child)?;
+                }
+            }
+            drop(target);
+            parent
+                .delete_subkey_with_flags(leaf, KEY_WOW64_64KEY)
+                .map_err(at("키 삭제"))
         }
         RegistryBackup::Value { location, value } => {
             let (root, path) = split_location(location).ok_or(RegError::NotFound)?;
-            let key = open(&root, path, KEY_ALL_ACCESS)?;
-            key.delete_value(&value.name)?;
-            Ok(())
+            let key = root
+                .open_subkey_with_flags(path, KEY_SET_VALUE | KEY_WOW64_64KEY)
+                .map_err(at("키 열기"))?;
+            key.delete_value(&value.name).map_err(at("값 삭제"))
         }
     }
 }

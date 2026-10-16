@@ -38,17 +38,17 @@ pnpm tauri dev    # 앱 실행
 - 잔여물 탐지(근거·점수·보호 규칙, 읽기 전용)
 - 백업·격리 후 정리, 복구 기록, 복원, 관리자 권한 작업자 모드
 
-### 진행 중이던 일: 관리자 권한(UAC) 정리 실제 시험
+### 관리자 권한(UAC) 정리 실제 시험 — 완료 (2026-10-16)
 
 `robin-fixture install --machine`(관리자로 실행)으로 `HKLM\SOFTWARE\Robin Test Labs`와
-`C:\Program Files\Robin Test Labs`를 만들고 앱에서 정리했다.
+`C:\Program Files\Robin Test Labs`를 만들어 앱에서 정리·복원까지 확인했다.
 
-- 일반 권한 정리: HKCU·AppData 항목 4개 정리, HKLM·Program Files 2개는 "관리자 권한 필요"로 남음 (기대대로)
-- 관리자 권한 정리(UAC 허용): **Program Files 폴더는 정리됐지만 `HKLM\SOFTWARE\Robin Test Labs` 키 삭제가 관리자 권한에서도 "접근 거부"로 실패.**
-  ACL은 Administrators FullControl로 정상. 원인 미확인.
-  - 다음 할 일: `crates/recovery/src/registry.rs`의 오류에 단계(열기/삭제)와 Windows 오류 코드를 담아 다시 UAC로 시험.
-  - 의심: 부모 키(`SOFTWARE`)를 `KEY_ALL_ACCESS`로 여는 부분, `RegDeleteTreeW` 호출 방식.
-- 그다음: 복구 기록에서 "관리자 권한으로 복원" 시험 → `robin-fixture remove`를 관리자로 실행해 HKLM·Program Files 테스트 흔적 정리.
+- 일반 권한 정리: HKCU·AppData 항목 4개 정리, HKLM·Program Files 2개는 "관리자 권한 필요" (기대대로)
+- 관리자 권한 정리(UAC): 처음엔 HKLM 키 삭제가 "접근 거부"로 실패했다.
+  - 원인: `HKLM\SOFTWARE`는 레지스트리 하이브의 루트라 관리자여도 DELETE 권한을 주지 않는데, 부모 키를 DELETE 포함 권한(KEY_ALL_ACCESS)으로 열고 있었다.
+  - 수정: 부모는 읽기 권한으로만 열고, DELETE는 지울 키에만 요청한다. 실패 시 단계와 Windows 오류 코드를 기록하고, 하위 키부터 하나씩 지우는 대체 경로를 둔다.
+- 수정 후: HKLM 키·Program Files 폴더 정리 성공 → 관리자 권한 복원 성공(값 `Theme=dark`, DWORD `Level=7` 원본과 같음) → 테스트 흔적 전부 정리.
+- 이 PC에 남은 테스트 흔적과 테스트 백업은 없다.
 
 ### 다음 단계 후보
 
