@@ -6,7 +6,9 @@
 use windows::Win32::Foundation::{
     CloseHandle, ERROR_CANCELLED, ERROR_ELEVATION_REQUIRED, HANDLE, WAIT_OBJECT_0,
 };
-use windows::Win32::System::Threading::{GetExitCodeProcess, GetProcessId, WaitForSingleObject};
+use windows::Win32::System::Threading::{
+    GetExitCodeProcess, GetProcessId, INFINITE, WaitForSingleObject,
+};
 use windows::Win32::UI::Shell::{
     SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW, ShellExecuteExW,
 };
@@ -27,6 +29,14 @@ pub struct Launched {
 }
 
 impl Launched {
+    /// 끝날 때까지 기다린 뒤 종료 코드.
+    pub fn wait(&self) -> Option<u32> {
+        unsafe {
+            WaitForSingleObject(self.handle, INFINITE);
+        }
+        self.exit_code()
+    }
+
     /// 끝났으면 종료 코드, 아직 실행 중이면 `None` (기다리지 않는다).
     pub fn exit_code(&self) -> Option<u32> {
         unsafe {
@@ -57,6 +67,17 @@ pub fn launch(file: &str, args: &str, working_dir: Option<&str>) -> Result<Launc
         other => other,
     }
     .map_err(|e| {
+        if e.code() == ERROR_CANCELLED.to_hresult() {
+            LaunchError::Cancelled
+        } else {
+            LaunchError::Failed(e.message())
+        }
+    })
+}
+
+/// 항상 관리자 권한(UAC)으로 실행한다.
+pub fn launch_elevated(file: &str, args: &str) -> Result<Launched, LaunchError> {
+    shell_execute(file, args, None, Some(w!("runas"))).map_err(|e| {
         if e.code() == ERROR_CANCELLED.to_hresult() {
             LaunchError::Cancelled
         } else {

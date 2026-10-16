@@ -2521,6 +2521,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "robin-recovery"
+version = "0.1.0"
+dependencies = [
+ "base64 0.23.1",
+ "robin-discovery",
+ "robin-execution",
+ "robin-scanner",
+ "serde",
+ "serde_json",
+ "winreg 0.55.0",
+]
+
+[[package]]
 name = "robin-scanner"
 version = "0.1.0"
 dependencies = [
@@ -2538,6 +2551,7 @@ dependencies = [
  "robin-core",
  "robin-discovery",
  "robin-execution",
+ "robin-recovery",
  "robin-scanner",
  "serde",
  "serde_json",

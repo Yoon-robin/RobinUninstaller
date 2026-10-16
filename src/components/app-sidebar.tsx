@@ -29,7 +29,7 @@ const mainItems: Item[] = [
 ]
 
 const toolItems: Item[] = [
-  { page: "restore", label: "복구 기록", icon: ArchiveRestore, soon: true },
+  { page: "restore", label: "복구 기록", icon: ArchiveRestore },
   { page: "settings", label: "설정", icon: Settings, soon: true },
 ]
 
@@ -93,8 +93,8 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
         <div className="flex items-start gap-2.5 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-3">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
           <div className="text-xs leading-relaxed">
-            <p className="font-medium">안전 모드</p>
-            <p className="text-muted-foreground">프로그램의 언인스톨러만 실행하고, 파일은 직접 지우지 않아요.</p>
+            <p className="font-medium">안전하게 정리해요</p>
+            <p className="text-muted-foreground">지운 것은 모두 백업돼 복구 기록에서 되돌릴 수 있어요.</p>
           </div>
         </div>
       </SidebarFooter>

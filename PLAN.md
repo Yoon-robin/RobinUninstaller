@@ -102,7 +102,7 @@ RobinUninstaller/
 | Phase 1 | 2주 | Registry/MSI Provider, 중복 제거, 목록·검색·아이콘 | 테스트 VM의 EXE/MSI 프로그램이 정확히 보임 |
 | Phase 2 ✅ | 2주 | 기본 언인스톨러 실행, 권한 상승, 프로세스 감시, 재부팅 상태 | 제거 후 실제 상태를 재확인하고 실패를 정확히 표시 |
 | Phase 3 ✅ | 3–4주 | 잔여물 스캐너, 소유권 분석, 위험도, 미리보기 화면 | 공유·무관 파일을 자동 선택하지 않음 |
-| Phase 4 | 2–3주 | 격리, 레지스트리 백업, 트랜잭션 기록, 복원 UI → **MVP 출시** | 삭제 항목을 정확히 복원 |
+| Phase 4 ✅ | 2–3주 | 격리, 레지스트리 백업, 트랜잭션 기록, 복원 UI → **MVP 출시** | 삭제 항목을 정확히 복원 |
 | Phase 5 | 2–3주 | 강제 제거, 시작프로그램 관리 | 시작 항목 비활성화/원상복구 |
 | Phase 6 | 3–5주 | 설치 추적(스냅샷), 베타 | 설치 중 변경사항을 다른 프로세스 변경과 구분 |
 
@@ -159,3 +159,23 @@ MVP 품질 목표: 앱 목록 2초 이내(캐시 먼저 표시), 일반 스캔 1
 - **보호 규칙:** 드라이브 루트, Windows 폴더, 기본 폴더 자체, 공유 폴더(Common Files, Microsoft Shared, WindowsApps 등)와 그 하위, Microsoft·Classes·Policies 레지스트리 영역(이름 기반 탐색), 상위 키는 점수와 상관없이 제외한다. RobinUninstaller 자신의 데이터도 제외한다.
 - **분류:** 확실(80+, 기본 선택) / 검토(30~79) / 낮음(숨김).
 - **검증:** `crates/fixture`의 "Fixture Notes"가 흔적 4종과 미끼 3종을 만들고, `cargo run -p robin-scanner --example scan_fixture`가 8가지 기대 결과를 확인한다.
+
+## Phase 4 구현 메모
+
+- `crates/recovery`는 영구 삭제를 하지 않는다.
+  - 파일·폴더는 `%LOCALAPPDATA%\RobinUninstaller\backups\<작업 ID>\files`로 옮긴다. 같은 드라이브면 원자적 이동이고, 다른 드라이브면 복사 후 원본을 지운다.
+  - 레지스트리는 값 형식과 원본 바이트를 JSON(base64)으로 저장한 **뒤에만** 지운다.
+- **지우기 직전 재검사:**
+  - 보호 규칙을 다시 적용하고, 백업 저장소와 RobinUninstaller 자신은 건드리지 않는다.
+  - Windows 서비스 키는 아직 정리하지 않는다.
+  - 정션·심볼릭 링크는 다루지 않는다.
+  - 프론트엔드는 마지막 스캔 결과의 항목 ID만 넘길 수 있다.
+- **매니페스트:** 항목마다 처리 직후 저장한다(임시 파일 → 바꿔치기). 상태는 removed / needsAdmin / alreadyGone / blocked / failed / restored.
+- **복원:** 원래 자리에 같은 이름이 새로 생겼으면 덮어쓰지 않고 실패로 알린다.
+- **관리자 권한:** 일반 권한으로 못 지운 항목만 앱 바이너리의 작업자 모드(`--elevated-clean|--elevated-restore <작업 ID> --store <...\RobinUninstaller\backups>`)를 UAC로 띄워 처리한다. 작업자는 기록을 디스크에서 다시 읽고 모든 검사를 처음부터 다시 한다.
+- **검증:** `cargo run -p robin-recovery --example clean_fixture`로 정리 → 사라짐 확인 → 복원 → 원본과 바이트 단위 비교, 위험 항목(System32, HKLM\SOFTWARE\Microsoft) 차단을 확인한다.
+- **아직 안 한 것:**
+  - 시스템 복원 지점
+  - 서비스 정리(중지·삭제)
+  - 백업 보존 기간 자동 정리
+  - UAC 경로의 실제 관리자 실행 검증(작업자 로직은 일반 권한으로 검증함)

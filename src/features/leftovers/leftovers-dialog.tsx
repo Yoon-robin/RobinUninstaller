@@ -16,7 +16,9 @@ import {
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
-import { scanApi, type Leftover, type LeftoverKind, type ScanReport } from "@/lib/api"
+import { recoveryApi, scanApi, type Leftover, type LeftoverKind, type Operation, type ScanReport } from "@/lib/api"
+import { useQueryClient } from "@tanstack/react-query"
+import { CleanResult, Cleaning, ConfirmClean } from "./clean-flow"
 import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT } from "@/components/motion"
@@ -78,7 +80,12 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
                   찾지 못했어요: {String(scan.error)}
                 </div>
               ) : scan.data ? (
-                <Results key={`result-${scan.dataUpdatedAt}`} report={scan.data} onClose={onClose} />
+                <Results
+                  key={`result-${scan.dataUpdatedAt}`}
+                  report={scan.data}
+                  appName={target.name}
+                  onClose={onClose}
+                />
               ) : null}
             </AnimatePresence>
           </>
@@ -107,7 +114,12 @@ function Scanning() {
   )
 }
 
-function Results({ report, onClose }: { report: ScanReport; onClose: () => void }) {
+type Stage = { step: "review" } | { step: "confirm" } | { step: "cleaning" } | { step: "done"; op: Operation }
+
+function Results({ report, appName, onClose }: { report: ScanReport; appName: string; onClose: () => void }) {
+  const queryClient = useQueryClient()
+  const [stage, setStage] = useState<Stage>({ step: "review" })
+  const [cleanError, setCleanError] = useState<string | null>(null)
   const strong = report.items.filter((i) => i.confidence === "strong")
   const review = report.items.filter((i) => i.confidence === "review")
   // 확실한 항목만 미리 선택한다.
@@ -118,6 +130,33 @@ function Results({ report, onClose }: { report: ScanReport; onClose: () => void 
     () => report.items.filter((i) => selected.has(i.id)).reduce((sum, i) => sum + (i.sizeBytes ?? 0), 0),
     [report, selected],
   )
+  const selectedItems = report.items.filter((i) => selected.has(i.id))
+
+  const runClean = async () => {
+    setStage({ step: "cleaning" })
+    setCleanError(null)
+    try {
+      const op = await recoveryApi.clean(appName, [...selected])
+      setStage({ step: "done", op })
+    } catch (e) {
+      setCleanError(String(e))
+      setStage({ step: "review" })
+    } finally {
+      queryClient.invalidateQueries({ queryKey: ["backups"] })
+      queryClient.invalidateQueries({ queryKey: ["installed-apps"] })
+    }
+  }
+
+  if (stage.step === "confirm") {
+    return <ConfirmClean items={selectedItems} onCancel={() => setStage({ step: "review" })} onConfirm={runClean} />
+  }
+  if (stage.step === "cleaning") {
+    return <Cleaning label="백업하고 정리하는 중이에요" />
+  }
+  if (stage.step === "done") {
+    return <CleanResult op={stage.op} onDone={onClose} />
+  }
+
   const toggle = (id: string) =>
     setSelected((s) => {
       const next = new Set(s)
@@ -177,14 +216,11 @@ function Results({ report, onClose }: { report: ScanReport; onClose: () => void 
         <p className="mr-auto text-sm text-muted-foreground tabular-nums">
           {selected.size > 0 ? `${selected.size}개 선택 · ${formatBytes(selectedBytes)}` : "선택한 항목 없음"}
         </p>
-        <IconTooltip label="지우기 전에 자동으로 백업하고 되돌릴 수 있게 하는 기능과 함께 다음 업데이트에서 켜져요">
-          <span tabIndex={0}>
-            <Button variant="destructive" disabled>
-              <Trash2 />
-              선택 항목 지우기
-            </Button>
-          </span>
-        </IconTooltip>
+        {cleanError && <p className="text-xs text-destructive">{cleanError}</p>}
+        <Button variant="destructive" disabled={selected.size === 0} onClick={() => setStage({ step: "confirm" })}>
+          <Trash2 />
+          선택 항목 정리
+        </Button>
         <Button variant="outline" onClick={onClose}>
           닫기
         </Button>

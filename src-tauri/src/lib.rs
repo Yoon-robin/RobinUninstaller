@@ -2,6 +2,8 @@
 //!
 //! 프론트엔드는 경로가 아니라 앱 ID만 넘긴다. 경로는 항상 엔진이 읽어 둔 목록에서 찾는다.
 
+pub mod worker;
+
 use std::collections::HashMap;
 use std::path::Path;
 use std::sync::Mutex;
@@ -9,6 +11,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 use robin_core::InstalledApplication;
 use robin_execution::{UninstallEvent, UninstallOutcome};
+use robin_recovery::{Guard, Operation, Store};
 use robin_scanner::{Leftover, LeftoverKind, ScanReport};
 use tauri::ipc::Channel;
 use tauri::window::{Effect, EffectsBuilder};
@@ -200,6 +203,108 @@ fn open_install_location(id: String, cache: State<'_, AppCache>) -> Result<(), S
         .map_err(|e| e.to_string())
 }
 
+fn store() -> Result<Store, String> {
+    Store::default_location().ok_or_else(|| "백업 위치를 찾을 수 없어요".to_string())
+}
+
+fn guard(store: &Store) -> Guard {
+    Guard {
+        known: robin_scanner::protect::KnownFolders::from_env(),
+        store_root: store.root().to_path_buf(),
+    }
+}
+
+/// 마지막 스캔 결과에서 고른 항목을 백업·격리한 뒤 원래 자리에서 없앤다.
+/// 권한이 부족한 항목은 `needsAdmin`으로 남는다 → `clean_leftovers_elevated`.
+#[tauri::command]
+async fn clean_leftovers(
+    app_name: String,
+    item_ids: Vec<String>,
+    cache: State<'_, AppCache>,
+) -> Result<Operation, String> {
+    let items: Vec<Leftover> = cache
+        .last_scan
+        .lock()
+        .map_err(|e| e.to_string())?
+        .iter()
+        .filter(|i| item_ids.contains(&i.id))
+        .cloned()
+        .collect();
+    if items.is_empty() {
+        return Err("정리할 항목이 없어요. 다시 찾은 뒤 시도해 주세요".into());
+    }
+
+    tauri::async_runtime::spawn_blocking(move || {
+        let store = store()?;
+        let mut op = robin_recovery::new_operation(&app_name, &items);
+        store
+            .save(&op)
+            .map_err(|e| format!("작업 기록을 만들지 못했어요: {e}"))?;
+        robin_recovery::clean(&store, &mut op, &guard(&store), |_| {});
+        Ok(op)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// 관리자 권한 작업자를 띄워(UAC) 남은 항목을 처리하고, 갱신된 기록을 돌려준다.
+fn run_worker(mode: &str, op_id: &str) -> Result<Operation, String> {
+    let store = store()?;
+    if !robin_recovery::store::is_valid_id(op_id) {
+        return Err("잘못된 작업이에요".into());
+    }
+    let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+    let args = format!("{mode} {op_id} --store \"{}\"", store.root().display());
+    match robin_execution::run_elevated_and_wait(&exe.to_string_lossy(), &args) {
+        Ok(_) => store.load(op_id).map_err(|e| e.to_string()),
+        Err(None) => Err("관리자 권한 요청이 거절됐어요".into()),
+        Err(Some(m)) => Err(m),
+    }
+}
+
+#[tauri::command]
+async fn clean_leftovers_elevated(op_id: String) -> Result<Operation, String> {
+    tauri::async_runtime::spawn_blocking(move || run_worker(worker::CLEAN, &op_id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// 복구 기록 (최근 작업부터).
+#[tauri::command]
+async fn list_backups() -> Result<Vec<Operation>, String> {
+    tauri::async_runtime::spawn_blocking(|| Ok(store()?.list()))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// 작업에서 지운 항목을 되돌린다. `item_ids`가 없으면 전부.
+#[tauri::command]
+async fn restore_backup(op_id: String, item_ids: Option<Vec<String>>) -> Result<Operation, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let store = store()?;
+        let mut op = store.load(&op_id).map_err(|e| e.to_string())?;
+        robin_recovery::restore(&store, &mut op, item_ids.as_deref(), |_| {});
+        Ok(op)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+#[tauri::command]
+async fn restore_backup_elevated(op_id: String) -> Result<Operation, String> {
+    tauri::async_runtime::spawn_blocking(move || run_worker(worker::RESTORE, &op_id))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
+/// 백업을 완전히 지운다. 이후에는 복원할 수 없다 (사용자가 확인한 뒤에만 부른다).
+#[tauri::command]
+async fn delete_backup(op_id: String) -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(move || store()?.delete(&op_id).map_err(|e| e.to_string()))
+        .await
+        .map_err(|e| e.to_string())?
+}
+
 /// Mica 배경이 켜졌는지. 프론트엔드는 이 값을 보고 배경을 반투명하게 그린다.
 static MICA_ENABLED: AtomicBool = AtomicBool::new(false);
 
@@ -262,6 +367,12 @@ pub fn run() {
             recently_removed,
             scan_leftovers,
             reveal_leftover,
+            clean_leftovers,
+            clean_leftovers_elevated,
+            list_backups,
+            restore_backup,
+            restore_backup_elevated,
+            delete_backup,
             window_material
         ])
         .run(tauri::generate_context!())

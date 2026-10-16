@@ -1,8 +1,8 @@
 //! 잔여물 후보와 근거, 점수. 점수 계산은 순수 로직.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum LeftoverKind {
     Folder,
@@ -12,7 +12,7 @@ pub enum LeftoverKind {
 }
 
 /// 왜 이 항목을 찾았는지. 화면에 그대로 보여 준다.
-#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(tag = "kind", rename_all = "camelCase")]
 pub enum Evidence {
     /// 등록된 설치 폴더 그 자체
@@ -59,7 +59,7 @@ impl Evidence {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Confidence {
     /// 화면에 보여 주지 않음
@@ -107,7 +107,7 @@ pub fn classify(evidence: &[Evidence]) -> Confidence {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Leftover {
     /// 화면·삭제용 고유 키 (경로 또는 레지스트리 전체 경로, 값이면 `키\\값이름`)
@@ -153,7 +153,7 @@ impl Leftover {
     }
 }
 
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScanReport {
     pub app_name: String,

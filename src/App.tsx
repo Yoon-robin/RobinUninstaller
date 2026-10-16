@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ChevronRight } from "lucide-react"
 import { AnimatePresence, MotionConfig, motion } from "motion/react"
@@ -9,6 +9,7 @@ import { ThemeProvider, ThemeToggle } from "@/components/theme"
 import { WindowControls } from "@/components/window-controls"
 import { ComingSoonPage } from "@/features/coming-soon/coming-soon-page"
 import { LeftoversPage } from "@/features/leftovers/leftovers-page"
+import { RestorePage } from "@/features/restore/restore-page"
 import { ProgramsPage } from "@/features/programs/programs-page"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
@@ -29,6 +30,13 @@ const titles: Record<Page, string> = {
 
 export default function App() {
   const [page, setPage] = useState<Page>("programs")
+
+  // 다른 화면에서 보낸 이동 요청 (예: 정리 완료 → 복구 기록)
+  useEffect(() => {
+    const onNavigate = (e: Event) => setPage((e as CustomEvent<Page>).detail)
+    window.addEventListener("robin:navigate", onNavigate)
+    return () => window.removeEventListener("robin:navigate", onNavigate)
+  }, [])
 
   return (
     <QueryClientProvider client={queryClient}>
@@ -79,7 +87,8 @@ export default function App() {
                     <ProgramsPage />
                   </div>
                   {page === "leftovers" && <LeftoversPage />}
-                  {page !== "programs" && page !== "leftovers" && <ComingSoonPage page={page} />}
+                  {page === "restore" && <RestorePage />}
+                  {page !== "programs" && page !== "leftovers" && page !== "restore" && <ComingSoonPage page={page} />}
                 </main>
               </SidebarInset>
             </SidebarProvider>

@@ -1,0 +1,19 @@
+[package]
+name = "robin-recovery"
+description = "잔여물 정리: 백업·격리 후 제거, 작업 기록, 복원"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+robin-scanner.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"
+base64 = "0.23"
+
+[dev-dependencies]
+robin-discovery.workspace = true
+robin-execution.workspace = true

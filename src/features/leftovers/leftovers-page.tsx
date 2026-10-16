@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ArrowRight, Sparkles, Trash2, TriangleAlert } from "lucide-react"
+import { ArchiveRestore, ArrowRight, Sparkles, Trash2, TriangleAlert } from "lucide-react"
 
 import { api, scanApi, type InstalledApplication } from "@/lib/api"
 import { FadeUp, Stagger } from "@/components/motion"
@@ -20,8 +20,8 @@ export function LeftoversPage() {
       <FadeUp>
         <h1 className="text-2xl font-bold tracking-tight">잔여물 정리</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          언인스톨러가 남기고 간 파일과 레지스트리를 찾아요. 지금은 찾아서 보여 주기만 하고, 지우는 기능은 백업·복원과
-          함께 다음 업데이트에서 켜져요.
+          언인스톨러가 남기고 간 파일과 레지스트리를 찾아 정리해요. 정리한 항목은 모두 백업돼 복구 기록에서 되돌릴 수
+          있어요.
         </p>
       </FadeUp>
 
@@ -110,24 +110,18 @@ function Section({
   )
 }
 
-/** 정리 흐름 안내: 제거 → 흔적 찾기 → (다음 업데이트) 백업 후 정리 */
+/** 정리 흐름 안내: 제거 → 흔적 찾기 → 백업하고 정리 */
 function Flow() {
   const steps = [
     { icon: Trash2, label: "기본 언인스톨러로 제거" },
     { icon: Sparkles, label: "남은 흔적 찾기" },
-    { icon: TriangleAlert, label: "백업 후 정리 (곧 지원)", muted: true },
+    { icon: ArchiveRestore, label: "백업하고 정리" },
   ]
   return (
     <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
       {steps.map((s, i) => (
         <div key={s.label} className="flex items-center gap-2">
-          <span
-            className={
-              s.muted
-                ? "flex items-center gap-1.5 rounded-full border border-dashed px-3 py-1.5 text-muted-foreground"
-                : "flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-primary"
-            }
-          >
+          <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-primary">
             <s.icon className="size-3.5" />
             {s.label}
           </span>

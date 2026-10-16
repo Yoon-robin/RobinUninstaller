@@ -44,6 +44,16 @@ pub enum UninstallOutcome {
     Failed { message: String },
 }
 
+/// 관리자 권한(UAC)으로 실행하고 끝날 때까지 기다린다. 사용자가 거절하면 `Err(None)`.
+#[cfg(windows)]
+pub fn run_elevated_and_wait(file: &str, args: &str) -> Result<Option<u32>, Option<String>> {
+    match launch::launch_elevated(file, args) {
+        Ok(launched) => Ok(launched.wait()),
+        Err(launch::LaunchError::Cancelled) => Err(None),
+        Err(launch::LaunchError::Failed(m)) => Err(Some(m)),
+    }
+}
+
 /// MSI 종료 코드 중 의미가 분명한 것.
 const MSI_REBOOT_REQUIRED: u32 = 3010;
 const MSI_REBOOT_INITIATED: u32 = 1641;

@@ -97,3 +97,40 @@ export const scanApi = {
   recentlyRemoved: () => invoke<InstalledApplication[]>("recently_removed"),
   revealLeftover: (itemId: string) => invoke<void>("reveal_leftover", { itemId }),
 }
+
+// crates/recovery 의 Operation 과 맞춰야 한다.
+export type ItemStatus = "pending" | "removed" | "needsAdmin" | "alreadyGone" | "blocked" | "failed" | "restored"
+
+export interface OperationItem {
+  id: string
+  kind: LeftoverKind
+  location: string
+  valueName: string | null
+  sizeBytes: number | null
+  status: ItemStatus
+  error: string | null
+}
+
+export interface Operation {
+  id: string
+  appName: string
+  createdAt: number
+  items: OperationItem[]
+}
+
+export const recoveryApi = {
+  clean: (appName: string, itemIds: string[]) => invoke<Operation>("clean_leftovers", { appName, itemIds }),
+  cleanElevated: (opId: string) => invoke<Operation>("clean_leftovers_elevated", { opId }),
+  list: () => invoke<Operation[]>("list_backups"),
+  restore: (opId: string, itemIds?: string[]) =>
+    invoke<Operation>("restore_backup", { opId, itemIds: itemIds ?? null }),
+  restoreElevated: (opId: string) => invoke<Operation>("restore_backup_elevated", { opId }),
+  deleteBackup: (opId: string) => invoke<void>("delete_backup", { opId }),
+}
+
+export const countStatus = (op: Operation, status: ItemStatus) => op.items.filter((i) => i.status === status).length
+
+/** 다른 화면으로 이동 요청 (App이 받아 처리). */
+export function navigate(page: "programs" | "leftovers" | "restore") {
+  window.dispatchEvent(new CustomEvent("robin:navigate", { detail: page }))
+}

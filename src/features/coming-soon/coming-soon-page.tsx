@@ -1,4 +1,4 @@
-import { ArchiveRestore, Check, Radar, Rocket, Settings, type LucideIcon } from "lucide-react"
+import { Check, Radar, Rocket, Settings, type LucideIcon } from "lucide-react"
 
 import { FadeUp, Stagger } from "@/components/motion"
 import type { Page } from "@/components/app-sidebar"
@@ -11,7 +11,7 @@ type Info = {
   points: string[]
 }
 
-const pages: Record<Exclude<Page, "programs" | "leftovers">, Info> = {
+const pages: Record<Exclude<Page, "programs" | "leftovers" | "restore">, Info> = {
   startup: {
     icon: Rocket,
     title: "시작프로그램",
@@ -26,13 +26,6 @@ const pages: Record<Exclude<Page, "programs" | "leftovers">, Info> = {
     phase: "Phase 6",
     points: ["설치 전후 스냅샷 비교", "다른 프로그램의 변경과 구분", "추적 기록 기반 완전 제거"],
   },
-  restore: {
-    icon: ArchiveRestore,
-    title: "복구 기록",
-    description: "RobinUninstaller가 지운 모든 항목의 기록과 백업이에요. 실수로 지운 것도 되돌릴 수 있어요.",
-    phase: "Phase 4",
-    points: ["삭제한 파일은 격리 보관", "레지스트리 값까지 백업", "항목별 또는 한 번에 복원"],
-  },
   settings: {
     icon: Settings,
     title: "설정",
@@ -42,7 +35,7 @@ const pages: Record<Exclude<Page, "programs" | "leftovers">, Info> = {
   },
 }
 
-export function ComingSoonPage({ page }: { page: Exclude<Page, "programs" | "leftovers"> }) {
+export function ComingSoonPage({ page }: { page: Exclude<Page, "programs" | "leftovers" | "restore"> }) {
   const info = pages[page]
   const Icon = info.icon
 
