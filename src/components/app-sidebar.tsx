@@ -1,5 +1,7 @@
 import { ArchiveRestore, Package, Radar, Rocket, Settings, ShieldCheck, Trash2 } from "lucide-react"
 
+import { motion } from "motion/react"
+
 import { Logo } from "@/components/logo"
 import {
   Sidebar,
@@ -40,8 +42,18 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           disabled={item.soon}
           onClick={() => onNavigate(item.page)}
           tooltip={item.label}
-          className="h-9 data-[active=true]:font-semibold"
+          className="relative isolate h-9 data-[active=true]:bg-transparent data-[active=true]:font-semibold"
         >
+          {page === item.page && (
+            // 선택 표시가 메뉴 사이를 미끄러지듯 옮겨 간다.
+            <motion.span
+              layoutId="sidebar-active"
+              className="absolute inset-0 -z-10 rounded-md bg-sidebar-accent"
+              transition={{ type: "spring", duration: 0.4, bounce: 0.12 }}
+            >
+              <span className="absolute top-1/2 left-0 h-4 w-[3px] -translate-y-1/2 rounded-full bg-sidebar-primary" />
+            </motion.span>
+          )}
           <item.icon />
           <span>{item.label}</span>
         </SidebarMenuButton>

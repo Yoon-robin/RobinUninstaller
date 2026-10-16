@@ -163,3 +163,64 @@
     background: transparent;
   }
 }
+
+/* ── Motion ───────────────────────────────────────────────
+ * 자주 쓰는 동작(검색, 필터, 정렬)은 애니메이션하지 않는다.
+ * 처음 열 때, 패널 열기, 페이지 이동처럼 가끔 일어나는 순간에만 움직인다.
+ */
+:root {
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+@keyframes row-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+    filter: blur(3px);
+  }
+}
+
+@keyframes bar-grow {
+  from {
+    transform: scaleX(0);
+  }
+}
+
+@layer components {
+  /* 목록 첫 표시: 위쪽 몇 줄만 살짝 순서대로 나타난다. */
+  .row-intro {
+    animation: row-in 420ms var(--ease-out-quint) both;
+    animation-delay: calc(var(--i, 0) * 28ms + 120ms);
+  }
+  .bar-intro {
+    transform-origin: left;
+    animation: bar-grow 700ms var(--ease-out-quint) both;
+    animation-delay: calc(var(--i, 0) * 28ms + 260ms);
+  }
+
+  /* 눌렀을 때의 작은 반응 */
+  [data-slot="button"] {
+    transition-property: color, background-color, border-color, box-shadow, opacity, transform;
+    transition-duration: 160ms;
+    transition-timing-function: var(--ease-out-quint);
+  }
+  [data-slot="button"]:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .row-intro,
+  .bar-intro {
+    animation: none;
+  }
+  [data-slot="button"]:active:not(:disabled) {
+    transform: none;
+  }
+  [data-slot="sheet-content"],
+  [data-slot="sheet-overlay"],
+  [data-slot="dropdown-menu-content"] {
+    animation-duration: 1ms !important;
+  }
+}

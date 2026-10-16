@@ -1,9 +1,11 @@
 import { useState, type ReactNode } from "react"
 import { Check, Copy, FolderOpen, Trash2 } from "lucide-react"
+import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
 import { api, type InstalledApplication } from "@/lib/api"
 import { formatInstallDate, formatSize } from "@/lib/format"
+import { FadeUp, Stagger } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { AppIcon } from "./app-icon"
@@ -59,7 +61,8 @@ export function AppDetailsSheet({
               </div>
             </SheetHeader>
 
-            <div className="flex flex-col gap-5 overflow-y-auto px-6 py-5">
+            {/* 패널이 열릴 때 묶음이 차례로 떠오른다. key로 다른 앱을 열 때마다 다시 재생. */}
+            <Stagger key={app.id} className="flex flex-col gap-5 overflow-y-auto px-6 py-5">
               <Section title="개요">
                 <Field label="크기">{formatSize(app.estimatedSizeKb)}</Field>
                 <Field label="설치일">{formatInstallDate(app.installDate)}</Field>
@@ -77,7 +80,7 @@ export function AppDetailsSheet({
                 <CodeField label="MSI 제품 코드" value={app.productCode} />
                 <CodeField label="레지스트리 ID" value={app.id} />
               </Section>
-            </div>
+            </Stagger>
           </>
         )}
       </SheetContent>
@@ -87,10 +90,10 @@ export function AppDetailsSheet({
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section>
+    <FadeUp>
       <h3 className="mb-2 text-xs font-medium tracking-wide text-muted-foreground">{title}</h3>
       <div className="divide-y rounded-xl border bg-muted/20">{children}</div>
-    </section>
+    </FadeUp>
   )
 }
 
@@ -119,10 +122,21 @@ function CodeField({ label, value }: { label: string; value: string | null }) {
         {value && (
           <button
             onClick={copy}
-            className="flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground opacity-0 transition hover:bg-muted hover:text-foreground group-hover/code:opacity-100"
+            className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-opacity duration-150 hover:bg-muted hover:text-foreground group-hover/code:opacity-100 ${copied ? "opacity-100" : "opacity-0"}`}
           >
-            {copied ? <Check className="size-3" /> : <Copy className="size-3" />}
-            {copied ? "복사됨" : "복사"}
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.span
+                key={copied ? "done" : "idle"}
+                className="flex items-center gap-1"
+                initial={{ opacity: 0, scale: 0.8, filter: "blur(3px)" }}
+                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, scale: 0.8, filter: "blur(3px)" }}
+                transition={{ type: "spring", duration: 0.25, bounce: 0 }}
+              >
+                {copied ? <Check className="size-3 text-primary" /> : <Copy className="size-3" />}
+                {copied ? "복사됨" : "복사"}
+              </motion.span>
+            </AnimatePresence>
           </button>
         )}
       </div>
