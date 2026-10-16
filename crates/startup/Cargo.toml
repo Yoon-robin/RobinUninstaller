@@ -1,0 +1,20 @@
+[package]
+name = "robin-startup"
+description = "시작프로그램 목록과 켜기·끄기 (Run 키, 시작 폴더). 항목을 지우지 않고 StartupApproved로만 끈다"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+robin-core.workspace = true
+robin-discovery.workspace = true
+serde.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Storage_FileSystem",
+  "Win32_System_Com",
+  "Win32_UI_Shell",
+] }

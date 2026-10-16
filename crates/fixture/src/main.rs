@@ -15,7 +15,7 @@
 //!   - `%APPDATA%\Robin Test Labs\Fixture Notes\settings.json`
 //!   - `%LOCALAPPDATA%\Fixture Notes\cache\a.bin`
 //!   - `HKCU\Software\Robin Test Labs\Fixture Notes`
-//!   - `HKCU\...\Run` 값 `FixtureNotes` (설치 폴더를 가리킴)
+//!   - `HKCU\...\Run` 값 `FixtureNotes` (설치 폴더를 가리킴, 시작프로그램 화면 시험에도 쓴다)
 //! - 미끼 (확실 후보가 되면 안 됨)
 //!   - `%APPDATA%\Robin Test Labs\Other Product\data.txt`, `HKCU\Software\Robin Test Labs\Other Product`
 //!   - `%APPDATA%\Fixture Notes 2019\old.txt` (다른 버전)
@@ -26,6 +26,7 @@
 //! `--machine`(관리자 권한 필요)은 아래 흔적을 추가로 남긴다. 지우거나 되돌리려면 관리자 권한이 있어야 한다.
 //!   - `HKLM\SOFTWARE\Robin Test Labs\Fixture Notes`
 //!   - `C:\Program Files\Robin Test Labs\Fixture Notes\data.txt`
+//!   - `HKLM\...\Run` 값 `FixtureNotesMachine` (없는 파일을 가리킴, 모든 사용자 시작 항목 끄기·켜기 시험용)
 
 #[cfg(windows)]
 fn main() {
@@ -50,6 +51,10 @@ mod imp {
         r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\RobinFixtureApp";
     const RUN_KEY: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
     const RUN_VALUE: &str = "FixtureNotes";
+    /// 시작프로그램 화면에서 끄고 켤 때 Windows(작업 관리자 방식)가 남기는 표시
+    const STARTUP_APPROVED_KEY: &str =
+        r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
+    const MACHINE_RUN_VALUE: &str = "FixtureNotesMachine";
     const PUBLISHER: &str = "Robin Test Labs";
     const PRODUCT: &str = "Fixture Notes";
 
@@ -122,6 +127,15 @@ mod imp {
             .expect("HKLM 키 생성 (관리자 권한 필요)");
         k.set_value("Theme", &"dark").unwrap();
         k.set_value("Level", &7u32).unwrap();
+        let (run, _) = RegKey::predef(HKEY_LOCAL_MACHINE)
+            .create_subkey(RUN_KEY)
+            .expect("HKLM Run 키 열기 (관리자 권한 필요)");
+        // 없는 파일을 가리킨다: 로그인할 때 아무것도 실행되지 않고, 화면에서는 "파일 없음"으로 보여야 한다
+        run.set_value(
+            MACHINE_RUN_VALUE,
+            &format!("\"{}\" --tray", dir.join("notes-service.exe").display()),
+        )
+        .unwrap();
         println!("관리자 권한 흔적 만듦: {}", dir.display());
     }
 
@@ -207,6 +221,14 @@ mod imp {
         let _ = hklm.delete_subkey_all(machine_key());
         let _ = hklm.delete_subkey(format!(r"SOFTWARE\{PUBLISHER}"));
         let _ = std::fs::remove_dir_all(machine_dir());
+        for (key, value) in [
+            (RUN_KEY, MACHINE_RUN_VALUE),
+            (STARTUP_APPROVED_KEY, MACHINE_RUN_VALUE),
+        ] {
+            if let Ok(k) = hklm.open_subkey_with_flags(key, winreg::enums::KEY_SET_VALUE) {
+                let _ = k.delete_value(value);
+            }
+        }
 
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
         let _ = hkcu.delete_subkey_all(UNINSTALL_KEY);
@@ -216,6 +238,11 @@ mod imp {
         let _ = hkcu.delete_subkey(format!(r"Software\{PUBLISHER}"));
         if let Ok(run) = hkcu.open_subkey_with_flags(RUN_KEY, winreg::enums::KEY_SET_VALUE) {
             let _ = run.delete_value(RUN_VALUE);
+        }
+        if let Ok(approved) =
+            hkcu.open_subkey_with_flags(STARTUP_APPROVED_KEY, winreg::enums::KEY_SET_VALUE)
+        {
+            let _ = approved.delete_value(RUN_VALUE);
         }
         let _ = std::fs::remove_dir_all(install_dir());
         for (path, _) in extra_files() {

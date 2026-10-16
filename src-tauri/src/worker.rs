@@ -6,6 +6,7 @@
 //! ```text
 //! robin-uninstaller.exe --elevated-clean   <작업 ID> --store <백업 저장소>
 //! robin-uninstaller.exe --elevated-restore <작업 ID> --store <백업 저장소>
+//! robin-uninstaller.exe --elevated-startup on|off <시작 항목 ID>
 //! ```
 
 use std::path::PathBuf;
@@ -14,11 +15,20 @@ use robin_recovery::{Guard, ItemStatus, Store};
 
 pub const CLEAN: &str = "--elevated-clean";
 pub const RESTORE: &str = "--elevated-restore";
+pub const STARTUP: &str = "--elevated-startup";
+
+/// 시작 항목 켜기·끄기 결과 (종료 코드)
+pub const STARTUP_OK: i32 = 0;
+pub const STARTUP_NOT_FOUND: i32 = 3;
+pub const STARTUP_FAILED: i32 = 4;
 
 /// 작업자 모드가 아니면 None. 맞으면 작업을 마친 뒤 종료 코드.
 pub fn main() -> Option<i32> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let mode = args.first()?.as_str();
+    if mode == STARTUP {
+        return Some(run_startup(&args[1..]).unwrap_or(2));
+    }
     if mode != CLEAN && mode != RESTORE {
         return None;
     }
@@ -63,4 +73,22 @@ fn run(mode: &str, rest: &[String]) -> Option<i32> {
         robin_recovery::restore(&store, &mut op, None, |_| {});
     }
     Some(0)
+}
+
+/// 모든 사용자 시작 항목을 켜거나 끈다. ID는 엔진이 레지스트리·시작 폴더를 다시 읽어 찾는다.
+fn run_startup(rest: &[String]) -> Option<i32> {
+    let enabled = match rest.first()?.as_str() {
+        "on" => true,
+        "off" => false,
+        _ => return None,
+    };
+    let id = rest.get(1)?;
+    if rest.len() != 2 || !robin_startup::is_valid_id(id) {
+        return None;
+    }
+    Some(match robin_startup::set_enabled(id, enabled) {
+        Ok(()) => STARTUP_OK,
+        Err(robin_startup::SetError::NotFound) => STARTUP_NOT_FOUND,
+        Err(_) => STARTUP_FAILED,
+    })
 }

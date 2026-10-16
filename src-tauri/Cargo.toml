@@ -25,6 +25,7 @@ robin-discovery.workspace = true
 robin-execution.workspace = true
 robin-scanner.workspace = true
 robin-recovery.workspace = true
+robin-startup.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"

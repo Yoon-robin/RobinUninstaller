@@ -128,6 +128,31 @@ export const recoveryApi = {
   deleteBackup: (opId: string) => invoke<void>("delete_backup", { opId }),
 }
 
+// crates/startup 의 StartupItem 과 맞춰야 한다.
+export type StartupSource = "runUser" | "runMachine" | "runMachine32" | "folderUser" | "folderCommon"
+
+export interface StartupItem {
+  id: string
+  name: string
+  source: StartupSource
+  location: string
+  command: string
+  filePath: string | null
+  fileMissing: boolean
+  publisher: string | null
+  appName: string | null
+  enabled: boolean
+  needsAdmin: boolean
+}
+
+export const startupApi = {
+  list: () => invoke<StartupItem[]>("list_startup_items"),
+  /** 모든 사용자 항목은 UAC 창이 뜬다. 바뀐 항목을 돌려준다. */
+  setEnabled: (id: string, enabled: boolean) => invoke<StartupItem>("set_startup_enabled", { id, enabled }),
+  icon: (id: string) => invoke<string | null>("get_startup_icon", { id }),
+  reveal: (id: string) => invoke<void>("reveal_startup_item", { id }),
+}
+
 export const countStatus = (op: Operation, status: ItemStatus) => op.items.filter((i) => i.status === status).length
 
 /** 다른 화면으로 이동 요청 (App이 받아 처리). */

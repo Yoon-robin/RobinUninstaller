@@ -50,9 +50,21 @@ pnpm tauri dev    # 앱 실행
 - 수정 후: HKLM 키·Program Files 폴더 정리 성공 → 관리자 권한 복원 성공(값 `Theme=dark`, DWORD `Level=7` 원본과 같음) → 테스트 흔적 전부 정리.
 - 이 PC에 남은 테스트 흔적과 테스트 백업은 없다.
 
+### Phase 5 1차: 시작프로그램 화면 (2026-10-16, 클라우드 세션에서 작성)
+
+- `crates/startup` + 시작프로그램 화면을 만들었다. 자세한 내용은 PLAN.md "Phase 5 구현 메모".
+- 클라우드(리눅스)에서 만들어서 확인한 범위: Windows 대상 `cargo clippy`(x86_64-pc-windows-msvc), `cargo test`,
+  `tsc`·prettier, 가짜 백엔드 응답으로 화면 캡처.
+- **Windows PC에서 아직 확인하지 않은 것** (다음에 이 PC에서 할 일):
+  1. `pnpm check`
+  2. `robin-fixture install` → `cargo run -p robin-startup --example toggle_fixture` → `robin-fixture remove`
+  3. `pnpm tauri dev`로 시작프로그램 화면을 띄워 실제 목록·아이콘·게시자가 맞게 보이는지, 작업 관리자 "시작 앱"의 켜짐·꺼짐과 같은지
+  4. 관리자 권한 경로: 관리자로 `robin-fixture install --machine` → 앱에서 `FixtureNotesMachine`(모든 사용자)을 끄고 켜기(UAC "예")
+     → 관리자로 `robin-fixture remove`. 실제 프로그램의 시작 항목은 끄고 켜지 않는다.
+
 ### 다음 단계 후보
 
-- Phase 5: 강제 제거(언인스톨러 없는 프로그램), 시작프로그램 관리
+- Phase 5 나머지: 강제 제거(언인스톨러 없는 프로그램), 예약 작업 목록
 - 시스템 복원 지점, 서비스 정리(중지·삭제), 오래된 백업 자동 정리
 - Phase 6: 설치 추적(스냅샷 비교 → ETW, 커널 드라이버는 쓰지 않음)
 - 배포: 코드 서명, NSIS 설치 파일(`pnpm tauri build`)

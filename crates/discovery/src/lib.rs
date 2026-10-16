@@ -37,3 +37,14 @@ pub fn app_icon(app: &InstalledApplication) -> Option<String> {
         None
     }
 }
+
+/// 파일(실행 파일 등)의 아이콘을 PNG data URL로 추출한다.
+pub fn file_icon(path: &str) -> Option<String> {
+    #[cfg(windows)]
+    return icon::extract_data_url(path);
+    #[cfg(not(windows))]
+    {
+        let _ = path;
+        None
+    }
+}

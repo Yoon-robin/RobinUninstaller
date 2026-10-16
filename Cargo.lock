@@ -2545,6 +2545,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "robin-startup"
+version = "0.1.0"
+dependencies = [
+ "robin-core",
+ "robin-discovery",
+ "serde",
+ "windows",
+ "winreg 0.55.0",
+]
+
+[[package]]
 name = "robin-uninstaller"
 version = "0.1.0"
 dependencies = [
@@ -2553,6 +2564,7 @@ dependencies = [
  "robin-execution",
  "robin-recovery",
  "robin-scanner",
+ "robin-startup",
  "serde",
  "serde_json",
  "tauri",

@@ -29,6 +29,7 @@ cargo run -p robin-fixture -- remove
 cargo run -p robin-execution --example uninstall_fixture
 cargo run -p robin-scanner --example scan_fixture
 cargo run -p robin-recovery --example clean_fixture
+cargo run -p robin-startup --example toggle_fixture
 ```
 
 앱 화면을 자동으로 확인할 때는 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9223"`를 주고 `pnpm tauri dev`로 띄운 뒤,
@@ -36,9 +37,9 @@ DevTools 프로토콜(`http://127.0.0.1:9223/json`)로 클릭·캡처한다. 마
 
 ## 코드 구조
 
-- `src/` React 화면 (`features/programs`, `features/leftovers`, `features/restore`, `components/`)
+- `src/` React 화면 (`features/programs`, `features/leftovers`, `features/startup`, `features/restore`, `components/`)
 - `src-tauri/` Tauri command 계층(얇게 유지) + `worker.rs`(관리자 권한 작업자 모드)
 - `crates/core` 공통 모델 · `crates/discovery` 설치 목록·아이콘 · `crates/execution` 언인스톨러 실행
-- `crates/scanner` 잔여물 탐지(읽기 전용) · `crates/recovery` 백업·정리·복원 · `crates/fixture` 테스트 앱
+- `crates/scanner` 잔여물 탐지(읽기 전용) · `crates/recovery` 백업·정리·복원 · `crates/startup` 시작프로그램 · `crates/fixture` 테스트 앱
 
 프론트엔드는 경로가 아니라 ID만 넘긴다. 경로·명령은 항상 Rust 쪽이 자기 데이터에서 찾는다.

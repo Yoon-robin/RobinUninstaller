@@ -11,6 +11,7 @@ import { ComingSoonPage } from "@/features/coming-soon/coming-soon-page"
 import { LeftoversPage } from "@/features/leftovers/leftovers-page"
 import { RestorePage } from "@/features/restore/restore-page"
 import { ProgramsPage } from "@/features/programs/programs-page"
+import { StartupPage } from "@/features/startup/startup-page"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
@@ -87,8 +88,9 @@ export default function App() {
                     <ProgramsPage />
                   </div>
                   {page === "leftovers" && <LeftoversPage />}
+                  {page === "startup" && <StartupPage />}
                   {page === "restore" && <RestorePage />}
-                  {page !== "programs" && page !== "leftovers" && page !== "restore" && <ComingSoonPage page={page} />}
+                  {(page === "tracking" || page === "settings") && <ComingSoonPage page={page} />}
                 </main>
               </SidebarInset>
             </SidebarProvider>

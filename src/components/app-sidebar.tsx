@@ -24,7 +24,7 @@ type Item = { page: Page; label: string; icon: typeof Package; soon?: boolean }
 const mainItems: Item[] = [
   { page: "programs", label: "프로그램", icon: Package },
   { page: "leftovers", label: "잔여물 정리", icon: Sparkles },
-  { page: "startup", label: "시작프로그램", icon: Rocket, soon: true },
+  { page: "startup", label: "시작프로그램", icon: Rocket },
   { page: "tracking", label: "설치 추적", icon: Radar, soon: true },
 ]
 

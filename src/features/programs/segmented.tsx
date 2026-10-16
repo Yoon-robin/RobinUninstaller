@@ -10,11 +10,14 @@ export function FilterChips<K extends string>({
   value,
   counts,
   onChange,
+  layoutId = "filter-chip",
 }: {
   options: { key: K; label: string }[]
   value: K
   counts: Record<K, number>
   onChange: (key: K) => void
+  /** 한 화면에 칩 묶음이 여럿 떠 있으면 서로 달라야 한다. */
+  layoutId?: string
 }) {
   return (
     <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="빠른 필터">
@@ -37,7 +40,7 @@ export function FilterChips<K extends string>({
           >
             {active && (
               <motion.span
-                layoutId="filter-chip"
+                layoutId={layoutId}
                 className="absolute inset-0 rounded-full bg-primary"
                 transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
               />
