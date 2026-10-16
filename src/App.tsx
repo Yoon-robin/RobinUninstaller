@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react"
 import { AnimatePresence, MotionConfig, motion } from "motion/react"
 
 import { AppSidebar, type Page } from "@/components/app-sidebar"
+import { IconTooltip } from "@/components/icon-tooltip"
 import { ThemeProvider, ThemeToggle } from "@/components/theme"
 import { WindowControls } from "@/components/window-controls"
 import { ComingSoonPage } from "@/features/coming-soon/coming-soon-page"
@@ -33,13 +34,16 @@ export default function App() {
       <ThemeProvider>
         {/* OS의 "애니메이션 효과 줄이기" 설정을 따른다. */}
         <MotionConfig reducedMotion="user">
-          <TooltipProvider>
+          {/* 첫 툴팁은 잠깐 기다렸다가, 이어서 옮겨 다닐 때는 바로 뜬다. */}
+          <TooltipProvider delayDuration={400} skipDelayDuration={300}>
             <SidebarProvider className="h-svh">
               <AppSidebar page={page} onNavigate={setPage} />
               <SidebarInset className="h-svh min-w-0 overflow-hidden">
                 {/* 제목 표시줄: 빈 곳을 끌면 창이 움직이고, 더블클릭하면 최대화된다. */}
                 <header data-tauri-drag-region className="flex h-11 shrink-0 items-center gap-1 border-b pl-2">
-                  <SidebarTrigger className="text-muted-foreground" />
+                  <IconTooltip label="사이드바 접기/펼치기">
+                    <SidebarTrigger className="text-muted-foreground" />
+                  </IconTooltip>
                   <div
                     data-tauri-drag-region
                     className="pointer-events-none flex items-center gap-1.5 text-sm text-muted-foreground"

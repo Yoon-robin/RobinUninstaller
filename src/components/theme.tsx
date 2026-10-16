@@ -1,18 +1,11 @@
-import {
-  createContext,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-  type MouseEvent,
-  type ReactNode,
-} from "react"
+import { createContext, useContext, useEffect, useMemo, useState, type MouseEvent, type ReactNode } from "react"
 import { flushSync } from "react-dom"
 import { invoke } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { Moon, Sun } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 
+import { IconTooltip } from "@/components/icon-tooltip"
 import { EASE_OUT_QUINT } from "@/components/motion"
 
 type Theme = "dark" | "light" | "system"
@@ -97,7 +90,9 @@ function WindowMaterialSync() {
 
   useEffect(() => {
     if (resolvedTheme === "dark" || resolvedTheme === "light") {
-      getCurrentWindow().setTheme(resolvedTheme).catch(() => {})
+      getCurrentWindow()
+        .setTheme(resolvedTheme)
+        .catch(() => {})
     }
   }, [resolvedTheme])
 
@@ -139,24 +134,25 @@ export function ThemeToggle() {
   }
 
   return (
-    <button
-      type="button"
-      onClick={toggle}
-      aria-label={isDark ? "라이트 모드로" : "다크 모드로"}
-      title={isDark ? "라이트 모드로" : "다크 모드로"}
-      className="relative flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/8 hover:text-foreground"
-    >
-      <AnimatePresence mode="popLayout" initial={false}>
-        <motion.span
-          key={isDark ? "moon" : "sun"}
-          initial={{ opacity: 0, rotate: -60, scale: 0.7, filter: "blur(3px)" }}
-          animate={{ opacity: 1, rotate: 0, scale: 1, filter: "blur(0px)" }}
-          exit={{ opacity: 0, rotate: 60, scale: 0.7, filter: "blur(3px)" }}
-          transition={{ duration: 0.35, ease: EASE_OUT_QUINT }}
-        >
-          {isDark ? <Moon className="size-4" /> : <Sun className="size-4" />}
-        </motion.span>
-      </AnimatePresence>
-    </button>
+    <IconTooltip label={isDark ? "라이트 모드로" : "다크 모드로"}>
+      <button
+        type="button"
+        onClick={toggle}
+        aria-label={isDark ? "라이트 모드로" : "다크 모드로"}
+        className="relative flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/8 hover:text-foreground"
+      >
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.span
+            key={isDark ? "moon" : "sun"}
+            initial={{ opacity: 0, rotate: -60, scale: 0.7, filter: "blur(3px)" }}
+            animate={{ opacity: 1, rotate: 0, scale: 1, filter: "blur(0px)" }}
+            exit={{ opacity: 0, rotate: 60, scale: 0.7, filter: "blur(3px)" }}
+            transition={{ duration: 0.35, ease: EASE_OUT_QUINT }}
+          >
+            {isDark ? <Moon className="size-4" /> : <Sun className="size-4" />}
+          </motion.span>
+        </AnimatePresence>
+      </button>
+    </IconTooltip>
   )
 }

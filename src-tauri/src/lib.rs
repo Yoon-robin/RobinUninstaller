@@ -62,6 +62,14 @@ async fn get_app_icon(id: String, cache: State<'_, AppCache>) -> Result<Option<S
 
 /// 한 번에 하나만 제거한다 (Windows Installer도 동시에 하나만 처리한다).
 static UNINSTALLING: AtomicBool = AtomicBool::new(false);
+/// 사용자가 "기다리지 않고 확인"을 눌렀는지.
+static STOP_WAITING: AtomicBool = AtomicBool::new(false);
+
+/// 언인스톨러 프로세스를 더 기다리지 않고 바로 제거 여부를 확인한다.
+#[tauri::command]
+fn stop_waiting_uninstall() {
+    STOP_WAITING.store(true, Ordering::SeqCst);
+}
 
 /// 기본 언인스톨러를 실행하고 끝날 때까지 기다린다. 진행 상황은 `on_event`로 보낸다.
 #[tauri::command]
@@ -76,10 +84,12 @@ async fn uninstall_app(
     if UNINSTALLING.swap(true, Ordering::SeqCst) {
         return Err("이미 다른 프로그램을 제거하고 있어요".into());
     }
+    STOP_WAITING.store(false, Ordering::SeqCst);
 
     let result = tauri::async_runtime::spawn_blocking(move || {
         robin_execution::run_uninstaller(
             &app,
+            &STOP_WAITING,
             |event| {
                 let _ = on_event.send(event);
             },
@@ -159,6 +169,13 @@ pub fn run() {
             {
                 MICA_ENABLED.store(true, Ordering::Relaxed);
             }
+            // 창은 프론트엔드가 첫 화면을 그린 뒤 보여 준다. 프론트엔드가 실패해도 창이 사라지지 않도록 안전장치.
+            if let Some(window) = app.get_webview_window("main") {
+                std::thread::spawn(move || {
+                    std::thread::sleep(std::time::Duration::from_secs(3));
+                    let _ = window.show();
+                });
+            }
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -166,6 +183,7 @@ pub fn run() {
             get_app_icon,
             open_install_location,
             uninstall_app,
+            stop_waiting_uninstall,
             window_material
         ])
         .run(tauri::generate_context!())

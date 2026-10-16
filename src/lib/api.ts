@@ -24,9 +24,7 @@ export interface InstalledApplication {
 
 // crates/execution 의 UninstallEvent / UninstallOutcome 과 맞춰야 한다.
 export type UninstallEvent =
-  | { kind: "launching"; file: string }
-  | { kind: "running"; processCount: number }
-  | { kind: "verifying" }
+  { kind: "launching"; file: string } | { kind: "running"; processCount: number } | { kind: "verifying" }
 
 export type UninstallOutcome =
   | { kind: "removed" }
@@ -44,6 +42,13 @@ export const api = {
     channel.onmessage = onEvent
     return invoke<UninstallOutcome>("uninstall_app", { id, onEvent: channel })
   },
+  stopWaitingUninstall: () => invoke<void>("stop_waiting_uninstall"),
+}
+
+/** 실제로 실행될 명령 (화면 표시용). crates/execution 의 plan_for 와 같은 규칙. */
+export function uninstallCommandPreview(app: InstalledApplication): string | null {
+  if (app.technology === "msi" && app.productCode) return `msiexec.exe /x ${app.productCode}`
+  return app.uninstallCommand
 }
 
 /** 기본 언인스톨러를 실행할 수 있는지. 언인스톨러 파일이 없으면 강제 제거(이후 버전) 대상이다. */

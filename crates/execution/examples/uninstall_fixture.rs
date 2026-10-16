@@ -15,6 +15,7 @@ fn main() {
     let started = std::time::Instant::now();
     let outcome = robin_execution::run_uninstaller(
         &app,
+        &std::sync::atomic::AtomicBool::new(false),
         |event| println!("[{:>5}ms] {event:?}", started.elapsed().as_millis()),
         || {
             robin_discovery::list_installed()

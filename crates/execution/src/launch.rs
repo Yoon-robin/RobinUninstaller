@@ -6,9 +6,7 @@
 use windows::Win32::Foundation::{
     CloseHandle, ERROR_CANCELLED, ERROR_ELEVATION_REQUIRED, HANDLE, WAIT_OBJECT_0,
 };
-use windows::Win32::System::Threading::{
-    GetExitCodeProcess, GetProcessId, INFINITE, WaitForSingleObject,
-};
+use windows::Win32::System::Threading::{GetExitCodeProcess, GetProcessId, WaitForSingleObject};
 use windows::Win32::UI::Shell::{
     SEE_MASK_NOASYNC, SEE_MASK_NOCLOSEPROCESS, SHELLEXECUTEINFOW, ShellExecuteExW,
 };
@@ -29,10 +27,10 @@ pub struct Launched {
 }
 
 impl Launched {
-    /// 최상위 프로세스가 끝날 때까지 기다리고 종료 코드를 돌려준다.
-    pub fn wait(&self) -> Option<u32> {
+    /// 끝났으면 종료 코드, 아직 실행 중이면 `None` (기다리지 않는다).
+    pub fn exit_code(&self) -> Option<u32> {
         unsafe {
-            if WaitForSingleObject(self.handle, INFINITE) != WAIT_OBJECT_0 {
+            if WaitForSingleObject(self.handle, 0) != WAIT_OBJECT_0 {
                 return None;
             }
             let mut code = 0u32;

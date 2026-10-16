@@ -1,9 +1,15 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { Check, CircleAlert, Loader2, RotateCcw, ShieldAlert, Trash2, X } from "lucide-react"
+import { Check, ChevronRight, CircleAlert, Loader2, RotateCcw, ShieldAlert, Trash2, X } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 
-import { api, type InstalledApplication, type UninstallEvent, type UninstallOutcome } from "@/lib/api"
+import {
+  api,
+  uninstallCommandPreview,
+  type InstalledApplication,
+  type UninstallEvent,
+  type UninstallOutcome,
+} from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT } from "@/components/motion"
 import { Button } from "@/components/ui/button"
@@ -11,9 +17,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { AppIcon } from "./app-icon"
 
 type Phase =
-  | { step: "confirm" }
-  | { step: "running"; event: UninstallEvent | null }
-  | { step: "done"; outcome: UninstallOutcome }
+  { step: "confirm" } | { step: "running"; event: UninstallEvent | null } | { step: "done"; outcome: UninstallOutcome }
 
 /** 제거 확인 → 진행 → 결과. 기본 언인스톨러만 실행하고, 파일을 직접 지우지는 않는다. */
 export function UninstallDialog({
@@ -118,6 +122,7 @@ function ConfirmBody({
           끝나면 정말 제거됐는지 다시 확인해요.
         </li>
       </ul>
+      <CommandPreview command={uninstallCommandPreview(app)} />
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={onCancel}>
           취소
@@ -137,50 +142,119 @@ const steps = [
   { key: "verifying", label: "제거 확인", hint: "설치 정보를 다시 읽고 있어요" },
 ] as const
 
+/** 언인스톨러 창을 닫았는데도 프로세스가 남아 기다림이 끝나지 않을 때를 위한 탈출구. */
+const STUCK_HINT_AFTER_MS = 8000
+
 function RunningBody({ event }: { event: UninstallEvent | null }) {
   const current = event == null ? 0 : steps.findIndex((s) => s.key === event.kind)
+  const [showSkip, setShowSkip] = useState(false)
+  const [skipping, setSkipping] = useState(false)
+
+  useEffect(() => {
+    const t = setTimeout(() => setShowSkip(true), STUCK_HINT_AFTER_MS)
+    return () => clearTimeout(t)
+  }, [])
 
   return (
-    <ol className="flex flex-col gap-1 p-5">
-      {steps.map((s, i) => {
-        const state = i < current ? "done" : i === current ? "active" : "todo"
-        return (
-          <li key={s.key} className="flex items-start gap-3 rounded-lg px-2 py-2">
-            <span
-              className={cn(
-                "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors duration-300",
-                state === "done" && "border-primary bg-primary text-primary-foreground",
-                state === "active" && "border-primary text-primary",
-                state === "todo" && "text-muted-foreground/50",
-              )}
-            >
-              <AnimatePresence mode="popLayout" initial={false}>
-                {state === "done" ? (
-                  <motion.span
-                    key="done"
-                    initial={{ scale: 0.6, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    transition={{ type: "spring", duration: 0.3, bounce: 0.3 }}
-                  >
-                    <Check className="size-3" strokeWidth={3} />
-                  </motion.span>
-                ) : state === "active" ? (
-                  <motion.span key="active" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-                    <Loader2 className="size-3 animate-spin" />
-                  </motion.span>
-                ) : (
-                  <span className="size-1.5 rounded-full bg-current" />
+    <div className="p-5">
+      <ol className="flex flex-col gap-1">
+        {steps.map((s, i) => {
+          const state = i < current ? "done" : i === current ? "active" : "todo"
+          return (
+            <li key={s.key} className="flex items-start gap-3 rounded-lg px-2 py-2">
+              <span
+                className={cn(
+                  "mt-0.5 flex size-5 shrink-0 items-center justify-center rounded-full border transition-colors duration-300",
+                  state === "done" && "border-primary bg-primary text-primary-foreground",
+                  state === "active" && "border-primary text-primary",
+                  state === "todo" && "text-muted-foreground/50",
                 )}
-              </AnimatePresence>
-            </span>
-            <div>
-              <p className={cn("text-sm font-medium", state === "todo" && "text-muted-foreground")}>{s.label}</p>
-              {state === "active" && <p className="text-xs text-muted-foreground">{s.hint}</p>}
-            </div>
-          </li>
-        )
-      })}
-    </ol>
+              >
+                <AnimatePresence mode="popLayout" initial={false}>
+                  {state === "done" ? (
+                    <motion.span
+                      key="done"
+                      initial={{ scale: 0.6, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ type: "spring", duration: 0.3, bounce: 0.3 }}
+                    >
+                      <Check className="size-3" strokeWidth={3} />
+                    </motion.span>
+                  ) : state === "active" ? (
+                    <motion.span key="active" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                      <Loader2 className="size-3 animate-spin" />
+                    </motion.span>
+                  ) : (
+                    <span className="size-1.5 rounded-full bg-current" />
+                  )}
+                </AnimatePresence>
+              </span>
+              <div>
+                <p className={cn("text-sm font-medium", state === "todo" && "text-muted-foreground")}>{s.label}</p>
+                {state === "active" && <p className="text-xs text-muted-foreground">{s.hint}</p>}
+              </div>
+            </li>
+          )
+        })}
+      </ol>
+      <AnimatePresence>
+        {showSkip && event?.kind === "running" && (
+          <motion.div
+            initial={{ opacity: 0, y: 6 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: EASE_OUT_QUINT }}
+            className="mt-3 flex items-center justify-between gap-3 rounded-lg border bg-muted/30 px-3 py-2.5 text-xs text-muted-foreground"
+          >
+            <span>언인스톨러 창이 이미 닫혔나요?</span>
+            <Button
+              size="sm"
+              variant="outline"
+              disabled={skipping}
+              onClick={() => {
+                setSkipping(true)
+                api.stopWaitingUninstall()
+              }}
+            >
+              기다리지 않고 확인
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  )
+}
+
+function CommandPreview({ command }: { command: string | null }) {
+  const [open, setOpen] = useState(false)
+  if (!command) return null
+  return (
+    <div className="text-xs">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
+        aria-expanded={open}
+      >
+        <ChevronRight className={cn("size-3.5 transition-transform duration-200", open && "rotate-90")} />
+        실행할 명령 보기
+      </button>
+      <AnimatePresence initial={false}>
+        {open && (
+          <motion.div
+            initial={{ height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={{ height: 0, opacity: 0 }}
+            transition={{ duration: 0.25, ease: EASE_OUT_QUINT }}
+            className="overflow-hidden"
+          >
+            <p data-selectable className="mt-2 rounded-lg border bg-muted/40 p-2.5 font-mono leading-5 break-all">
+              {command}
+            </p>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   )
 }
 
@@ -247,7 +321,9 @@ function describe(outcome: UninstallOutcome) {
         body:
           outcome.exitCode === 1602
             ? "언인스톨러에서 취소한 것 같아요."
-            : `언인스톨러가 끝났지만 프로그램이 그대로 남아 있어요.${outcome.exitCode != null ? ` (종료 코드 ${outcome.exitCode})` : ""}`,
+            : outcome.exitCode == null
+              ? "언인스톨러가 아직 열려 있다면 마저 진행한 뒤 다시 시도해 주세요."
+              : `언인스톨러가 끝났지만 프로그램이 그대로 남아 있어요. (종료 코드 ${outcome.exitCode})`,
         retry: true,
       }
     case "elevationDenied":

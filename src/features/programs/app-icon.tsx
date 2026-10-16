@@ -29,10 +29,7 @@ export function AppIcon({ app, className }: { app: InstalledApplication; classNa
   const letter = [...app.displayName.trim()][0]?.toUpperCase() ?? "?"
   return (
     <div
-      className={cn(
-        "flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-semibold",
-        className,
-      )}
+      className={cn("flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-semibold", className)}
       style={{
         background: `oklch(0.72 0.12 ${hue} / 16%)`,
         color: `oklch(0.82 0.12 ${hue})`,

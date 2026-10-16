@@ -38,13 +38,7 @@ export function FadeUp({ children, className }: { children: ReactNode; className
 const formatInteger = (n: number) => Math.round(n).toLocaleString()
 
 /** 숫자가 0에서 목표값까지 올라간다. 처음 한 번만 움직이고, 이후 값이 바뀌면 거기서부터 이어서 움직인다. */
-export function CountUp({
-  value,
-  format = formatInteger,
-}: {
-  value: number
-  format?: (n: number) => string
-}) {
+export function CountUp({ value, format = formatInteger }: { value: number; format?: (n: number) => string }) {
   const ref = useRef<HTMLSpanElement>(null)
   const from = useRef(0)
   const reduce = useReducedMotion()

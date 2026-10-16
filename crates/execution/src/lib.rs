@@ -3,6 +3,7 @@
 //! 흐름: 실행 계획 → 실행(필요하면 UAC) → 자식 프로세스까지 끝날 때까지 대기 → 설치 정보를 다시 읽어 결과 판정.
 //! 잔여물 스캔·삭제는 여기서 하지 않는다 (Phase 3).
 
+mod ignore;
 #[cfg(windows)]
 mod launch;
 pub mod plan;
@@ -61,9 +62,11 @@ pub fn classify(exit_code: Option<u32>, still_installed: bool) -> UninstallOutco
 /// 기본 언인스톨러를 실행하고 끝날 때까지 기다린다 (블로킹).
 ///
 /// `is_still_installed`는 끝난 뒤 설치 정보를 다시 읽어 확인하는 함수다.
+/// `stop_waiting`이 켜지면 프로세스를 더 기다리지 않고 바로 확인 단계로 넘어간다.
 #[cfg(windows)]
 pub fn run_uninstaller(
     app: &InstalledApplication,
+    stop_waiting: &std::sync::atomic::AtomicBool,
     mut on_event: impl FnMut(UninstallEvent),
     is_still_installed: impl Fn() -> bool,
 ) -> UninstallOutcome {
@@ -91,12 +94,12 @@ pub fn run_uninstaller(
         Err(launch::LaunchError::Failed(message)) => return UninstallOutcome::Failed { message },
     };
 
-    track::wait_for_tree(launched.pid, |count| {
+    track::wait_for_tree(launched.pid, &app.display_name, stop_waiting, |count| {
         on_event(UninstallEvent::Running {
             process_count: count,
         })
     });
-    let exit_code = launched.wait();
+    let exit_code = launched.exit_code();
     drop(launched);
 
     on_event(UninstallEvent::Verifying);

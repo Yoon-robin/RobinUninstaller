@@ -1,46 +1,45 @@
-import { useEffect, useMemo, useState, type ReactNode } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   ArrowDownWideNarrow,
   Check,
-  FolderOpen,
   HardDrive,
-  Info,
   LayoutGrid,
   List,
-  MoreHorizontal,
   Package,
   RefreshCw,
   Search,
-  Trash2,
+  SearchX,
   TriangleAlert,
   X,
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
-import { toast } from "sonner"
 
-import { api, canUninstall, type InstalledApplication } from "@/lib/api"
-import { formatInstallDate, formatSize, installDateSortKey } from "@/lib/format"
+import { api, type InstalledApplication } from "@/lib/api"
+import { formatSize } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { Badge } from "@/components/ui/badge"
+import { IconTooltip } from "@/components/icon-tooltip"
+import { CountUp, FadeUp, Stagger, staggerContainer } from "@/components/motion"
 import { Button } from "@/components/ui/button"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
-import { CountUp, FadeUp, Stagger, staggerContainer } from "@/components/motion"
 import { AppDetailsSheet } from "./app-details-sheet"
-import { AppIcon } from "./app-icon"
+import {
+  compareApps,
+  matchesFilter,
+  matchesQuery,
+  quickFilters,
+  sortLabels,
+  type QuickFilter,
+  type SortKey,
+} from "./filters"
 import { ProgramGrid } from "./program-grid"
+import { LIST_GRID, ProgramRow } from "./program-row"
+import { FilterChips, IconSegmented } from "./segmented"
+import { StatCard } from "./stat-card"
 import { UninstallDialog } from "./uninstall-dialog"
 
-type SortKey = "name" | "size" | "date"
 type ViewMode = "list" | "grid"
 
 const VIEW_KEY = "robin.programs.view"
@@ -53,30 +52,23 @@ function loadView(): ViewMode {
   }
 }
 
-const sortLabels: Record<SortKey, string> = {
-  name: "이름순",
-  size: "크기순",
-  date: "최근 설치순",
-}
-
-function compare(a: InstalledApplication, b: InstalledApplication, key: SortKey) {
-  switch (key) {
-    case "size":
-      return (b.estimatedSizeKb ?? 0) - (a.estimatedSizeKb ?? 0)
-    case "date":
-      return installDateSortKey(b.installDate).localeCompare(installDateSortKey(a.installDate))
-    default:
-      return a.displayName.localeCompare(b.displayName, "ko")
-  }
-}
-
-const GRID = "grid grid-cols-[minmax(0,1fr)_minmax(0,9rem)_6.5rem_5.75rem_5.5rem_2rem] items-center gap-4"
+const viewOptions = [
+  { key: "list" as const, icon: List, label: "목록 보기" },
+  { key: "grid" as const, icon: LayoutGrid, label: "카드 보기" },
+]
 
 export function ProgramsPage() {
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("name")
-  const [onlyBroken, setOnlyBroken] = useState(false)
+  const [filter, setFilter] = useState<QuickFilter>("all")
   const [view, setViewState] = useState<ViewMode>(loadView)
+  const [selected, setSelected] = useState<InstalledApplication | null>(null)
+  const [uninstallTarget, setUninstallTarget] = useState<InstalledApplication | null>(null)
+  // 방금 제거된 항목. 목록에서 빠질 때만 접히는 모션을 준다.
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const searchRef = useRef<HTMLInputElement>(null)
+  const apps = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
+
   const setView = (next: ViewMode) => {
     setViewState(next)
     try {
@@ -85,33 +77,27 @@ export function ProgramsPage() {
       // 저장이 막혀 있어도 보기 전환은 그대로 동작한다.
     }
   }
-  const [selected, setSelected] = useState<InstalledApplication | null>(null)
-  const [uninstallTarget, setUninstallTarget] = useState<InstalledApplication | null>(null)
-  const apps = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
 
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return (apps.data ?? [])
-      .filter((a) => !onlyBroken || a.uninstaller === "missing")
-      .filter(
-        (a) =>
-          !q ||
-          a.displayName.toLowerCase().includes(q) ||
-          (a.publisher ?? "").toLowerCase().includes(q),
-      )
-      .sort((a, b) => compare(a, b, sort))
-  }, [apps.data, query, sort, onlyBroken])
+  const all = apps.data ?? []
+  const visible = useMemo(
+    () => all.filter((a) => matchesFilter(a, filter) && matchesQuery(a, query)).sort((a, b) => compareApps(a, b, sort)),
+    [all, query, sort, filter],
+  )
 
-  const stats = useMemo(() => {
-    const list = apps.data ?? []
-    return {
-      total: list.length,
-      totalKb: list.reduce((sum, a) => sum + (a.estimatedSizeKb ?? 0), 0),
-      maxKb: Math.max(1, ...list.map((a) => a.estimatedSizeKb ?? 0)),
-      broken: list.filter((a) => a.uninstaller === "missing").length,
-      msi: list.filter((a) => a.technology === "msi").length,
-    }
-  }, [apps.data])
+  const stats = useMemo(
+    () => ({
+      total: all.length,
+      totalKb: all.reduce((sum, a) => sum + (a.estimatedSizeKb ?? 0), 0),
+      maxKb: Math.max(1, ...all.map((a) => a.estimatedSizeKb ?? 0)),
+      msi: all.filter((a) => a.technology === "msi").length,
+      // 칩 옆 숫자는 검색어까지 반영한다.
+      counts: Object.fromEntries(
+        quickFilters.map((f) => [f.key, all.filter((a) => matchesFilter(a, f.key) && matchesQuery(a, query)).length]),
+      ) as Record<QuickFilter, number>,
+      broken: all.filter((a) => matchesFilter(a, "broken")).length,
+    }),
+    [all, query],
+  )
 
   const loading = apps.isLoading
 
@@ -123,12 +109,32 @@ export function ProgramsPage() {
     return () => clearTimeout(t)
   }, [apps.data])
 
+  // Ctrl+F: 검색창으로. 키보드 동작이라 애니메이션 없이 바로.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+        e.preventDefault()
+        searchRef.current?.focus()
+        searchRef.current?.select()
+      }
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [])
+
+  const handlers = { onSelect: setSelected, onUninstall: setUninstallTarget }
+  const resetFilters = () => {
+    setQuery("")
+    setFilter("all")
+  }
+
   return (
     <Stagger className="relative mx-auto flex max-w-6xl min-w-0 flex-col gap-6 px-7 pt-7 pb-10">
       <FadeUp>
         <h1 className="text-2xl font-bold tracking-tight">프로그램</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          이 PC에 설치된 프로그램이에요. 항목을 누르면 자세한 정보를 볼 수 있어요.
+          이 PC에 설치된 프로그램이에요. 항목을 누르면 자세한 정보를, 오른쪽 클릭하면 바로 할 수 있는 작업을 볼 수
+          있어요.
         </p>
       </FadeUp>
 
@@ -155,138 +161,185 @@ export function ProgramsPage() {
           value={loading ? null : <CountUp value={stats.broken} />}
           unit="개"
           hint={
-            onlyBroken
+            filter === "broken"
               ? "필터 적용 중 · 다시 누르면 해제"
               : stats.broken > 0
                 ? "눌러서 해당 항목만 보기"
                 : "모두 정상이에요"
           }
-          active={onlyBroken}
-          onClick={stats.broken > 0 || onlyBroken ? () => setOnlyBroken((v) => !v) : undefined}
+          active={filter === "broken"}
+          onClick={
+            stats.broken > 0 || filter === "broken"
+              ? () => setFilter((f) => (f === "broken" ? "all" : "broken"))
+              : undefined
+          }
         />
       </motion.div>
 
       <FadeUp>
-      <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
-        <div className="flex flex-wrap items-center gap-3 border-b px-5 py-4">
-          <div className="mr-auto flex items-center gap-2">
-            <h2 className="font-semibold">설치된 프로그램</h2>
-            <span className="text-sm text-muted-foreground tabular-nums">
-              {loading ? "불러오는 중…" : `${visible.length}개`}
-            </span>
-            {onlyBroken && (
-              <Badge variant="secondary" className="gap-1">
-                언인스톨러 없음
-                <button onClick={() => setOnlyBroken(false)} aria-label="필터 해제">
-                  <X className="size-3" />
-                </button>
-              </Badge>
-            )}
-          </div>
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="이름 또는 게시자 검색"
-              className="h-9 w-64 rounded-lg bg-background/60 pl-9"
-            />
-          </div>
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" className="h-9 rounded-lg">
-                <ArrowDownWideNarrow />
-                {sortLabels[sort]}
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              {(Object.keys(sortLabels) as SortKey[]).map((key) => (
-                <DropdownMenuItem key={key} onClick={() => setSort(key)}>
-                  <Check className={cn(sort !== key && "invisible")} />
-                  {sortLabels[key]}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <ViewToggle value={view} onChange={setView} />
-          <Button
-            variant="outline"
-            size="icon"
-            className="size-9 rounded-lg"
-            onClick={() => apps.refetch()}
-            aria-label="새로고침"
-          >
-            <RefreshCw className={cn(apps.isFetching && "animate-spin")} />
-          </Button>
-        </div>
+        {/* overflow-clip: 모서리는 자르되 스크롤 컨테이너가 되지 않아 안쪽 sticky가 동작한다 */}
+        <section className="overflow-clip rounded-2xl border bg-card shadow-sm">
+          <div className="sticky top-0 z-10 rounded-t-2xl border-b bg-popover/90 backdrop-blur-xl">
+            <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
+              <div className="mr-auto flex items-baseline gap-2">
+                <h2 className="font-semibold">설치된 프로그램</h2>
+                <span className="text-sm text-muted-foreground tabular-nums">
+                  {loading ? "불러오는 중…" : `${visible.length}개`}
+                </span>
+              </div>
+              <div className="relative">
+                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  ref={searchRef}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Escape" && query) {
+                      e.stopPropagation()
+                      setQuery("")
+                    }
+                    if (e.key === "Enter" && visible[0]) setSelected(visible[0])
+                  }}
+                  placeholder="이름 또는 게시자 검색"
+                  className="h-9 w-64 rounded-lg bg-background/60 pr-14 pl-9"
+                />
+                {query ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setQuery("")
+                      searchRef.current?.focus()
+                    }}
+                    aria-label="검색어 지우기"
+                    className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                  >
+                    <X className="size-3.5" />
+                  </button>
+                ) : (
+                  <kbd className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 rounded border bg-muted/60 px-1.5 font-sans text-[10px] text-muted-foreground">
+                    Ctrl F
+                  </kbd>
+                )}
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="h-9 rounded-lg">
+                    <ArrowDownWideNarrow />
+                    {sortLabels[sort]}
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  {(Object.keys(sortLabels) as SortKey[]).map((key) => (
+                    <DropdownMenuItem key={key} onClick={() => setSort(key)}>
+                      <Check className={cn(sort !== key && "invisible")} />
+                      {sortLabels[key]}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <IconSegmented options={viewOptions} value={view} onChange={setView} layoutId="view-toggle" />
+              <IconTooltip label="새로고침">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="size-9 rounded-lg"
+                  onClick={() => apps.refetch()}
+                  aria-label="새로고침"
+                >
+                  <RefreshCw className={cn(apps.isFetching && "animate-spin")} />
+                </Button>
+              </IconTooltip>
+            </div>
 
-        {view === "list" && (
-          <div className={cn(GRID, "border-b bg-muted/30 px-5 py-2.5 text-xs font-medium text-muted-foreground")}>
-            <span>이름</span>
-            <span>게시자</span>
-            <span>크기</span>
-            <span>설치일</span>
-            <span>형식</span>
-            <span />
-          </div>
-        )}
+            <div className="px-5 pb-3">
+              <FilterChips options={quickFilters} value={filter} counts={stats.counts} onChange={setFilter} />
+            </div>
 
-        {apps.isError ? (
-          <p className="px-5 py-16 text-center text-sm text-destructive">
-            목록을 불러오지 못했어요: {String(apps.error)}
-          </p>
-        ) : loading ? (
-          <div className="divide-y">
-            {Array.from({ length: 8 }, (_, i) => (
-              <div key={i} className={cn(GRID, "px-5 py-3")}>
-                <div className="flex items-center gap-3">
-                  <Skeleton className="size-9 rounded-lg" />
-                  <Skeleton className="h-4 w-40" />
-                </div>
-                <Skeleton className="h-4 w-24" />
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-4 w-20" />
-                <Skeleton className="h-5 w-12 rounded-full" />
+            {view === "list" && visible.length > 0 && (
+              <div
+                className={cn(LIST_GRID, "border-t bg-muted/30 px-5 py-2 text-xs font-medium text-muted-foreground")}
+              >
+                <span>이름</span>
+                <span>게시자</span>
+                <span>크기</span>
+                <span>설치일</span>
+                <span>형식</span>
                 <span />
               </div>
-            ))}
+            )}
           </div>
-        ) : visible.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 px-5 py-16 text-center">
-            <Search className="size-8 text-muted-foreground/50" />
-            <p className="font-medium">검색 결과가 없어요</p>
-            <p className="text-sm text-muted-foreground">다른 이름이나 게시자로 검색해 보세요.</p>
-          </div>
-        ) : (
-          // 보기를 바꿀 때만 짧게 교차 전환한다. 검색·필터로 항목이 바뀔 때는 움직이지 않는다.
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={view}
-              initial={{ opacity: 0, filter: "blur(4px)" }}
-              animate={{ opacity: 1, filter: "blur(0px)" }}
-              exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.1 } }}
-              transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
-            >
-              {view === "list" ? (
-                <div className="divide-y">
-                  {visible.map((app, i) => (
-                    <ProgramRow
-                      key={app.id}
-                      app={app}
-                      maxKb={stats.maxKb}
-                      onSelect={setSelected}
-                      onUninstall={setUninstallTarget}
-                      introIndex={intro && i < 16 ? i : undefined}
-                    />
-                  ))}
+
+          {apps.isError ? (
+            <p className="px-5 py-16 text-center text-sm text-destructive">
+              목록을 불러오지 못했어요: {String(apps.error)}
+            </p>
+          ) : loading ? (
+            <div className="divide-y">
+              {Array.from({ length: 8 }, (_, i) => (
+                <div key={i} className={cn(LIST_GRID, "px-5 py-3")}>
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="size-9 rounded-lg" />
+                    <Skeleton className="h-4 w-40" />
+                  </div>
+                  <Skeleton className="h-4 w-24" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-4 w-20" />
+                  <Skeleton className="h-5 w-12 rounded-full" />
+                  <span />
                 </div>
-              ) : (
-                <ProgramGrid apps={visible} onSelect={setSelected} intro={intro} />
-              )}
+              ))}
+            </div>
+          ) : visible.length === 0 ? (
+            <motion.div
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
+              className="flex flex-col items-center gap-2 px-5 py-16 text-center"
+            >
+              <div className="mb-1 flex size-12 items-center justify-center rounded-2xl bg-muted">
+                <SearchX className="size-6 text-muted-foreground" />
+              </div>
+              <p className="font-medium">조건에 맞는 프로그램이 없어요</p>
+              <p className="text-sm text-muted-foreground">
+                {query ? `"${query}"` : "선택한 필터"}에 해당하는 항목이 없어요.
+              </p>
+              <Button variant="outline" size="sm" className="mt-2 rounded-lg" onClick={resetFilters}>
+                검색과 필터 지우기
+              </Button>
             </motion.div>
-          </AnimatePresence>
-        )}
-      </section>
+          ) : (
+            // 보기를 바꿀 때만 짧게 교차 전환한다. 검색·필터로 항목이 바뀔 때는 움직이지 않는다.
+            <AnimatePresence mode="wait" initial={false}>
+              <motion.div
+                key={view}
+                initial={{ opacity: 0, filter: "blur(4px)" }}
+                animate={{ opacity: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.1 } }}
+                transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+              >
+                {view === "list" ? (
+                  <div className="divide-y">
+                    <AnimatePresence initial={false}>
+                      {visible.map((app, i) => (
+                        <ProgramRow
+                          key={app.id}
+                          app={app}
+                          maxKb={stats.maxKb}
+                          query={query}
+                          removing={app.id === removingId}
+                          introIndex={intro && i < 16 ? i : undefined}
+                          {...handlers}
+                        />
+                      ))}
+                    </AnimatePresence>
+                  </div>
+                ) : (
+                  <ProgramGrid apps={visible} intro={intro} query={query} removingId={removingId} {...handlers} />
+                )}
+              </motion.div>
+            </AnimatePresence>
+          )}
+        </section>
       </FadeUp>
 
       <AppDetailsSheet
@@ -297,229 +350,12 @@ export function ProgramsPage() {
       <UninstallDialog
         app={uninstallTarget}
         onClose={() => setUninstallTarget(null)}
-        onRemoved={(app) => setSelected((current) => (current?.id === app.id ? null : current))}
+        onRemoved={(app) => {
+          setRemovingId(app.id)
+          setTimeout(() => setRemovingId((id) => (id === app.id ? null : id)), 1500)
+          setSelected((current) => (current?.id === app.id ? null : current))
+        }}
       />
     </Stagger>
-  )
-}
-
-function ProgramRow({
-  app,
-  maxKb,
-  onSelect,
-  onUninstall,
-  introIndex,
-}: {
-  app: InstalledApplication
-  maxKb: number
-  onSelect: (app: InstalledApplication) => void
-  onUninstall: (app: InstalledApplication) => void
-  /** 첫 등장 애니메이션 순서. undefined면 애니메이션 없음. */
-  introIndex?: number
-}) {
-  const introStyle = introIndex == null ? undefined : ({ "--i": introIndex } as React.CSSProperties)
-  const openFolder = () => api.openInstallLocation(app.id).catch((e) => toast.error(String(e)))
-  // 큰 프로그램 몇 개가 막대를 독차지하지 않도록 제곱근 비율로 그린다.
-  const sizeRatio = app.estimatedSizeKb ? Math.max(0.03, Math.sqrt(app.estimatedSizeKb / maxKb)) : 0
-
-  return (
-    <div
-      role="button"
-      tabIndex={0}
-      onClick={() => onSelect(app)}
-      onKeyDown={(e) => e.key === "Enter" && onSelect(app)}
-      style={introStyle}
-      className={cn(
-        GRID,
-        introIndex != null && "row-intro",
-        "group cursor-pointer px-5 py-2.5 text-sm transition-colors outline-none hover:bg-accent/40 focus-visible:bg-accent/50",
-      )}
-    >
-      <div className="flex min-w-0 items-center gap-3">
-        <AppIcon app={app} />
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="truncate font-medium" title={app.displayName}>
-              {app.displayName}
-            </p>
-            {app.uninstaller === "missing" && (
-              <TriangleAlert className="size-3.5 shrink-0 text-chart-3" aria-label="언인스톨러 없음" />
-            )}
-          </div>
-          <p className="truncate text-xs text-muted-foreground">{app.version ?? "버전 정보 없음"}</p>
-        </div>
-      </div>
-
-      <span className="truncate text-muted-foreground" title={app.publisher ?? undefined}>
-        {app.publisher ?? "—"}
-      </span>
-
-      <div className="flex flex-col gap-1">
-        <span className="tabular-nums">{formatSize(app.estimatedSizeKb)}</span>
-        {sizeRatio > 0 && (
-          <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className={cn("h-full rounded-full bg-chart-2/70", introIndex != null && "bar-intro")}
-              style={{ width: `${sizeRatio * 100}%` }}
-            />
-          </div>
-        )}
-      </div>
-
-      <span className="text-muted-foreground tabular-nums">{formatInstallDate(app.installDate)}</span>
-
-      <div className="flex gap-1">
-        <span className="rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
-          {app.technology.toUpperCase()}
-        </span>
-        {app.scope === "machine32" && (
-          <span className="rounded-md border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">x86</span>
-        )}
-        {app.scope === "user" && (
-          <span className="rounded-md border border-primary/30 px-1.5 py-0.5 text-[10px] text-primary">사용자</span>
-        )}
-      </div>
-
-      <div onClick={(e) => e.stopPropagation()}>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-8 opacity-0 group-hover:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
-              aria-label="작업"
-            >
-              <MoreHorizontal />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-52">
-            <DropdownMenuLabel className="truncate">{app.displayName}</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => onSelect(app)}>
-              <Info />
-              세부 정보
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={openFolder} disabled={!app.installLocation}>
-              <FolderOpen />
-              설치 폴더 열기
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem
-              variant="destructive"
-              disabled={!canUninstall(app)}
-              onClick={() => onUninstall(app)}
-            >
-              <Trash2 />
-              {canUninstall(app) ? "제거" : "제거 불가 (언인스톨러 없음)"}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-    </div>
-  )
-}
-
-const toneClasses = {
-  "chart-1": "bg-chart-1/12 text-chart-1",
-  "chart-2": "bg-chart-2/12 text-chart-2",
-  "chart-3": "bg-chart-3/12 text-chart-3",
-  "chart-5": "bg-chart-5/12 text-chart-5",
-} as const
-
-const glowClasses = {
-  "chart-1": "bg-chart-1",
-  "chart-2": "bg-chart-2",
-  "chart-3": "bg-chart-3",
-  "chart-5": "bg-chart-5",
-} as const
-
-function StatCard({
-  icon: Icon,
-  tone,
-  label,
-  value,
-  unit,
-  hint,
-  active,
-  onClick,
-}: {
-  icon: typeof Package
-  tone: keyof typeof toneClasses
-  label: string
-  value: ReactNode | null
-  unit?: string
-  hint?: string
-  active?: boolean
-  onClick?: () => void
-}) {
-  return (
-    <FadeUp className="h-full">
-      <div
-        role={onClick ? "button" : undefined}
-        onClick={onClick}
-        className={cn(
-          "relative flex h-full items-start gap-4 overflow-hidden rounded-2xl border bg-card p-5 shadow-sm",
-          "transition-[transform,border-color,box-shadow] duration-200 ease-(--ease-out-quint)",
-          onClick && "cursor-pointer hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-lg active:translate-y-0 active:scale-[0.99]",
-          active && "border-chart-3/60 ring-1 ring-chart-3/40",
-        )}
-      >
-        {/* 카드 오른쪽 위의 은은한 색 번짐 (움직이지 않음) */}
-        <div
-          aria-hidden
-          className={cn("pointer-events-none absolute -top-12 -right-12 size-32 rounded-full opacity-[0.07] blur-2xl", glowClasses[tone])}
-        />
-        <div className={cn("relative flex size-10 shrink-0 items-center justify-center rounded-xl", toneClasses[tone])}>
-          <Icon className="size-5" />
-        </div>
-        <div className="relative min-w-0">
-          <p className="text-sm text-muted-foreground">{label}</p>
-          {value == null ? (
-            <Skeleton className="mt-1.5 h-7 w-20" />
-          ) : (
-            <p className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums">
-              {value}
-              {unit && <span className="ml-0.5 text-base font-medium text-muted-foreground">{unit}</span>}
-            </p>
-          )}
-          {hint && <p className="mt-1 truncate text-xs text-muted-foreground">{hint}</p>}
-        </div>
-      </div>
-    </FadeUp>
-  )
-}
-
-function ViewToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
-  const options = [
-    { value: "list" as const, icon: List, label: "목록 보기" },
-    { value: "grid" as const, icon: LayoutGrid, label: "카드 보기" },
-  ]
-  return (
-    <div className="flex h-9 items-center rounded-lg border bg-background/60 p-0.5" role="radiogroup" aria-label="보기 방식">
-      {options.map((o) => (
-        <button
-          key={o.value}
-          type="button"
-          role="radio"
-          aria-checked={value === o.value}
-          aria-label={o.label}
-          title={o.label}
-          onClick={() => onChange(o.value)}
-          className={cn(
-            "relative flex h-full w-8 items-center justify-center rounded-md transition-colors",
-            value === o.value ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-          )}
-        >
-          {value === o.value && (
-            <motion.span
-              layoutId="view-toggle"
-              className="absolute inset-0 rounded-md bg-muted shadow-sm"
-              transition={{ type: "spring", duration: 0.3, bounce: 0.15 }}
-            />
-          )}
-          <o.icon className="relative size-4" />
-        </button>
-      ))}
-    </div>
   )
 }

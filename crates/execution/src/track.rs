@@ -5,17 +5,25 @@
 //! 프로세스 스냅샷을 주기적으로 찍어, 추적 중인 프로세스를 부모로 둔 새 프로세스를 계속 편입한다.
 
 use std::collections::HashMap;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use windows::Win32::Foundation::CloseHandle;
+
+use crate::ignore::is_ignored;
 use windows::Win32::System::Diagnostics::ToolHelp::{
     CreateToolhelp32Snapshot, PROCESSENTRY32W, Process32FirstW, Process32NextW, TH32CS_SNAPPROCESS,
 };
 
 const POLL: Duration = Duration::from_millis(250);
 
-/// pid → 부모 pid
-fn snapshot() -> HashMap<u32, u32> {
+struct Proc {
+    ppid: u32,
+    exe: String,
+}
+
+/// pid → (부모 pid, 실행 파일 이름)
+fn snapshot() -> HashMap<u32, Proc> {
     let mut map = HashMap::new();
     unsafe {
         let Ok(snap) = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0) else {
@@ -27,7 +35,18 @@ fn snapshot() -> HashMap<u32, u32> {
         };
         if Process32FirstW(snap, &mut entry).is_ok() {
             loop {
-                map.insert(entry.th32ProcessID, entry.th32ParentProcessID);
+                let len = entry
+                    .szExeFile
+                    .iter()
+                    .position(|&c| c == 0)
+                    .unwrap_or(entry.szExeFile.len());
+                map.insert(
+                    entry.th32ProcessID,
+                    Proc {
+                        ppid: entry.th32ParentProcessID,
+                        exe: String::from_utf16_lossy(&entry.szExeFile[..len]),
+                    },
+                );
                 if Process32NextW(snap, &mut entry).is_err() {
                     break;
                 }
@@ -40,28 +59,40 @@ fn snapshot() -> HashMap<u32, u32> {
 
 /// `root_pid`와 그 자손이 모두 끝날 때까지 기다린다. 살아 있는 개수가 바뀔 때마다 `on_count`를 부른다.
 ///
-/// pid는 재사용될 수 있으므로 (pid, 부모 pid) 쌍으로 추적한다. 같은 pid라도 부모가 다르면 다른 프로세스다.
-/// 최상위 프로세스는 호출자가 핸들을 쥐고 있어 pid가 재사용되지 않는다.
-pub fn wait_for_tree(root_pid: u32, mut on_count: impl FnMut(usize)) {
+/// - pid는 재사용될 수 있으므로 (pid, 부모 pid) 쌍으로 추적한다. 같은 pid라도 부모가 다르면 다른 프로세스다.
+///   최상위 프로세스는 호출자가 핸들을 쥐고 있어 pid가 재사용되지 않는다.
+/// - 콘솔 호스트·설문 브라우저처럼 기다릴 필요 없는 프로세스는 세지 않는다(그 자식도 따라가지 않음).
+/// - `stop`이 켜지면(사용자가 "기다리지 않고 확인") 바로 돌아간다.
+pub fn wait_for_tree(
+    root_pid: u32,
+    target_name: &str,
+    stop: &AtomicBool,
+    mut on_count: impl FnMut(usize),
+) {
     // 살아 있는 추적 대상: pid → 처음 봤을 때의 부모 pid (최상위는 None)
     let mut alive: HashMap<u32, Option<u32>> = HashMap::from([(root_pid, None)]);
     let mut ever_seen: Vec<u32> = vec![root_pid];
     let mut last_count = 0;
 
     loop {
+        if stop.load(Ordering::Relaxed) {
+            return;
+        }
         let procs = snapshot();
 
         // 추적 중이었던 프로세스의 자식을 편입한다. 부모가 이미 끝났어도 자식의 ppid 값은 남아 있다.
-        for (&pid, &ppid) in &procs {
-            if ever_seen.contains(&ppid) && !ever_seen.contains(&pid) && pid != ppid {
+        for (&pid, proc) in &procs {
+            if ever_seen.contains(&proc.ppid) && !ever_seen.contains(&pid) && pid != proc.ppid {
                 ever_seen.push(pid);
-                alive.insert(pid, Some(ppid));
+                if !is_ignored(&proc.exe, target_name) {
+                    alive.insert(pid, Some(proc.ppid));
+                }
             }
         }
 
         alive.retain(|pid, expected_ppid| match procs.get(pid) {
             None => false,
-            Some(actual) => expected_ppid.is_none_or(|e| e == *actual),
+            Some(actual) => expected_ppid.is_none_or(|e| e == actual.ppid),
         });
 
         if alive.len() != last_count {
