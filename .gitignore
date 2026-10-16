@@ -1,0 +1,26 @@
+# Node / Vite
+node_modules/
+dist/
+*.local
+.vite/
+
+# Rust / Tauri
+target/
+src-tauri/gen/schemas/
+
+# Logs
+*.log
+npm-debug.log*
+pnpm-debug.log*
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Editor / OS
+.vscode/*
+!.vscode/extensions.json
+.idea/
+.DS_Store
+Thumbs.db
