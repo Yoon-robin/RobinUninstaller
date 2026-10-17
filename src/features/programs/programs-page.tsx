@@ -6,10 +6,12 @@ import {
   HardDrive,
   LayoutGrid,
   List,
+  ListChecks,
   Package,
   RefreshCw,
   Search,
   SearchX,
+  Trash2,
   TriangleAlert,
   X,
 } from "lucide-react"
@@ -39,6 +41,7 @@ import { LIST_GRID, ProgramRow } from "./program-row"
 import { FilterChips, IconSegmented } from "./segmented"
 import { StatCard } from "./stat-card"
 import { UninstallDialog } from "./uninstall-dialog"
+import { BatchUninstallDialog } from "./batch-uninstall-dialog"
 import { LeftoversDialog, type LeftoverTarget } from "@/features/leftovers/leftovers-dialog"
 
 type ViewMode = "list" | "grid"
@@ -68,6 +71,9 @@ export function ProgramsPage() {
   const [leftoversTarget, setLeftoversTarget] = useState<LeftoverTarget | null>(null)
   // 방금 제거된 항목. 목록에서 빠질 때만 접히는 모션을 준다.
   const [removingId, setRemovingId] = useState<string | null>(null)
+  // 여러 개 골라 한꺼번에 제거: 고르는 중이면 Set (아니면 null)
+  const [picked, setPicked] = useState<Set<string> | null>(null)
+  const [batch, setBatch] = useState<InstalledApplication[] | null>(null)
   const searchRef = useRef<HTMLInputElement>(null)
   const apps = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
 
@@ -139,6 +145,19 @@ export function ProgramsPage() {
     onFindLeftovers: (app: InstalledApplication) =>
       setLeftoversTarget({ id: app.id, name: app.displayName, removed: false }),
   }
+  const markRemoved = (app: InstalledApplication) => {
+    setRemovingId(app.id)
+    setTimeout(() => setRemovingId((id) => (id === app.id ? null : id)), 1500)
+    setSelected((current) => (current?.id === app.id ? null : current))
+  }
+  const togglePick = (app: InstalledApplication) =>
+    setPicked((p) => {
+      if (!p) return p
+      const next = new Set(p)
+      if (next.has(app.id)) next.delete(app.id)
+      else next.add(app.id)
+      return next
+    })
   const resetFilters = () => {
     setQuery("")
     setFilter("all")
@@ -253,7 +272,18 @@ export function ProgramsPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
-              <IconSegmented options={viewOptions} value={view} onChange={setView} layoutId="view-toggle" />
+              <Button
+                variant={picked ? "default" : "outline"}
+                className="h-9 rounded-lg"
+                onClick={() => setPicked((p) => (p ? null : new Set()))}
+                aria-pressed={picked != null}
+              >
+                <ListChecks />
+                {picked ? "고르기 끝내기" : "여러 개 제거"}
+              </Button>
+              {!picked && (
+                <IconSegmented options={viewOptions} value={view} onChange={setView} layoutId="view-toggle" />
+              )}
               <IconTooltip label="새로고침">
                 <Button
                   variant="outline"
@@ -271,7 +301,7 @@ export function ProgramsPage() {
               <FilterChips options={quickFilters} value={filter} counts={stats.counts} onChange={setFilter} />
             </div>
 
-            {view === "list" && visible.length > 0 && (
+            {(view === "list" || picked) && visible.length > 0 && (
               <div
                 className={cn(LIST_GRID, "border-t bg-muted/30 px-5 py-2 text-xs font-medium text-muted-foreground")}
               >
@@ -333,7 +363,7 @@ export function ProgramsPage() {
                 exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.1 } }}
                 transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
               >
-                {view === "list" ? (
+                {view === "list" || picked ? (
                   <div className="divide-y">
                     <AnimatePresence initial={false}>
                       {visible.map((app, i) => (
@@ -344,6 +374,8 @@ export function ProgramsPage() {
                           query={query}
                           removing={app.id === removingId}
                           introIndex={intro && i < 16 ? i : undefined}
+                          picked={picked ? picked.has(app.id) : undefined}
+                          onPick={togglePick}
                           {...handlers}
                         />
                       ))}
@@ -368,13 +400,58 @@ export function ProgramsPage() {
         app={uninstallTarget}
         onClose={() => setUninstallTarget(null)}
         onFindLeftovers={(app) => setLeftoversTarget({ id: app.id, name: app.displayName, removed: true })}
-        onRemoved={(app) => {
-          setRemovingId(app.id)
-          setTimeout(() => setRemovingId((id) => (id === app.id ? null : id)), 1500)
-          setSelected((current) => (current?.id === app.id ? null : current))
-        }}
+        onRemoved={markRemoved}
       />
       <LeftoversDialog target={leftoversTarget} onClose={() => setLeftoversTarget(null)} />
+      <BatchUninstallDialog
+        apps={batch}
+        onClose={() => setBatch(null)}
+        onRemoved={markRemoved}
+        onFindLeftovers={(app) => {
+          setBatch(null)
+          setLeftoversTarget({ id: app.id, name: app.displayName, removed: true })
+        }}
+      />
+
+      {/* 고르는 중이면 아래에 떠 있는 작업 막대 */}
+      <AnimatePresence>
+        {picked && (
+          <motion.div
+            initial={{ opacity: 0, y: 16 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: 16, transition: { duration: 0.15 } }}
+            transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
+            className="sticky bottom-4 z-20 mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border bg-popover/95 px-4 py-3 shadow-lg backdrop-blur-xl"
+          >
+            <p className="mr-auto text-sm tabular-nums">
+              {picked.size > 0 ? `${picked.size}개 선택` : "제거할 프로그램을 눌러 고르세요"}
+            </p>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setPicked(new Set(visible.map((a) => a.id)))}
+              disabled={visible.length === 0}
+            >
+              보이는 것 모두
+            </Button>
+            <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())} disabled={picked.size === 0}>
+              선택 해제
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              disabled={picked.size === 0}
+              onClick={() => {
+                setBatch(all.filter((a) => picked.has(a.id)))
+                setPicked(null)
+              }}
+            >
+              <Trash2 />
+              선택한 프로그램 제거
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </Stagger>
   )
 }

@@ -1,5 +1,5 @@
 import { forwardRef, type CSSProperties } from "react"
-import { MoreHorizontal, TriangleAlert } from "lucide-react"
+import { Check, MoreHorizontal, TriangleAlert } from "lucide-react"
 import { motion } from "motion/react"
 
 import { needsForce, type InstalledApplication } from "@/lib/api"
@@ -28,10 +28,13 @@ type Props = {
   removing: boolean
   /** 첫 등장 애니메이션 순서. undefined면 애니메이션 없음. */
   introIndex?: number
+  /** 여러 개 고르는 중이면 선택 상태 (undefined면 고르는 중이 아님). 이때 행을 누르면 열지 않고 선택을 바꾼다. */
+  picked?: boolean
+  onPick?: (app: InstalledApplication) => void
 } & AppActionHandlers
 
 export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
-  { app, maxKb, query, removing, introIndex, ...handlers },
+  { app, maxKb, query, removing, introIndex, picked, onPick, ...handlers },
   ref,
 ) {
   // 큰 프로그램 몇 개가 막대를 독차지하지 않도록 제곱근 비율로 그린다.
@@ -44,13 +47,15 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
         <div
           role="button"
           tabIndex={0}
-          onClick={() => handlers.onSelect(app)}
+          aria-pressed={picked}
+          onClick={() => (picked == null ? handlers.onSelect(app) : onPick?.(app))}
           onKeyDown={(e) => {
             // 안쪽 버튼·메뉴에서 누른 키는 행 열기로 처리하지 않는다 (메뉴는 포털이라 이벤트가 여기까지 올라온다)
             if (e.target !== e.currentTarget) return
             if (e.key === "Enter" || e.key === " ") {
               e.preventDefault()
-              handlers.onSelect(app)
+              if (picked == null) handlers.onSelect(app)
+              else onPick?.(app)
             }
           }}
           style={introStyle}
@@ -59,9 +64,21 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
             introIndex != null && "row-intro",
             "group cursor-pointer px-5 py-2.5 text-sm transition-colors outline-none",
             "hover:bg-accent/40 focus-visible:bg-accent/50 data-[state=open]:bg-accent/40",
+            picked && "bg-primary/8 hover:bg-primary/12",
           )}
         >
           <div className="flex min-w-0 items-center gap-3">
+            {picked != null && (
+              <span
+                aria-hidden
+                className={cn(
+                  "flex size-4 shrink-0 items-center justify-center rounded-[4px] border transition-colors",
+                  picked ? "border-primary bg-primary text-primary-foreground" : "border-input",
+                )}
+              >
+                {picked && <Check className="size-3" strokeWidth={3} />}
+              </span>
+            )}
             <AppIcon app={app} />
             <div className="min-w-0">
               <div className="flex items-center gap-2">
