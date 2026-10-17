@@ -1,0 +1,18 @@
+[package]
+name = "robin-tracker"
+description = "설치 추적: 설치 전후 스냅샷을 비교해 새로 생긴 파일·레지스트리를 기록한다 (읽기 전용)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+robin-discovery.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"
+
+[dev-dependencies]
+robin-core.workspace = true
+robin-scanner.workspace = true

@@ -33,6 +33,8 @@ pub enum Evidence {
     PartialName,
     /// 게시자 폴더인데 안에 다른 제품이 남아 있지 않음
     EmptyPublisherFolder,
+    /// 설치 추적 기록에서 이 프로그램을 설치할 때 생긴 것으로 확인됨
+    TrackedInstall,
     /// 다른 설치된 프로그램도 쓰는 것으로 보임 (감점)
     #[serde(rename_all = "camelCase")]
     SharedWithOtherApp { app_name: String },
@@ -45,6 +47,7 @@ impl Evidence {
     pub fn weight(&self) -> i32 {
         match self {
             Evidence::UninstallEntry => 95,
+            Evidence::TrackedInstall => 90,
             Evidence::MsiProductCode => 90,
             Evidence::InstallLocation => 85,
             Evidence::PointsIntoInstallLocation => 80,
@@ -149,6 +152,15 @@ impl Leftover {
             score,
             confidence,
             note: None,
+        }
+    }
+
+    /// 근거를 더하고 점수·분류를 다시 계산한다 (같은 항목을 다른 방법으로도 찾았을 때).
+    pub fn add_evidence(&mut self, evidence: Evidence) {
+        if !self.evidence.contains(&evidence) {
+            self.evidence.push(evidence);
+            self.score = score(&self.evidence);
+            self.confidence = classify(&self.evidence);
         }
     }
 }

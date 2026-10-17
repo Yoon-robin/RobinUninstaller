@@ -100,6 +100,14 @@ pnpm tauri dev    # 앱 실행
 - Wine에서 `startup_cleanup_fixture` 통과, 화면은 가짜 응답으로 캡처 확인. **Windows에서 확인할 것:** 앱에서 테스트 앱의
   `RobinGhostTool`·`Robin Ghost Tool` 정리 → 복구 기록에서 되돌리기. 실제 프로그램의 시작 항목은 정리하지 않는다.
 
+### Phase 6 설치 추적 1차 — 작성 (2026-10-17, 클라우드, 브랜치 `claude/force-uninstall`)
+
+- 설치 추적 화면(추적 시작 → 설치 끝남 → 항목 고르고 저장, 기록 목록)과 `crates/tracker`, 잔여물 스캔의 `TrackedInstall` 근거.
+  자세한 내용은 PLAN.md "Phase 6 구현 메모".
+- Wine에서 `track_fixture` 통과(스냅샷 3초 이내), 화면은 가짜 응답으로 캡처 확인.
+- **Windows에서 확인할 것:** 실제 PC에서 스냅샷 시간(Program Files·AppData가 크면 오래 걸릴 수 있음), 추적 중 다른 프로그램 변경이
+  얼마나 섞이는지, 앱에서 테스트 앱 설치를 추적 → 저장 → 테스트 앱 제거 후 잔여물 스캔에 "설치 추적 기록에 있음" 근거가 보이는지.
+
 ### 다음 단계 후보
 
 - Phase 5 나머지: SYSTEM 예약 작업의 UAC 끄기·켜기 시험

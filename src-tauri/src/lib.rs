@@ -2,6 +2,7 @@
 //!
 //! 프론트엔드는 경로가 아니라 앱 ID만 넘긴다. 경로는 항상 엔진이 읽어 둔 목록에서 찾는다.
 
+mod tracking;
 pub mod worker;
 
 use std::collections::HashMap;
@@ -781,6 +782,7 @@ fn supports_mica() -> bool {
 pub fn run() {
     tauri::Builder::default()
         .manage(AppCache::default())
+        .manage(tracking::TrackingState::default())
         .setup(|app| {
             if supports_mica()
                 && let Some(window) = app.get_webview_window("main")
@@ -819,6 +821,13 @@ pub fn run() {
             get_startup_icon,
             set_startup_enabled,
             clean_missing_startup,
+            tracking::tracking_status,
+            tracking::start_tracking,
+            tracking::cancel_tracking,
+            tracking::finish_tracking,
+            tracking::save_trace,
+            tracking::list_traces,
+            tracking::delete_trace,
             reveal_startup_item,
             disk_usage,
             scan_storage,

@@ -26,7 +26,7 @@ const mainItems: Item[] = [
   { page: "leftovers", label: "잔여물 정리", icon: Sparkles },
   { page: "storage", label: "저장공간", icon: HardDrive },
   { page: "startup", label: "시작프로그램", icon: Rocket },
-  { page: "tracking", label: "설치 추적", icon: Radar, soon: true },
+  { page: "tracking", label: "설치 추적", icon: Radar },
 ]
 
 const toolItems: Item[] = [

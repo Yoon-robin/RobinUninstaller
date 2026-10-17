@@ -18,6 +18,8 @@ mod files;
 mod registry;
 #[cfg(windows)]
 mod startup;
+#[cfg(windows)]
+mod tracked;
 
 pub use context::ScanContext;
 pub use model::{Confidence, Evidence, Leftover, LeftoverKind, ScanReport};
@@ -62,10 +64,24 @@ pub fn finalize(
 }
 
 /// 스캔한다. `installed`는 지금 설치된 전체 목록(공유 여부 판단용), `app`은 대상(이미 제거됐을 수 있음).
+/// 이 프로그램과 연결된 설치 추적 기록이 있으면 함께 쓴다.
 #[cfg(windows)]
 pub fn scan(
     app: &robin_core::InstalledApplication,
     installed: &[robin_core::InstalledApplication],
+) -> ScanReport {
+    let traces = robin_tracker::TraceStore::default_location()
+        .map(|s| s.for_app(&app.id))
+        .unwrap_or_default();
+    scan_with_traces(app, installed, &traces)
+}
+
+/// `scan`과 같지만 설치 추적 기록을 직접 넘긴다 (예제·시험용).
+#[cfg(windows)]
+pub fn scan_with_traces(
+    app: &robin_core::InstalledApplication,
+    installed: &[robin_core::InstalledApplication],
+    traces: &[robin_tracker::Trace],
 ) -> ScanReport {
     let started = std::time::Instant::now();
     let ctx = ScanContext::new(app, installed, protect::KnownFolders::from_env());
@@ -74,6 +90,7 @@ pub fn scan(
     files::scan(&ctx, &mut items, &mut protected);
     registry::scan(&ctx, &mut items, &mut protected);
     startup::scan(&ctx, &mut items, &mut protected);
+    tracked::scan(&ctx, traces, &mut items, &mut protected);
     finalize(
         app.display_name.clone(),
         items,

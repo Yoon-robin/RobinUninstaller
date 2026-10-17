@@ -2589,6 +2589,7 @@ dependencies = [
  "robin-discovery",
  "robin-execution",
  "robin-startup",
+ "robin-tracker",
  "serde",
  "winreg 0.55.0",
 ]
@@ -2615,6 +2616,18 @@ dependencies = [
 ]
 
 [[package]]
+name = "robin-tracker"
+version = "0.1.0"
+dependencies = [
+ "robin-core",
+ "robin-discovery",
+ "robin-scanner",
+ "serde",
+ "serde_json",
+ "winreg 0.55.0",
+]
+
+[[package]]
 name = "robin-uninstaller"
 version = "0.1.0"
 dependencies = [
@@ -2625,6 +2638,7 @@ dependencies = [
  "robin-scanner",
  "robin-startup",
  "robin-storage",
+ "robin-tracker",
  "serde",
  "serde_json",
  "tauri",

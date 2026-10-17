@@ -82,6 +82,7 @@ export type Evidence =
   | { kind: "exactName" }
   | { kind: "partialName" }
   | { kind: "emptyPublisherFolder" }
+  | { kind: "trackedInstall" }
   | { kind: "sharedWithOtherApp"; appName: string }
   | { kind: "containsUserDocuments"; count: number }
 
@@ -255,4 +256,42 @@ export const storageApi = {
 /** 다른 화면으로 이동 요청 (App이 받아 처리). */
 export function navigate(page: "programs" | "leftovers" | "restore") {
   window.dispatchEvent(new CustomEvent("robin:navigate", { detail: page }))
+}
+
+// crates/tracker 의 Change / Trace / TraceDraft 와 맞춰야 한다.
+export type ChangeKind = "folder" | "file" | "registryKey" | "registryValue"
+
+export interface TrackedChange {
+  kind: ChangeKind
+  location: string
+  valueName: string | null
+}
+
+export interface TraceDraft {
+  startedAt: number
+  finishedAt: number
+  changes: TrackedChange[]
+  newAppIds: string[]
+  newApps: { id: string; name: string }[]
+}
+
+export interface Trace {
+  id: string
+  name: string
+  startedAt: number
+  finishedAt: number
+  appIds: string[]
+  changes: TrackedChange[]
+}
+
+export const trackingApi = {
+  /** 추적 중이면 시작 시각(초) */
+  status: () => invoke<number | null>("tracking_status"),
+  start: () => invoke<number>("start_tracking"),
+  cancel: () => invoke<void>("cancel_tracking"),
+  finish: () => invoke<TraceDraft>("finish_tracking"),
+  /** `keep`: 비교 결과에서 남길 항목 번호 */
+  save: (name: string, keep: number[], appIds: string[]) => invoke<Trace>("save_trace", { name, keep, appIds }),
+  list: () => invoke<Trace[]>("list_traces"),
+  delete: (id: string) => invoke<void>("delete_trace", { id }),
 }

@@ -187,7 +187,7 @@ fn push(
 }
 
 /// 폴더 크기와 문서 파일 수 (최대 WALK_LIMIT개까지만 센다).
-fn measure(dir: &Path) -> (u64, usize) {
+pub(crate) fn measure(dir: &Path) -> (u64, usize) {
     let mut size = 0u64;
     let mut docs = 0usize;
     let mut stack = vec![dir.to_path_buf()];

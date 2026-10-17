@@ -1,4 +1,4 @@
-import { Check, Radar, Settings, type LucideIcon } from "lucide-react"
+import { Check, Settings, type LucideIcon } from "lucide-react"
 
 import { FadeUp, Stagger } from "@/components/motion"
 import type { Page } from "@/components/app-sidebar"
@@ -11,14 +11,7 @@ type Info = {
   points: string[]
 }
 
-const pages: Record<Exclude<Page, "programs" | "leftovers" | "restore" | "startup" | "storage">, Info> = {
-  tracking: {
-    icon: Radar,
-    title: "설치 추적",
-    description: "설치하는 동안 무엇이 바뀌었는지 기록해 두었다가, 나중에 흔적 없이 깨끗하게 지워요.",
-    phase: "Phase 6",
-    points: ["설치 전후 스냅샷 비교", "다른 프로그램의 변경과 구분", "추적 기록 기반 완전 제거"],
-  },
+const pages: Record<Exclude<Page, "programs" | "leftovers" | "restore" | "startup" | "storage" | "tracking">, Info> = {
   settings: {
     icon: Settings,
     title: "설정",
@@ -31,7 +24,7 @@ const pages: Record<Exclude<Page, "programs" | "leftovers" | "restore" | "startu
 export function ComingSoonPage({
   page,
 }: {
-  page: Exclude<Page, "programs" | "leftovers" | "restore" | "startup" | "storage">
+  page: Exclude<Page, "programs" | "leftovers" | "restore" | "startup" | "storage" | "tracking">
 }) {
   const info = pages[page]
   const Icon = info.icon
