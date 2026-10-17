@@ -138,9 +138,16 @@ pnpm tauri dev    # 앱 실행
 - **Windows에서 확인할 것 (읽기 전용):** `cargo run -p robin-discovery --example store_apps`로 계산기·터미널 같은 앱이 이름·게시자·날짜와 함께 나오는지,
   Windows 구성 요소(ShellExperienceHost 등)와 프레임워크(VCLibs 등)가 빠졌는지, 아이콘 개수가 대부분 잡히는지. 앱 화면의 "Store 앱" 탭과 설정 열기 버튼.
 
+### 설치 폴더 크기 직접 재기 — 작성 (2026-10-17, 클라우드, 브랜치 `claude/install-sizes`)
+
+- 크기 기록이 없는 프로그램만 설치 폴더를 재서 보여 준다(PLAN.md "설치 폴더 크기 직접 재기"). Wine에서 `size_fixture` 통과, 화면은 가짜 응답으로 캡처 확인.
+- **Windows에서 확인할 것 (읽기 전용):** `robin-fixture install` → `cargo run -p robin-scanner --example size_fixture` → `robin-fixture remove`.
+  출력되는 실제 대상 목록에 이상한 위치(너무 넓은 폴더)가 없는지, 앱 화면에서 `*` 표시된 크기가 탐색기 속성의 크기와 비슷한지.
+
 ### 다음 단계 후보
 
 - Phase 5 나머지: SYSTEM 예약 작업의 UAC 끄기·켜기 시험
-- 시스템 복원 지점, 서비스 정리(중지·삭제), 오래된 백업 자동 정리
-- Phase 6: 설치 추적(스냅샷 비교 → ETW, 커널 드라이버는 쓰지 않음)
+- 시스템 복원 지점, 서비스 정리(중지·삭제)
+- Store 앱 직접 제거: 테스트용 MSIX(자체 서명, 개발자 모드)를 fixture에 먼저 만든다
+- Phase 6 다음: 설치 추적을 ETW로 (커널 드라이버는 쓰지 않음)
 - 배포: 코드 서명, NSIS 설치 파일(`pnpm tauri build`)

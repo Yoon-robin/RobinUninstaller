@@ -96,7 +96,13 @@ const GridCard = forwardRef<HTMLDivElement, CardProps>(function GridCard(
             </p>
           </div>
           <div className="mt-auto flex w-full items-center justify-between gap-2 text-xs">
-            <span className="text-muted-foreground tabular-nums">{formatSize(app.estimatedSizeKb)}</span>
+            <span
+              className="text-muted-foreground tabular-nums"
+              title={app.sizeMeasured ? "크기 기록이 없어 설치 폴더를 직접 잰 크기예요" : undefined}
+            >
+              {formatSize(app.estimatedSizeKb)}
+              {app.sizeMeasured && "*"}
+            </span>
             <span className="flex gap-1">
               <span className="rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
                 {app.technology.toUpperCase()}

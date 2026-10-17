@@ -33,6 +33,7 @@ fixture() { wine "$D/robin-fixture.exe" "$@" >/dev/null 2>&1; }
 CASES=(
   "robin-execution uninstall_fixture install"
   "robin-scanner scan_fixture install"
+  "robin-scanner size_fixture install"
   "robin-recovery clean_fixture install"
   "robin-recovery force_fixture install --broken"
   "robin-recovery startup_cleanup_fixture install"

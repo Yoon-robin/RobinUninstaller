@@ -80,6 +80,13 @@ export function ProgramsPage() {
   const searchRef = useRef<HTMLInputElement>(null)
   const apps = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
   const storeApps = useQuery({ queryKey: ["store-apps"], queryFn: storeApi.list })
+  // 크기 기록이 없는 프로그램은 설치 폴더를 직접 잰다 (목록을 다시 읽을 때마다)
+  const sizes = useQuery({
+    queryKey: ["app-sizes", apps.dataUpdatedAt],
+    queryFn: api.measureAppSizes,
+    enabled: apps.data != null,
+    staleTime: Infinity,
+  })
 
   const setView = (next: ViewMode) => {
     setViewState(next)
@@ -90,7 +97,14 @@ export function ProgramsPage() {
     }
   }
 
-  const all = apps.data ?? []
+  const all = useMemo(
+    () =>
+      (apps.data ?? []).map((a) => {
+        const measured = sizes.data?.[a.id]
+        return !a.estimatedSizeKb && measured ? { ...a, estimatedSizeKb: measured, sizeMeasured: true } : a
+      }),
+    [apps.data, sizes.data],
+  )
   const visible = useMemo(
     () => all.filter((a) => matchesFilter(a, filter) && matchesQuery(a, query)).sort((a, b) => compareApps(a, b, sort)),
     [all, query, sort, filter],
@@ -102,6 +116,7 @@ export function ProgramsPage() {
       totalKb: all.reduce((sum, a) => sum + (a.estimatedSizeKb ?? 0), 0),
       maxKb: Math.max(1, ...all.map((a) => a.estimatedSizeKb ?? 0)),
       msi: all.filter((a) => a.technology === "msi").length,
+      measured: all.filter((a) => a.sizeMeasured).length,
       // 칩 옆 숫자는 검색어까지 반영한다.
       counts: Object.fromEntries(
         quickFilters.map((f) => [f.key, all.filter((a) => matchesFilter(a, f.key) && matchesQuery(a, query)).length]),
@@ -212,7 +227,13 @@ export function ProgramsPage() {
               tone="chart-2"
               label="전체 예상 용량"
               value={loading ? null : <CountUp value={stats.totalKb} format={formatSize} />}
-              hint="설치 프로그램이 기록한 크기 기준"
+              hint={
+                sizes.isFetching
+                  ? "기록이 없는 프로그램의 크기를 재는 중…"
+                  : stats.measured > 0
+                    ? `기록한 크기 + 직접 잰 ${stats.measured}개`
+                    : "설치 프로그램이 기록한 크기 기준"
+              }
             />
             <StatCard
               icon={TriangleAlert}

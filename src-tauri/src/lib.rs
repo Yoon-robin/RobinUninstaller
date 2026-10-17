@@ -100,6 +100,31 @@ async fn get_app_icon(id: String, cache: State<'_, AppCache>) -> Result<Option<S
     Ok(icon)
 }
 
+/// 크기 기록이 없는 프로그램의 설치 폴더 크기 (앱 ID → KB, 읽기 전용).
+/// 보호 경로와 여러 프로그램이 같이 쓰는 폴더는 재지 않는다.
+#[tauri::command]
+async fn measure_app_sizes(cache: State<'_, AppCache>) -> Result<HashMap<String, u64>, String> {
+    let apps: Vec<InstalledApplication> = cache
+        .apps
+        .lock()
+        .map(|m| m.values().cloned().collect())
+        .unwrap_or_default();
+    tauri::async_runtime::spawn_blocking(move || {
+        #[cfg(windows)]
+        return robin_scanner::install_size::install_sizes(
+            &apps,
+            &robin_scanner::protect::KnownFolders::from_env(),
+        );
+        #[cfg(not(windows))]
+        {
+            let _ = apps;
+            HashMap::new()
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())
+}
+
 /// Microsoft Store·MSIX 앱 목록 (읽기 전용).
 #[tauri::command]
 async fn list_store_apps(cache: State<'_, AppCache>) -> Result<Vec<StoreApp>, String> {
@@ -925,6 +950,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             list_installed_apps,
             get_app_icon,
+            measure_app_sizes,
             list_store_apps,
             get_store_app_icon,
             open_apps_settings,

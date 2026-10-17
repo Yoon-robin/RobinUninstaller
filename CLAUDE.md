@@ -34,6 +34,7 @@ cargo run -p robin-fixture -- install [--cancel|--hang|--machine|--broken]   # �
 cargo run -p robin-fixture -- remove
 cargo run -p robin-execution --example uninstall_fixture
 cargo run -p robin-scanner --example scan_fixture
+cargo run -p robin-scanner --example size_fixture     # 설치 폴더 크기 재기 (먼저 robin-fixture install)
 cargo run -p robin-discovery --example store_apps     # Store·MSIX 앱 목록 (읽기 전용)
 cargo run -p robin-recovery --example clean_fixture
 cargo run -p robin-recovery --example force_fixture   # install --broken 뒤 강제 제거 → 복원

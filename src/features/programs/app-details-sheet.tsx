@@ -81,7 +81,10 @@ export function AppDetailsSheet({
             {/* 패널이 열릴 때 묶음이 차례로 떠오른다. key로 다른 앱을 열 때마다 다시 재생. */}
             <Stagger key={app.id} className="flex flex-col gap-5 overflow-y-auto px-6 py-5">
               <Section title="개요">
-                <Field label="크기">{formatSize(app.estimatedSizeKb)}</Field>
+                <Field label="크기">
+                  {formatSize(app.estimatedSizeKb)}
+                  {app.sizeMeasured && <span className="text-muted-foreground"> (설치 폴더를 직접 잰 크기)</span>}
+                </Field>
                 <Field label="설치일">{formatInstallDate(app.installDate)}</Field>
                 <Field label="설치 형식">{app.technology.toUpperCase()}</Field>
                 <Field label="설치 범위">{scopeLabels[app.scope]}</Field>

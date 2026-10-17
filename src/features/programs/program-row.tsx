@@ -98,7 +98,13 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
           </span>
 
           <div className="flex flex-col gap-1">
-            <span className="tabular-nums">{formatSize(app.estimatedSizeKb)}</span>
+            <span
+              className="tabular-nums"
+              title={app.sizeMeasured ? "크기 기록이 없어 설치 폴더를 직접 잰 크기예요" : undefined}
+            >
+              {formatSize(app.estimatedSizeKb)}
+              {app.sizeMeasured && <span className="ml-0.5 text-muted-foreground">*</span>}
+            </span>
             {sizeRatio > 0 && (
               <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
                 <div

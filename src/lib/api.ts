@@ -20,6 +20,8 @@ export interface InstalledApplication {
   technology: InstallTechnology
   scope: InstallScope
   uninstaller: UninstallerStatus
+  /** 화면 전용: 크기 기록이 없어 설치 폴더를 직접 잰 값으로 채웠는지 */
+  sizeMeasured?: boolean
 }
 
 // crates/core 의 StoreApp 과 맞춰야 한다.
@@ -64,6 +66,8 @@ export const api = {
     return invoke<UninstallOutcome>("uninstall_app", { id, onEvent: channel })
   },
   stopWaitingUninstall: () => invoke<void>("stop_waiting_uninstall"),
+  /** 크기 기록이 없는 프로그램의 설치 폴더 크기 (앱 ID → KB) */
+  measureAppSizes: () => invoke<Record<string, number>>("measure_app_sizes"),
 }
 
 /** 실제로 실행될 명령 (화면 표시용). crates/execution 의 plan_for 와 같은 규칙. */

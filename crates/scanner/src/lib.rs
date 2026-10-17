@@ -7,6 +7,7 @@
 //! 4. 분류: 확실(기본 선택) / 검토 / 낮음(숨김)
 
 mod context;
+pub mod install_size;
 pub mod model;
 pub mod msi_guid;
 pub mod names;
