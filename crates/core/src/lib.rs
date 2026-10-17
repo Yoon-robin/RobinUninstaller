@@ -61,6 +61,43 @@ pub struct InstalledApplication {
     pub uninstaller: UninstallerStatus,
 }
 
+/// Microsoft Store·MSIX 앱을 어디서 받았는지 (패키지 서명 종류).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum PackageSource {
+    /// Microsoft Store에서 받음
+    Store,
+    /// 회사·개발사가 직접 배포한 MSIX
+    Sideloaded,
+    /// 개발자 모드로 등록한 패키지
+    Developer,
+}
+
+/// Microsoft Store·MSIX 앱 하나 (현재 사용자 기준, 읽기 전용 목록).
+///
+/// Windows 기본 구성 요소(시스템 서명)와 프레임워크·리소스 패키지는 넣지 않는다.
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct StoreApp {
+    /// `msix:` + 패키지 패밀리 이름(소문자)
+    pub id: String,
+    pub display_name: String,
+    pub publisher: Option<String>,
+    pub version: Option<String>,
+    pub install_date: Option<String>,
+    pub install_location: Option<String>,
+    pub family_name: String,
+    pub source: PackageSource,
+    /// 로고 PNG 경로 (아이콘 추출용, 화면에는 보내지 않는다)
+    #[serde(skip)]
+    pub logo: Option<String>,
+}
+
+/// 패키지 패밀리 이름으로 Store 앱 ID를 만든다.
+pub fn make_store_app_id(family_name: &str) -> String {
+    format!("msix:{}", family_name.to_ascii_lowercase())
+}
+
 impl InstallScope {
     pub fn key_prefix(self) -> &'static str {
         match self {

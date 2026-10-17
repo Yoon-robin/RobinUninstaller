@@ -34,6 +34,7 @@ cargo run -p robin-fixture -- install [--cancel|--hang|--machine|--broken]   # �
 cargo run -p robin-fixture -- remove
 cargo run -p robin-execution --example uninstall_fixture
 cargo run -p robin-scanner --example scan_fixture
+cargo run -p robin-discovery --example store_apps     # Store·MSIX 앱 목록 (읽기 전용)
 cargo run -p robin-recovery --example clean_fixture
 cargo run -p robin-recovery --example force_fixture   # install --broken 뒤 강제 제거 → 복원
 cargo run -p robin-recovery --example startup_cleanup_fixture   # 파일 없는 시작 항목 정리 → 복원
@@ -55,7 +56,7 @@ DevTools 프로토콜(`http://127.0.0.1:9223/json`)로 클릭·캡처한다. 마
 
 - `src/` React 화면 (`features/programs`, `features/leftovers`, `features/storage`, `features/startup`, `features/tracking`, `features/settings`, `features/restore`, `components/`)
 - `src-tauri/` Tauri command 계층(얇게 유지) + `worker.rs`(관리자 권한 작업자 모드)
-- `crates/core` 공통 모델 · `crates/discovery` 설치 목록·아이콘 · `crates/execution` 언인스톨러 실행
+- `crates/core` 공통 모델 · `crates/discovery` 설치 목록(Store 앱 포함)·아이콘 · `crates/execution` 언인스톨러 실행
 - `crates/scanner` 잔여물 탐지(읽기 전용) · `crates/recovery` 백업·정리·복원 · `crates/fixture` 테스트 앱
 - `crates/startup` 시작프로그램 목록·끄기·원상복구 (작업 관리자와 같은 `StartupApproved` 값만 바꾼다)
 - `crates/storage` 저장공간 정리(규칙은 `rules.rs`, 사용자 폴더를 넣으면 테스트가 실패한다)와 폴더 크기 분석(읽기 전용)

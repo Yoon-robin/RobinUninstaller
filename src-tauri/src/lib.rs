@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
-use robin_core::InstalledApplication;
+use robin_core::{InstalledApplication, StoreApp};
 use robin_execution::{UninstallEvent, UninstallOutcome};
 use robin_recovery::{Guard, Operation, Store};
 use robin_scanner::{Leftover, LeftoverKind, ScanReport};
@@ -24,6 +24,8 @@ use tauri::{Manager, State};
 pub(crate) struct AppCache {
     apps: Mutex<HashMap<String, InstalledApplication>>,
     icons: Mutex<HashMap<String, Option<String>>>,
+    /// 마지막으로 읽은 Store·MSIX 앱 (아이콘 요청은 여기 있는 앱만 허용)
+    store_apps: Mutex<HashMap<String, StoreApp>>,
     /// 이번 실행 중에 제거한 프로그램 (제거된 뒤에도 잔여물을 찾을 수 있도록 정보를 남겨 둔다)
     removed: Mutex<Vec<InstalledApplication>>,
     /// 마지막 스캔 결과의 항목. 탐색기로 열기 같은 요청은 여기 있는 경로만 허용한다.
@@ -96,6 +98,55 @@ async fn get_app_icon(id: String, cache: State<'_, AppCache>) -> Result<Option<S
         map.insert(id, icon.clone());
     }
     Ok(icon)
+}
+
+/// Microsoft Store·MSIX 앱 목록 (읽기 전용).
+#[tauri::command]
+async fn list_store_apps(cache: State<'_, AppCache>) -> Result<Vec<StoreApp>, String> {
+    let apps = tauri::async_runtime::spawn_blocking(robin_discovery::list_store_apps)
+        .await
+        .map_err(|e| e.to_string())?;
+
+    if let Ok(mut map) = cache.store_apps.lock() {
+        *map = apps.iter().map(|a| (a.id.clone(), a.clone())).collect();
+    }
+    Ok(apps)
+}
+
+/// Store 앱 로고 (PNG data URL). 아이콘 캐시는 프로그램 아이콘과 같이 쓴다 (ID 앞부분이 달라 겹치지 않는다).
+#[tauri::command]
+async fn get_store_app_icon(
+    id: String,
+    cache: State<'_, AppCache>,
+) -> Result<Option<String>, String> {
+    if let Some(hit) = cache.icons.lock().ok().and_then(|m| m.get(&id).cloned()) {
+        return Ok(hit);
+    }
+    let Some(app) = cache
+        .store_apps
+        .lock()
+        .ok()
+        .and_then(|m| m.get(&id).cloned())
+    else {
+        return Ok(None);
+    };
+    let icon = tauri::async_runtime::spawn_blocking(move || robin_discovery::store_app_icon(&app))
+        .await
+        .map_err(|e| e.to_string())?;
+    if let Ok(mut map) = cache.icons.lock() {
+        map.insert(id, icon.clone());
+    }
+    Ok(icon)
+}
+
+/// Windows 설정의 "설치된 앱" 화면을 연다. Store 앱 제거는 거기서 한다.
+#[tauri::command]
+fn open_apps_settings() -> Result<(), String> {
+    std::process::Command::new("explorer.exe")
+        .arg("ms-settings:appsfeatures")
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 /// 한 번에 하나만 제거한다 (Windows Installer도 동시에 하나만 처리한다).
@@ -874,6 +925,9 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             list_installed_apps,
             get_app_icon,
+            list_store_apps,
+            get_store_app_icon,
+            open_apps_settings,
             open_install_location,
             uninstall_app,
             stop_waiting_uninstall,

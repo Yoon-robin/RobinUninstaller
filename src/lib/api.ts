@@ -22,6 +22,27 @@ export interface InstalledApplication {
   uninstaller: UninstallerStatus
 }
 
+// crates/core 의 StoreApp 과 맞춰야 한다.
+export type PackageSource = "store" | "sideloaded" | "developer"
+
+export interface StoreApp {
+  id: string
+  displayName: string
+  publisher: string | null
+  version: string | null
+  installDate: string | null
+  installLocation: string | null
+  familyName: string
+  source: PackageSource
+}
+
+export const storeApi = {
+  list: () => invoke<StoreApp[]>("list_store_apps"),
+  icon: (id: string) => invoke<string | null>("get_store_app_icon", { id }),
+  /** Windows 설정의 "설치된 앱" 화면. Store 앱 제거는 거기서 한다. */
+  openSettings: () => invoke<void>("open_apps_settings"),
+}
+
 // crates/execution 의 UninstallEvent / UninstallOutcome 과 맞춰야 한다.
 export type UninstallEvent =
   { kind: "launching"; file: string } | { kind: "running"; processCount: number } | { kind: "verifying" }

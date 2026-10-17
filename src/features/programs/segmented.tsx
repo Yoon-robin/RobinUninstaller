@@ -92,3 +92,49 @@ export function IconSegmented<K extends string>({
     </div>
   )
 }
+
+/** 글자 탭 두세 개짜리 전환 (데스크톱 프로그램 / Store 앱). */
+export function TextTabs<K extends string>({
+  options,
+  value,
+  onChange,
+  layoutId,
+  label,
+}: {
+  options: { key: K; label: string; count?: number }[]
+  value: K
+  onChange: (key: K) => void
+  layoutId: string
+  label: string
+}) {
+  return (
+    <div className="flex h-9 items-center rounded-xl border bg-muted/40 p-1" role="tablist" aria-label={label}>
+      {options.map((o) => {
+        const active = value === o.key
+        return (
+          <button
+            key={o.key}
+            type="button"
+            role="tab"
+            aria-selected={active}
+            onClick={() => onChange(o.key)}
+            className={cn(
+              "relative flex h-full items-center gap-1.5 rounded-lg px-3 text-sm transition-colors",
+              active ? "font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {active && (
+              <motion.span
+                layoutId={layoutId}
+                className="absolute inset-0 rounded-lg bg-background shadow-sm"
+                transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
+              />
+            )}
+            <span className="relative">{o.label}</span>
+            {o.count != null && <span className="relative text-xs tabular-nums opacity-60">{o.count}</span>}
+          </button>
+        )
+      })}
+    </div>
+  )
+}

@@ -131,6 +131,13 @@ pnpm tauri dev    # 앱 실행
 - **Windows에서 확인할 것:** 테스트 앱 항목은 하나뿐이라 실제 PC에서는 "Fixture Notes" 하나만 골라 시험한다(실제 프로그램은 고르지 않는다).
   `install` → 제거됨 + 흔적 찾기, `install --cancel` → "아직 설치돼 있어요", `install --broken` → 확인 창에서 빠지는지. 끝나면 `robin-fixture remove`.
 
+### Microsoft Store·MSIX 앱 목록 — 작성 (2026-10-17, 클라우드, 브랜치 `claude/store-apps`)
+
+- 읽기 전용 목록과 "Windows 설정에서 제거" 안내(PLAN.md "Microsoft Store·MSIX 앱 목록"). 순수 함수 테스트는 Linux·Wine에서 통과.
+  Wine에는 Store 패키지가 없어 빈 목록이 나오는 것(오류 없음)까지만 확인했다. 화면은 가짜 응답으로 캡처 확인.
+- **Windows에서 확인할 것 (읽기 전용):** `cargo run -p robin-discovery --example store_apps`로 계산기·터미널 같은 앱이 이름·게시자·날짜와 함께 나오는지,
+  Windows 구성 요소(ShellExperienceHost 등)와 프레임워크(VCLibs 등)가 빠졌는지, 아이콘 개수가 대부분 잡히는지. 앱 화면의 "Store 앱" 탭과 설정 열기 버튼.
+
 ### 다음 단계 후보
 
 - Phase 5 나머지: SYSTEM 예약 작업의 UAC 끄기·켜기 시험

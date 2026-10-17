@@ -6,7 +6,7 @@ Windows용 언인스톨러. 프로그램을 제거한 뒤 남은 파일과 레�
 
 ## 주요 기능 (계획)
 
-- 설치된 프로그램 목록 (EXE / MSI / MSIX)
+- 설치된 프로그램 목록 (EXE / MSI), Microsoft Store·MSIX 앱 목록 (제거는 Windows 설정으로 안내)
 - 기본 언인스톨러 실행 후 잔여물 스캔 (여러 개를 골라 차례로 제거)
 - 위험도 기반 잔여물 분류, 공유 파일·시스템 경로 보호
 - 격리 보관과 레지스트리 백업, 원클릭 복원 (영구 삭제 없음)
@@ -41,7 +41,7 @@ pnpm check          # 타입 검사 + fmt + clippy + 테스트 (커밋 전에 �
 - `src/` — React + shadcn/ui 화면
 - `src-tauri/` — Tauri 앱 (엔진을 호출하는 얇은 command 계층)
 - `crates/core` — 공통 모델
-- `crates/discovery` — 설치된 프로그램 탐색 (레지스트리 + MSI, 아이콘 추출, 읽기 전용)
+- `crates/discovery` — 설치된 프로그램 탐색 (레지스트리 + MSI, Store·MSIX 앱, 아이콘 추출, 읽기 전용)
 - `crates/execution` — 기본 언인스톨러 실행, 자식 프로세스 추적, 제거 결과 확인
 - `crates/scanner` — 남은 파일·레지스트리 찾기와 근거·점수 (읽기 전용)
 - `crates/recovery` — 백업·격리 후 정리, 작업 기록, 복원 (영구 삭제 없음)

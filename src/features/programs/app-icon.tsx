@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query"
 
-import { api, type InstalledApplication } from "@/lib/api"
+import { api, storeApi } from "@/lib/api"
 import { cn } from "@/lib/utils"
 
 /** 아이콘이 없을 때 쓸 이름 기반 색상 (같은 이름은 항상 같은 색). */
@@ -10,10 +10,11 @@ function hueOf(name: string) {
   return h
 }
 
-export function AppIcon({ app, className }: { app: InstalledApplication; className?: string }) {
+/** 프로그램·Store 앱 아이콘. Store 앱은 ID가 `msix:`로 시작한다. */
+export function AppIcon({ app, className }: { app: { id: string; displayName: string }; className?: string }) {
   const icon = useQuery({
     queryKey: ["app-icon", app.id],
-    queryFn: () => api.getAppIcon(app.id),
+    queryFn: () => (app.id.startsWith("msix:") ? storeApi.icon(app.id) : api.getAppIcon(app.id)),
     staleTime: Infinity,
   })
 
