@@ -77,6 +77,32 @@ impl Store {
         ops
     }
 
+    /// 백업 저장소 사용량: (작업 수, 바이트). 링크는 따라가지 않는다.
+    pub fn usage(&self) -> (usize, u64) {
+        fn size(path: &Path) -> u64 {
+            let Ok(meta) = std::fs::symlink_metadata(path) else {
+                return 0;
+            };
+            if meta.file_type().is_symlink() {
+                0
+            } else if meta.is_dir() {
+                std::fs::read_dir(path)
+                    .map(|entries| entries.flatten().map(|e| size(&e.path())).sum())
+                    .unwrap_or(0)
+            } else {
+                meta.len()
+            }
+        }
+        let ops = self.list();
+        let bytes = ops.iter().map(|op| size(&self.dir(&op.id))).sum();
+        (ops.len(), bytes)
+    }
+
+    /// `days`일보다 오래된 작업 ID (최근 작업부터). `now`는 유닉스 초.
+    pub fn expired(&self, days: u32, now: u64) -> Vec<String> {
+        expired_ids(&self.list(), days, now)
+    }
+
     /// 작업 기록과 백업을 완전히 지운다 (사용자가 요청했을 때만).
     pub fn delete(&self, op_id: &str) -> std::io::Result<()> {
         if !is_valid_id(op_id) {
@@ -97,6 +123,15 @@ impl Store {
     }
 }
 
+/// 보관 기간이 지난 작업. 순수 함수.
+pub fn expired_ids(ops: &[Operation], days: u32, now: u64) -> Vec<String> {
+    let limit = u64::from(days) * 24 * 60 * 60;
+    ops.iter()
+        .filter(|op| now.saturating_sub(op.created_at) > limit)
+        .map(|op| op.id.clone())
+        .collect()
+}
+
 /// 작업 ID는 숫자·소문자 16진수·하이픈만 (경로 조작 방지).
 pub fn is_valid_id(id: &str) -> bool {
     !id.is_empty()
@@ -109,6 +144,25 @@ pub fn is_valid_id(id: &str) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn finds_expired_operations() {
+        let op = |id: &str, created_at: u64| Operation {
+            id: id.into(),
+            app_name: "x".into(),
+            created_at,
+            items: vec![],
+        };
+        let day = 24 * 60 * 60;
+        let now = 100 * day;
+        let ops = vec![
+            op("a", now - 10 * day),
+            op("b", now - 31 * day),
+            op("c", now + day),
+        ];
+        assert_eq!(expired_ids(&ops, 30, now), vec!["b".to_string()]);
+        assert!(expired_ids(&ops, 90, now).is_empty());
+    }
 
     #[test]
     fn rejects_path_like_ids() {

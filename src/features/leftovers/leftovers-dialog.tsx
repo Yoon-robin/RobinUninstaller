@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState, type CSSProperties } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   Copy,
+  EyeOff,
   FileText,
   Folder,
   FolderOpen,
@@ -22,6 +23,7 @@ import {
   forceApi,
   recoveryApi,
   scanApi,
+  settingsApi,
   type ForceCheck,
   type Leftover,
   type LeftoverKind,
@@ -531,6 +533,26 @@ function LeftoverRow({
               </Button>
             </IconTooltip>
           )}
+          <IconTooltip label="다음부터 제외 (설정에서 되돌릴 수 있어요)">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              aria-label="다음부터 제외"
+              onClick={() =>
+                settingsApi
+                  .addExclusion(item.id)
+                  .then((added) =>
+                    toast.success(added ? "다음 스캔부터 이 위치는 빼요" : "이미 제외 목록에 있어요", {
+                      description: "설정 › 잔여물 스캔에서 뺄 항목에서 되돌릴 수 있어요",
+                    }),
+                  )
+                  .catch((e) => toast.error(String(e)))
+              }
+            >
+              <EyeOff />
+            </Button>
+          </IconTooltip>
           <IconTooltip label="경로 복사">
             <Button
               variant="ghost"

@@ -319,3 +319,37 @@ export const trackingApi = {
   list: () => invoke<Trace[]>("list_traces"),
   delete: (id: string) => invoke<void>("delete_trace", { id }),
 }
+
+// src-tauri/src/settings.rs 와 crates/settings 에 맞춰야 한다.
+export type ExclusionKind = "path" | "registry"
+
+export interface Exclusion {
+  kind: ExclusionKind
+  location: string
+  valueName: string | null
+  addedAt: number
+}
+
+export interface Settings {
+  /** 이 기간(일)보다 오래된 백업을 지운다. null이면 계속 보관 */
+  backupRetentionDays: number | null
+  retentionChoices: number[]
+  exclusions: Exclusion[]
+}
+
+export interface BackupUsage {
+  count: number
+  bytes: number
+  /** 지금 보관 기간 기준으로 지울 수 있는 백업 수 */
+  expired: number
+}
+
+export const settingsApi = {
+  get: () => invoke<Settings>("get_settings"),
+  setRetention: (days: number | null) => invoke<void>("set_backup_retention", { days }),
+  /** 마지막 스캔 결과의 항목을 다음 스캔부터 뺀다. 이미 빠져 있으면 false */
+  addExclusion: (itemId: string) => invoke<boolean>("add_exclusion", { itemId }),
+  removeExclusion: (index: number) => invoke<void>("remove_exclusion", { index }),
+  backupUsage: () => invoke<BackupUsage>("backup_usage"),
+  pruneBackups: () => invoke<{ deleted: number; failed: number }>("prune_backups"),
+}

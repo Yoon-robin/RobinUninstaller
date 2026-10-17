@@ -2590,11 +2590,20 @@ dependencies = [
  "robin-core",
  "robin-discovery",
  "robin-execution",
+ "robin-settings",
  "robin-startup",
  "robin-tracker",
  "serde",
  "windows",
  "winreg 0.55.0",
+]
+
+[[package]]
+name = "robin-settings"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
 ]
 
 [[package]]
@@ -2639,6 +2648,7 @@ dependencies = [
  "robin-execution",
  "robin-recovery",
  "robin-scanner",
+ "robin-settings",
  "robin-startup",
  "robin-storage",
  "robin-tracker",

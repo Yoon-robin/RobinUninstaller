@@ -31,7 +31,7 @@ const mainItems: Item[] = [
 
 const toolItems: Item[] = [
   { page: "restore", label: "복구 기록", icon: ArchiveRestore },
-  { page: "settings", label: "설정", icon: Settings, soon: true },
+  { page: "settings", label: "설정", icon: Settings },
 ]
 
 export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page: Page) => void }) {

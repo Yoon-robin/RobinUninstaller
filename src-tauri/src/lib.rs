@@ -2,6 +2,7 @@
 //!
 //! 프론트엔드는 경로가 아니라 앱 ID만 넘긴다. 경로는 항상 엔진이 읽어 둔 목록에서 찾는다.
 
+mod settings;
 mod tracking;
 pub mod worker;
 
@@ -20,13 +21,13 @@ use tauri::window::{Effect, EffectsBuilder};
 use tauri::{Manager, State};
 
 #[derive(Default)]
-struct AppCache {
+pub(crate) struct AppCache {
     apps: Mutex<HashMap<String, InstalledApplication>>,
     icons: Mutex<HashMap<String, Option<String>>>,
     /// 이번 실행 중에 제거한 프로그램 (제거된 뒤에도 잔여물을 찾을 수 있도록 정보를 남겨 둔다)
     removed: Mutex<Vec<InstalledApplication>>,
     /// 마지막 스캔 결과의 항목. 탐색기로 열기 같은 요청은 여기 있는 경로만 허용한다.
-    last_scan: Mutex<Vec<Leftover>>,
+    pub(crate) last_scan: Mutex<Vec<Leftover>>,
     /// 마지막으로 읽은 시작 항목. 아이콘·탐색기 요청은 여기 있는 항목만 허용한다.
     startup: Mutex<Vec<StartupEntry>>,
     /// 폴더 분석에서 화면에 보낸 항목 ID → 경로. 화면은 경로 대신 이 ID만 넘긴다.
@@ -223,7 +224,7 @@ fn open_install_location(id: String, cache: State<'_, AppCache>) -> Result<(), S
         .map_err(|e| e.to_string())
 }
 
-fn store() -> Result<Store, String> {
+pub(crate) fn store() -> Result<Store, String> {
     Store::default_location().ok_or_else(|| "백업 위치를 찾을 수 없어요".to_string())
 }
 
@@ -849,6 +850,10 @@ pub fn run() {
         .manage(AppCache::default())
         .manage(tracking::TrackingState::default())
         .setup(|app| {
+            // 사용자가 보관 기간을 골랐으면 기간이 지난 백업을 정리한다 (기본은 계속 보관이라 아무것도 하지 않는다)
+            std::thread::spawn(|| {
+                let _ = settings::prune_expired();
+            });
             if supports_mica()
                 && let Some(window) = app.get_webview_window("main")
                 && window
@@ -886,6 +891,12 @@ pub fn run() {
             get_startup_icon,
             set_startup_enabled,
             clean_missing_startup,
+            settings::get_settings,
+            settings::set_backup_retention,
+            settings::add_exclusion,
+            settings::remove_exclusion,
+            settings::backup_usage,
+            settings::prune_backups,
             tracking::tracking_status,
             tracking::start_tracking,
             tracking::cancel_tracking,

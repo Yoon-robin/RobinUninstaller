@@ -7,9 +7,9 @@ import { AppSidebar, type Page } from "@/components/app-sidebar"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { ThemeProvider, ThemeToggle } from "@/components/theme"
 import { WindowControls } from "@/components/window-controls"
-import { ComingSoonPage } from "@/features/coming-soon/coming-soon-page"
 import { LeftoversPage } from "@/features/leftovers/leftovers-page"
 import { RestorePage } from "@/features/restore/restore-page"
+import { SettingsPage } from "@/features/settings/settings-page"
 import { StartupPage } from "@/features/startup/startup-page"
 import { TrackingPage } from "@/features/tracking/tracking-page"
 import { StoragePage } from "@/features/storage/storage-page"
@@ -95,7 +95,7 @@ export default function App() {
                   {page === "storage" && <StoragePage />}
                   {page === "startup" && <StartupPage />}
                   {page === "tracking" && <TrackingPage />}
-                  {page === "settings" && <ComingSoonPage page={page} />}
+                  {page === "settings" && <SettingsPage />}
                 </main>
               </SidebarInset>
             </SidebarProvider>

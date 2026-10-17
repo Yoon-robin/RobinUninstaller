@@ -1,0 +1,10 @@
+[package]
+name = "robin-settings"
+description = "사용자 설정 (백업 보관 기간, 잔여물 스캔 제외 목록)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+serde_json.workspace = true

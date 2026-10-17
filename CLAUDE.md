@@ -53,12 +53,13 @@ DevTools 프로토콜(`http://127.0.0.1:9223/json`)로 클릭·캡처한다. 마
 
 ## 코드 구조
 
-- `src/` React 화면 (`features/programs`, `features/leftovers`, `features/storage`, `features/startup`, `features/restore`, `components/`)
+- `src/` React 화면 (`features/programs`, `features/leftovers`, `features/storage`, `features/startup`, `features/tracking`, `features/settings`, `features/restore`, `components/`)
 - `src-tauri/` Tauri command 계층(얇게 유지) + `worker.rs`(관리자 권한 작업자 모드)
 - `crates/core` 공통 모델 · `crates/discovery` 설치 목록·아이콘 · `crates/execution` 언인스톨러 실행
 - `crates/scanner` 잔여물 탐지(읽기 전용) · `crates/recovery` 백업·정리·복원 · `crates/fixture` 테스트 앱
 - `crates/startup` 시작프로그램 목록·끄기·원상복구 (작업 관리자와 같은 `StartupApproved` 값만 바꾼다)
 - `crates/storage` 저장공간 정리(규칙은 `rules.rs`, 사용자 폴더를 넣으면 테스트가 실패한다)와 폴더 크기 분석(읽기 전용)
 - `crates/tracker` 설치 추적: 설치 전후 스냅샷 비교(읽기 전용), 기록은 잔여물 스캔의 근거로 쓴다
+- `crates/settings` 사용자 설정(백업 보관 기간, 잔여물 스캔 제외 목록)
 
 프론트엔드는 경로가 아니라 ID만 넘긴다. 경로·명령은 항상 Rust 쪽이 자기 데이터에서 찾는다.

@@ -8,6 +8,7 @@ license.workspace = true
 [dependencies]
 robin-core.workspace = true
 robin-discovery.workspace = true
+robin-settings.workspace = true
 serde.workspace = true
 
 [target.'cfg(windows)'.dependencies]

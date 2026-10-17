@@ -121,15 +121,46 @@ pub fn scan(
     let traces = robin_tracker::TraceStore::default_location()
         .map(|s| s.for_app(&app.id))
         .unwrap_or_default();
-    scan_with_traces(app, installed, &traces)
+    let exclusions = robin_settings::SettingsStore::default_location()
+        .map(|s| s.load().exclusions)
+        .unwrap_or_default();
+    scan_with(app, installed, &traces, &exclusions)
 }
 
-/// `scan`과 같지만 설치 추적 기록을 직접 넘긴다 (예제·시험용).
+/// `scan`과 같지만 설치 추적 기록을 직접 넘긴다 (예제·시험용, 제외 목록 없음).
 #[cfg(windows)]
 pub fn scan_with_traces(
     app: &robin_core::InstalledApplication,
     installed: &[robin_core::InstalledApplication],
     traces: &[robin_tracker::Trace],
+) -> ScanReport {
+    scan_with(app, installed, traces, &[])
+}
+
+/// 사용자가 "다음부터 제외"로 고른 위치를 결과에서 뺀다. 뺀 개수를 돌려준다. 순수 함수.
+pub fn apply_exclusions(
+    items: &mut Vec<Leftover>,
+    exclusions: &[robin_settings::Exclusion],
+) -> usize {
+    use robin_settings::{ExclusionKind, is_excluded};
+    let before = items.len();
+    items.retain(|i| {
+        let kind = if is_fs(i.kind) {
+            ExclusionKind::Path
+        } else {
+            ExclusionKind::Registry
+        };
+        !is_excluded(exclusions, kind, &i.location, i.value_name.as_deref())
+    });
+    before - items.len()
+}
+
+#[cfg(windows)]
+fn scan_with(
+    app: &robin_core::InstalledApplication,
+    installed: &[robin_core::InstalledApplication],
+    traces: &[robin_tracker::Trace],
+    exclusions: &[robin_settings::Exclusion],
 ) -> ScanReport {
     let started = std::time::Instant::now();
     let ctx = ScanContext::new(app, installed, protect::KnownFolders::from_env());
@@ -146,6 +177,7 @@ pub fn scan_with_traces(
             item.add_evidence(Evidence::InUserFolder);
         }
     }
+    protected += apply_exclusions(&mut items, exclusions);
     finalize(
         app.display_name.clone(),
         items,
@@ -160,6 +192,34 @@ mod tests {
 
     fn item(kind: LeftoverKind, location: &str, evidence: Vec<Evidence>) -> Leftover {
         Leftover::new(kind, location.into(), None, evidence)
+    }
+
+    #[test]
+    fn exclusions_remove_items() {
+        use robin_settings::{Exclusion, ExclusionKind};
+        let mut items = vec![
+            item(
+                LeftoverKind::Folder,
+                r"C:\Data\Acme\cache",
+                vec![Evidence::ExactName],
+            ),
+            item(
+                LeftoverKind::Folder,
+                r"C:\Data\Other",
+                vec![Evidence::ExactName],
+            ),
+        ];
+        let removed = apply_exclusions(
+            &mut items,
+            &[Exclusion {
+                kind: ExclusionKind::Path,
+                location: r"C:\Data\Acme".into(),
+                value_name: None,
+                added_at: 0,
+            }],
+        );
+        assert_eq!(removed, 1);
+        assert!(items[0].location.ends_with("Other"));
     }
 
     #[test]
