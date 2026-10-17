@@ -47,6 +47,15 @@ fn main() {
             .all(|c| c.id != "fixture-cache"),
         "정리 뒤에는 0바이트라 목록에서 빠져야 함"
     );
+
+    // 지우는 파일의 실제 위치가 정리 폴더 밖이면 거부해야 한다 (정션 바꿔치기 방지)
+    let outside = cache.parent().unwrap().join("outside.txt");
+    std::fs::write(&outside, "keep").unwrap();
+    let root = std::fs::canonicalize(&cache).unwrap();
+    assert!(robin_storage::system::delete_file_within(&outside, &root).is_err());
+    assert!(outside.exists(), "정리 폴더 밖의 파일은 남아야 함");
+    std::fs::remove_file(&outside).unwrap();
+    println!("확인: 정리 폴더 밖의 파일은 지우지 않음");
     println!("통과");
 }
 

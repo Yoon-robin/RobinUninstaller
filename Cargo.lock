@@ -2562,6 +2562,7 @@ dependencies = [
 name = "robin-fixture"
 version = "0.1.0"
 dependencies = [
+ "robin-startup",
  "windows",
  "winreg 0.55.0",
 ]

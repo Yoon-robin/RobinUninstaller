@@ -1,29 +1,69 @@
 //! UninstallString / DisplayIcon 문자열 해석. 순수 함수만 둔다 (시스템 접근 없음).
 
-/// 제거 명령에서 실행 파일 경로를 뽑는다.
+/// 실행할 수 있는 파일 확장자. 따옴표 없는 명령은 이 확장자로 끝나는 가장 짧은 앞부분을 경로로 본다
+/// (`CreateProcess`가 공백에서 끊어 가며 찾는 순서와 같다).
+const EXECUTABLE_EXTENSIONS: [&str; 6] = [".exe", ".com", ".bat", ".cmd", ".vbs", ".ps1"];
+
+fn is_msiexec(path: &str) -> bool {
+    let last = path
+        .rsplit(['\\', '/'])
+        .next()
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    last == "msiexec" || last == "msiexec.exe"
+}
+
+/// 따옴표 없는 명령에서 실행 파일 부분의 길이 (바이트)
+fn unquoted_path_len(command: &str) -> usize {
+    let first_word = command.find(char::is_whitespace).unwrap_or(command.len());
+    // 첫 단어에 경로 구분자가 없으면 경로 없는 명령이다 (wscript C:\x.vbs → wscript)
+    if !command[..first_word].contains(['\\', '/']) {
+        return first_word;
+    }
+    let lower = command.to_ascii_lowercase();
+    let boundaries = command
+        .char_indices()
+        .filter(|(_, c)| c.is_whitespace())
+        .map(|(i, _)| i)
+        .chain([command.len()]);
+    for end in boundaries {
+        if EXECUTABLE_EXTENSIONS
+            .iter()
+            .any(|ext| lower[..end].ends_with(ext))
+        {
+            return end;
+        }
+    }
+    // 확장자가 없으면 첫 단어
+    first_word
+}
+
+/// 제거·시작 명령에서 실행 파일 경로를 뽑는다.
 ///
 /// - `"C:\a b\unins000.exe" /SILENT` → `C:\a b\unins000.exe`
-/// - `C:\a b\uninst.exe /S` → `C:\a b\uninst.exe` (따옴표 없이 공백이 있는 경로도 `.exe`까지 자름)
-/// - `MsiExec.exe /X{GUID}` → `None` (MSI는 Windows Installer가 처리)
+/// - `C:\a b\uninst.exe /S` → `C:\a b\uninst.exe` (따옴표 없이 공백이 있는 경로도 확장자까지 자름)
+/// - `C:\Tools\run.cmd --tray` → `C:\Tools\run.cmd`
+/// - `wscript C:\x.vbs` → `wscript.exe` (경로 없는 명령은 `.exe`를 붙인다)
+/// - `MsiExec.exe /X{GUID}`, `"C:\Windows\System32\msiexec.exe" /x ...` → `None` (MSI는 Windows Installer가 처리)
 pub fn executable_path(command: &str) -> Option<String> {
     let command = command.trim();
     if command.is_empty() {
         return None;
     }
 
-    if let Some(rest) = command.strip_prefix('"') {
+    let path = if let Some(rest) = command.strip_prefix('"') {
         let end = rest.find('"')?;
-        return Some(rest[..end].to_string());
-    }
-
-    let lower = command.to_ascii_lowercase();
-    let first_token = lower.split_whitespace().next().unwrap_or_default();
-    if first_token.ends_with("msiexec") || first_token.ends_with("msiexec.exe") {
-        return None;
-    }
-
-    let end = lower.find(".exe").map(|i| i + 4).unwrap_or(command.len());
-    Some(command[..end].trim().to_string())
+        rest[..end].to_string()
+    } else {
+        let mut path = command[..unquoted_path_len(command)].to_string();
+        // 확장자가 없으면 Windows처럼 .exe를 붙여 본다 (rundll32 → rundll32.exe)
+        let last = path.rsplit(['\\', '/']).next().unwrap_or_default();
+        if !last.contains('.') {
+            path.push_str(".exe");
+        }
+        path
+    };
+    (!path.is_empty() && !is_msiexec(&path)).then_some(path)
 }
 
 /// 제거 명령을 실행 파일과 인자 문자열로 나눈다. MSI 명령이면 `None`.
@@ -32,13 +72,13 @@ pub fn executable_path(command: &str) -> Option<String> {
 pub fn split_command(command: &str) -> Option<(String, String)> {
     let command = command.trim();
     let exe = executable_path(command)?;
-    let rest = if command.starts_with('"') {
-        // 따옴표 + 경로 + 따옴표 다음부터
-        &command[exe.len() + 2..]
+    let consumed = if let Some(rest) = command.strip_prefix('"') {
+        // 따옴표 + 경로 + 따옴표
+        rest.find('"')? + 2
     } else {
-        &command[exe.len()..]
+        unquoted_path_len(command)
     };
-    Some((exe, rest.trim().to_string()))
+    Some((exe, command[consumed..].trim().to_string()))
 }
 
 /// `DisplayIcon` 값(`path,index` 형식)을 경로와 아이콘 인덱스로 나눈다.
@@ -202,5 +242,47 @@ mod tests {
         assert!(is_product_code("{90160000-008C-0000-1000-0000000FF1CE}"));
         assert!(!is_product_code("{not-a-guid}"));
         assert!(!is_product_code("Steam App 730"));
+    }
+
+    #[test]
+    fn commands_without_exe() {
+        assert_eq!(
+            executable_path(r"C:\Tools\run.cmd --tray").as_deref(),
+            Some(r"C:\Tools\run.cmd")
+        );
+        assert_eq!(
+            executable_path(r"C:\Program Files\X\uninst.bat /S").as_deref(),
+            Some(r"C:\Program Files\X\uninst.bat")
+        );
+        assert_eq!(
+            executable_path(r"wscript C:\Users\me\x.vbs").as_deref(),
+            Some("wscript.exe")
+        );
+        assert_eq!(
+            executable_path(r"powershell -WindowStyle Hidden -File C:\Tools\a.ps1").as_deref(),
+            Some("powershell.exe")
+        );
+        assert_eq!(
+            executable_path(r"rundll32.exe shell32.dll,Control_RunDLL").as_deref(),
+            Some("rundll32.exe")
+        );
+        assert_eq!(
+            split_command(r"C:\Program Files\X\uninst.bat /S"),
+            Some((r"C:\Program Files\X\uninst.bat".into(), "/S".into()))
+        );
+        assert_eq!(
+            split_command("rundll32 shell32.dll,X"),
+            Some(("rundll32.exe".into(), "shell32.dll,X".into()))
+        );
+    }
+
+    #[test]
+    fn quoted_msiexec_is_msi() {
+        assert_eq!(
+            executable_path(
+                r#""C:\Windows\System32\MsiExec.exe" /X{11111111-2222-3333-4444-555555555555}"#
+            ),
+            None
+        );
     }
 }

@@ -303,6 +303,26 @@ mod imp {
         exit(0);
     }
 
+    /// 시작프로그램 화면에서 테스트 항목을 끈 기록(원래 값)도 지운다
+    fn forget_startup_history() {
+        use robin_startup::StartupSource::*;
+        use robin_startup::model::make_id;
+        let Some(history) = robin_startup::History::default_location() else {
+            return;
+        };
+        for (source, name) in [
+            (RunUser, RUN_VALUE.to_string()),
+            (RunUser, GHOST_RUN_VALUE.to_string()),
+            (RunMachine, MACHINE_RUN_VALUE.to_string()),
+            (FolderUser, SHORTCUT.to_string()),
+            (FolderUser, GHOST_SHORTCUT.to_string()),
+            (Task, format!(r"\{TASK_NAME}")),
+            (Task, format!(r"\{MACHINE_TASK_NAME}")),
+        ] {
+            let _ = history.forget(&make_id(source, &name));
+        }
+    }
+
     fn remove_all() {
         // 관리자 권한 흔적 (권한이 없으면 조용히 건너뛴다)
         let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
@@ -343,6 +363,7 @@ mod imp {
         }
         let _ = std::fs::remove_file(startup_shortcut());
         let _ = std::fs::remove_file(startup_folder().join(GHOST_SHORTCUT));
+        forget_startup_history();
         unregister_task();
         let _ = std::fs::remove_dir_all(install_dir());
         for (path, _) in extra_files() {

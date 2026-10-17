@@ -1,14 +1,22 @@
 //! Windows Installer(MSI) 조회. 읽기 전용.
 
 use windows::Win32::System::ApplicationInstallationAndServicing::{
-    INSTALLSTATE_DEFAULT, MSIINSTALLCONTEXT, MSIINSTALLCONTEXT_MACHINE,
-    MSIINSTALLCONTEXT_USERUNMANAGED, MsiGetProductInfoExW, MsiQueryProductStateW,
+    INSTALLSTATE_ADVERTISED, INSTALLSTATE_DEFAULT, INSTALLSTATE_LOCAL, INSTALLSTATE_SOURCE,
+    MSIINSTALLCONTEXT, MSIINSTALLCONTEXT_MACHINE, MSIINSTALLCONTEXT_USERUNMANAGED,
+    MsiGetProductInfoExW, MsiQueryProductStateW,
 };
 use windows::core::{HSTRING, PCWSTR, PWSTR};
 
-/// 제품이 Windows Installer에 설치 상태로 등록돼 있는지.
+/// 제품이 Windows Installer에 등록돼 있는지 (광고만 된 제품도 제거할 수 있으므로 포함).
 pub fn is_installed(product_code: &str) -> bool {
-    unsafe { MsiQueryProductStateW(&HSTRING::from(product_code)) == INSTALLSTATE_DEFAULT }
+    let state = unsafe { MsiQueryProductStateW(&HSTRING::from(product_code)) };
+    [
+        INSTALLSTATE_DEFAULT,
+        INSTALLSTATE_LOCAL,
+        INSTALLSTATE_SOURCE,
+        INSTALLSTATE_ADVERTISED,
+    ]
+    .contains(&state)
 }
 
 /// MSI가 기록한 설치 경로. 레지스트리 Uninstall 키에 InstallLocation이 없을 때 보강용.

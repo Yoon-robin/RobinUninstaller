@@ -165,6 +165,13 @@ pub fn clean(ids: &[String], allow_irreversible: bool) -> Vec<CleanResult> {
 
             if rule.kind == Kind::RecycleBin {
                 let (bytes, items) = system::recycle_bin_size();
+                // 이미 비어 있으면 Windows가 오류를 돌려주므로 비울 것이 없으면 그대로 끝낸다
+                if items == 0 {
+                    return CleanResult {
+                        skipped: None,
+                        ..CleanResult::skipped(id, "")
+                    };
+                }
                 return match system::empty_recycle_bin() {
                     Ok(()) => CleanResult {
                         freed_bytes: bytes,
@@ -181,10 +188,14 @@ pub fn clean(ids: &[String], allow_irreversible: bool) -> Vec<CleanResult> {
                 ..CleanResult::skipped(id, "")
             };
             for path in walk::rule_paths(rule, &env) {
+                // 지우는 파일의 실제 위치가 이 폴더 안인지 핸들로 확인한다 (정션 바꿔치기 방지)
+                let Ok(root) = std::fs::canonicalize(&path) else {
+                    continue;
+                };
                 walk::visit(
                     &path,
                     min_age(rule),
-                    &mut |file, len| match std::fs::remove_file(file) {
+                    &mut |file, len| match system::delete_file_within(file, &root) {
                         Ok(()) => {
                             result.freed_bytes += len;
                             result.deleted_files += 1;

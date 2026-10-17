@@ -156,7 +156,8 @@ fn build_task(
     task: tasks::Task,
     changed: &std::collections::BTreeMap<String, Change>,
 ) -> StartupEntry {
-    let exists = |p: &str| std::path::Path::new(p).is_file();
+    // 폴더를 가리키는 바로 가기도 있으므로 파일이 아니라 "있는지"로 본다
+    let exists = |p: &str| std::path::Path::new(p).exists();
     let target = task
         .command
         .as_deref()
@@ -201,7 +202,8 @@ fn build(
     command: String,
     changed: &std::collections::BTreeMap<String, Change>,
 ) -> StartupEntry {
-    let exists = |p: &str| std::path::Path::new(p).is_file();
+    // 폴더를 가리키는 바로 가기도 있으므로 파일이 아니라 "있는지"로 본다
+    let exists = |p: &str| std::path::Path::new(p).exists();
     let target = model::resolve_target(&command, |v| std::env::var(v).ok(), exists);
     let target_missing = target.as_deref().is_some_and(|p| !exists(p));
     let info = match &target {

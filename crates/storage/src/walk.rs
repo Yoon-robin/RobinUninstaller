@@ -66,7 +66,12 @@ pub fn resolve(base: Base, rel: &str, env: &impl Fn(&str) -> Option<String>) -> 
                     }
                 }
             } else {
-                next.push(dir.join(part));
+                let p = dir.join(part);
+                // 중간 조각이 정션이면 그 너머로 가지 않는다 (규칙 밖의 다른 드라이브·폴더일 수 있다)
+                if std::fs::symlink_metadata(&p).is_ok_and(|m| is_untouchable(attributes(&m))) {
+                    continue;
+                }
+                next.push(p);
             }
         }
         current = next;
@@ -109,15 +114,18 @@ impl Tally {
     }
 }
 
-/// 마지막 수정이 `min_age`보다 오래됐는지 (시간을 알 수 없으면 오래된 것으로 보지 않는다)
+/// 만든 시각과 마지막 수정 시각이 모두 `min_age`보다 오래됐는지 (시간을 알 수 없으면 오래된 것으로 보지 않는다).
+/// 압축을 푼 파일은 수정 시각이 원본 그대로라 오래돼 보이므로 만든 시각도 본다.
 fn old_enough(meta: &std::fs::Metadata, min_age: Duration, now: SystemTime) -> bool {
     if min_age.is_zero() {
         return true;
     }
-    meta.modified()
-        .ok()
-        .and_then(|m| now.duration_since(m).ok())
-        .is_some_and(|age| age >= min_age)
+    let age = |t: std::io::Result<SystemTime>| t.ok().and_then(|t| now.duration_since(t).ok());
+    let newest = match (age(meta.modified()), age(meta.created())) {
+        (Some(m), Some(c)) => Some(m.min(c)),
+        (m, c) => m.or(c),
+    };
+    newest.is_some_and(|a| a >= min_age)
 }
 
 /// `path`(폴더 또는 파일) 아래에서 조건에 맞는 파일마다 `on_file`을 부른다.
@@ -147,7 +155,10 @@ pub fn visit(
     let mut stack: Vec<(PathBuf, bool)> = vec![(path.to_path_buf(), false)];
     while let Some((dir, done)) = stack.pop() {
         if done {
-            if dir != path {
+            // 방금 만든 빈 폴더(실행 중인 프로그램이 곧 쓸 수 있음)는 남긴다
+            let dir_old =
+                std::fs::symlink_metadata(&dir).is_ok_and(|m| old_enough(&m, min_age, now));
+            if dir != path && dir_old {
                 on_dir_done(&dir);
             }
             continue;

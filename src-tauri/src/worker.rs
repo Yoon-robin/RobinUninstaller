@@ -81,7 +81,13 @@ fn run_storage(rest: &[String]) -> Option<i32> {
         _ => return None,
     };
     let ids: Vec<String> = rest.get(1)?.split(',').map(str::to_string).collect();
-    if ids.is_empty() || !ids.iter().all(|id| robin_storage::rules::is_valid_id(id)) {
+    // 관리자 작업자는 관리자 권한이 필요한 규칙만 처리한다. 다른 관리자 계정으로 UAC를 허용하면
+    // TEMP·LOCALAPPDATA가 그 계정 것을 가리키므로, 사용자 영역 규칙은 여기서 다루지 않는다.
+    if ids.is_empty()
+        || !ids
+            .iter()
+            .all(|id| robin_storage::rules::find(id).is_some_and(|r| r.admin))
+    {
         return None;
     }
     let dir = store_arg(&rest[2..], r"\robinuninstaller\storage")?;
