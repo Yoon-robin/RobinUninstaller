@@ -182,18 +182,24 @@ MVP 품질 목표: 앱 목록 2초 이내(캐시 먼저 표시), 일반 스캔 1
 
 ## Phase 5 구현 메모 — 시작프로그램 관리
 
-- `crates/startup`이 담당한다. 대상: Run 키(HKCU, HKLM 64·32비트)와 시작 폴더(사용자, 공용). 예약 작업은 아직 없다.
+- `crates/startup`이 담당한다. 대상: Run 키(HKCU, HKLM 64·32비트), 시작 폴더(사용자, 공용), 로그인·부팅 트리거가 있는 예약 작업.
 - **끄기 방식:** 작업 관리자와 같은 `Explorer\StartupApproved\{Run|Run32|StartupFolder}` 바이너리 값을 쓴다.
   - Run 값이나 바로 가기 파일은 그대로 두므로 지우는 것이 아니다.
   - 첫 바이트가 홀수(03)면 꺼짐, 짝수(02·04·06)거나 값이 없으면 켜짐. 4~11바이트는 끈 시각(FILETIME).
 - **원상복구:** RobinUninstaller가 끌 때 원래 값(없었으면 "없음")을 `%LOCALAPPDATA%\RobinUninstaller\startup\changes.json`에 **먼저** 기록한다.
   - 다시 켜면 그 값을 그대로 돌려놓거나, 원래 값이 없었으면 값을 지운다.
   - 다른 곳(작업 관리자 등)에서 끈 항목은 기록이 없으므로 작업 관리자와 같은 "켜짐" 값(02)을 쓴다.
-- **ID:** 등록 위치 + 이름(소문자)의 FNV-1a 해시 16자리. 프론트엔드와 관리자 작업자는 이 ID만 주고받고, 엔진이 목록을 다시 읽어 항목을 찾는다.
+- **예약 작업:** 작업 스케줄러 COM API(`ITaskService`)로 모든 폴더를 돌며 로그온(`TASK_TRIGGER_LOGON`)·부팅(`TASK_TRIGGER_BOOT`) 트리거가 있는 작업만 읽는다.
+  - `\Microsoft\` 아래(Windows 자체 작업)는 읽지 않는다. 숨김 작업은 포함한다.
+  - 표시: 이름, 작업 경로, 첫 번째 "프로그램 시작" 동작의 명령, 만든 이(`RegistrationInfo.Author`), 사용 여부. 게시자·아이콘은 실행 파일에서 읽는다.
+  - 끄기·켜기는 작업의 `Enabled` 값만 바꾼다. 원래 값을 같은 `changes.json`에 `previousEnabled`로 **먼저** 기록하고, 켤 때 그 값으로 되돌린 뒤 기록을 지운다. 작업 스케줄러는 끈 시각을 남기지 않아서 우리가 끈 경우에만 기록 시각을 보여 준다.
+  - 관리자 표시: 실행 계정(`Principal.UserId`)이 현재 사용자가 아니거나(SYSTEM 등) "가장 높은 권한으로 실행"이면 표시한다. 실제로는 `E_ACCESSDENIED`가 나면 같은 작업자 모드(UAC)로 넘긴다.
+- **ID:** 등록 위치 + 이름(소문자)의 FNV-1a 해시 16자리. 예약 작업은 `task` + 작업 경로. 프론트엔드와 관리자 작업자는 이 ID만 주고받고, 엔진이 목록을 다시 읽어 항목을 찾는다.
 - **관리자 권한:** HKLM·공용 시작 폴더 항목은 일반 권한으로 쓰기가 거부되면 작업자 모드(`--elevated-startup <on|off> <ID> --store <...\RobinUninstaller\startup>`)를 UAC로 띄운다.
 - **표시 정보:** 실행 명령에서 실행 파일을 찾고(경로 없는 `rundll32.exe` 등은 Windows 폴더에서), 바로 가기는 IShellLink로 대상을 읽는다. 게시자·설명은 파일 버전 정보에서 읽는다. 파일이 없으면 "파일 없음"으로 표시한다.
-- **검증:** `cargo run -p robin-startup --example toggle_fixture`로 테스트 앱의 Run 값과 시작 폴더 바로 가기를 껐다 켜서 원래 상태(값 없음)로 돌아오는지 확인한다. 앱 화면에서도 같은 흐름을 확인했다(2026-10-17).
+- **검증:** `cargo run -p robin-startup --example toggle_fixture`로 테스트 앱의 Run 값, 시작 폴더 바로 가기, 예약 작업 `\Fixture Notes Updater`를 껐다 켜서 원래 상태(값 없음 / 작업 "사용")로 돌아오는지 확인한다. 앱 화면에서도 같은 흐름을 확인했다(2026-10-17, 예약 작업 포함).
 - **관리자 권한 검증(2026-10-17):** 일반 권한으로 띄운 앱에서 `FixtureNotesMachine`(HKLM Run)을 끄기 → UAC → HKLM `StartupApproved\Run`에 03 값, 원래 값(없음)은 사용자 기록에 남음 → 다시 켜기 → UAC → 값이 지워져 원래 상태, 기록도 비워짐.
 - **아직 안 한 것:**
-  - 예약 작업(로그온 트리거), 서비스
+  - SYSTEM 예약 작업의 UAC 경로 실제 시험 (`robin-fixture install --machine`이 만드는 `\Fixture Notes Machine Task`)
+  - 서비스
   - 파일이 없는 항목 정리(백업 후 Run 값·바로 가기 제거)

@@ -21,9 +21,14 @@ fn main() {
             },
         );
         println!(
-            "     게시자: {}  설명: {}",
+            "     게시자: {}  설명: {}{}{}",
             e.publisher.as_deref().unwrap_or("-"),
-            e.description.as_deref().unwrap_or("-")
+            e.description.as_deref().unwrap_or("-"),
+            e.author
+                .as_deref()
+                .map(|a| format!("  만든 이: {a}"))
+                .unwrap_or_default(),
+            if e.needs_admin { "  (관리자)" } else { "" },
         );
     }
 }

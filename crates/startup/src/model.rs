@@ -4,6 +4,8 @@
 //! `...\Explorer\StartupApproved\{Run|Run32|StartupFolder}`의 바이너리 값(12바이트).
 //! 첫 바이트가 홀수(03)면 꺼짐, 짝수(02·04·06)거나 값이 없으면 켜짐. 4~11바이트는 끈 시각(FILETIME).
 //! Run 값이나 바로 가기 파일 자체는 건드리지 않으므로 끄기는 언제든 되돌릴 수 있다.
+//!
+//! 작업 스케줄러의 작업(로그인·부팅 트리거)은 `StartupApproved`가 아니라 작업 자체의 `Enabled` 값만 바꾼다.
 
 use serde::Serialize;
 
@@ -21,8 +23,11 @@ pub enum StartupSource {
     FolderUser,
     /// `%ProgramData%\...\Start Menu\Programs\StartUp`
     FolderCommon,
+    /// 작업 스케줄러에서 로그인·부팅 때 실행되는 작업 (`\Microsoft\` 아래는 뺀다)
+    Task,
 }
 
+/// `StartupApproved` 값으로 켜고 끄는 곳 (Run 키와 시작 폴더). 작업은 따로 읽는다.
 pub const ALL_SOURCES: [StartupSource; 5] = [
     StartupSource::RunUser,
     StartupSource::RunMachine,
@@ -44,12 +49,17 @@ impl StartupSource {
             StartupSource::RunMachine32 => "run-machine32",
             StartupSource::FolderUser => "folder-user",
             StartupSource::FolderCommon => "folder-common",
+            StartupSource::Task => "task",
         }
     }
 
-    /// HKLM이나 공용 폴더라 바꾸려면 관리자 권한이 필요한지
+    /// HKLM이나 공용 폴더라 바꾸려면 관리자 권한이 필요한지.
+    /// 작업은 작업마다 달라서 `false`로 두고 항목의 `needs_admin`으로 판단한다.
     pub fn is_machine(self) -> bool {
-        !matches!(self, StartupSource::RunUser | StartupSource::FolderUser)
+        matches!(
+            self,
+            StartupSource::RunMachine | StartupSource::RunMachine32 | StartupSource::FolderCommon
+        )
     }
 
     /// `StartupApproved` 아래 하위 키 이름
@@ -58,6 +68,8 @@ impl StartupSource {
             StartupSource::RunUser | StartupSource::RunMachine => "Run",
             StartupSource::RunMachine32 => "Run32",
             StartupSource::FolderUser | StartupSource::FolderCommon => "StartupFolder",
+            // 작업은 StartupApproved를 쓰지 않는다
+            StartupSource::Task => "",
         }
     }
 }
@@ -71,9 +83,10 @@ pub struct StartupEntry {
     /// 화면에 보여 줄 이름 (Run 값 이름, 또는 확장자를 뺀 파일 이름)
     pub name: String,
     pub source: StartupSource,
-    /// 레지스트리 키 경로 또는 시작 폴더 경로
+    /// 레지스트리 키 경로, 시작 폴더 경로, 또는 "작업 스케줄러"
     pub location: String,
-    /// `StartupApproved`에 쓰이는 이름 (Run 값 이름, 또는 확장자까지 포함한 파일 이름)
+    /// `StartupApproved`에 쓰이는 이름 (Run 값 이름, 또는 확장자까지 포함한 파일 이름).
+    /// 작업은 `\Vendor\Updater` 같은 작업 경로.
     pub approved_name: String,
     /// 실행되는 명령 (바로 가기면 대상 + 인자)
     pub command: String,
@@ -85,6 +98,10 @@ pub struct StartupEntry {
     pub publisher: Option<String>,
     /// 파일 버전 정보의 설명
     pub description: Option<String>,
+    /// 작업을 만든 이 (작업 스케줄러의 "만든 이"). 작업에만 있다.
+    pub author: Option<String>,
+    /// 바꾸려면 관리자 권한(UAC)이 필요해 보이는지
+    pub needs_admin: bool,
     pub enabled: bool,
     /// 끈 시각 (유닉스 초). 기록돼 있을 때만.
     pub disabled_at: Option<u64>,
@@ -107,6 +124,48 @@ pub fn make_id(source: StartupSource, approved_name: &str) -> String {
 /// ID 형식 검사 (관리자 권한 작업자에 넘기기 전에).
 pub fn is_valid_id(id: &str) -> bool {
     id.len() == 16 && id.chars().all(|c| matches!(c, '0'..='9' | 'a'..='f'))
+}
+
+/// Windows 자체 작업 폴더(`\Microsoft\...`)인지. 이 폴더는 목록에 넣지 않는다.
+pub fn is_windows_task_folder(path: &str) -> bool {
+    let lower = path.to_lowercase();
+    lower == r"\microsoft" || lower.starts_with(r"\microsoft\")
+}
+
+/// 작업 동작의 실행 파일과 인자를 한 줄 명령으로 합친다 (Run 값과 같은 모양으로).
+pub fn task_command(path: &str, args: &str) -> String {
+    let path = path.trim().trim_matches('"');
+    format!("\"{path}\" {}", args.trim()).trim_end().to_string()
+}
+
+/// 지금 로그인한 사용자. 작업이 이 사용자로 실행되는지 볼 때 쓴다.
+pub struct CurrentUser {
+    pub name: String,
+    pub domain: String,
+}
+
+impl CurrentUser {
+    pub fn from_env() -> Self {
+        CurrentUser {
+            name: std::env::var("USERNAME").unwrap_or_default(),
+            domain: std::env::var("USERDOMAIN").unwrap_or_default(),
+        }
+    }
+
+    /// 작업의 실행 사용자(`UserId`)가 이 사용자인지. SID나 SYSTEM 같은 다른 계정이면 `false`.
+    /// 이 사용자로 실행되는 작업은 보통 이 사용자가 만든 것이라 관리자 권한 없이 바꿀 수 있다.
+    pub fn owns_task(&self, user_id: &str) -> bool {
+        if self.name.is_empty() {
+            return false;
+        }
+        match user_id.rsplit_once('\\') {
+            Some((domain, name)) => {
+                name.eq_ignore_ascii_case(&self.name)
+                    && (domain.eq_ignore_ascii_case(&self.domain) || domain == ".")
+            }
+            None => user_id.eq_ignore_ascii_case(&self.name),
+        }
+    }
 }
 
 /// 1601-01-01부터 1970-01-01까지의 100ns 단위 수
@@ -208,6 +267,31 @@ mod tests {
         assert!(is_valid_id(&a));
         assert!(!is_valid_id(r"..\..\x"));
         assert!(!is_valid_id("ABCDEF0123456789"));
+    }
+
+    #[test]
+    fn task_helpers() {
+        assert!(is_windows_task_folder(r"\Microsoft"));
+        assert!(is_windows_task_folder(r"\Microsoft\Windows\Defrag"));
+        assert!(!is_windows_task_folder(r"\MicrosoftEdgeUpdate"));
+        assert!(!is_windows_task_folder(r"\Vendor"));
+
+        assert_eq!(
+            task_command(r#""C:\App\up.exe""#, " /silent "),
+            r#""C:\App\up.exe" /silent"#
+        );
+        assert_eq!(task_command(r"C:\App\up.exe", ""), r#""C:\App\up.exe""#);
+
+        let me = CurrentUser {
+            name: "Blitz".into(),
+            domain: "DESKTOP-1".into(),
+        };
+        assert!(me.owns_task(r"DESKTOP-1\blitz"));
+        assert!(me.owns_task("Blitz"));
+        assert!(!me.owns_task(r"OTHER\Blitz"));
+        assert!(!me.owns_task("SYSTEM"));
+        assert!(!me.owns_task("S-1-5-18"));
+        assert!(!me.owns_task(""));
     }
 
     #[test]

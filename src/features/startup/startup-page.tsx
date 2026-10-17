@@ -37,15 +37,17 @@ const sourceLabels: Record<StartupSource, { kind: string; scope: string }> = {
   runMachine32: { kind: "레지스트리", scope: "모든 사용자 · 32비트" },
   folderUser: { kind: "시작 폴더", scope: "현재 사용자" },
   folderCommon: { kind: "시작 폴더", scope: "모든 사용자" },
+  task: { kind: "예약 작업", scope: "로그인·부팅 때 실행" },
 }
 
-type Filter = "all" | "on" | "off" | "missing"
+type Filter = "all" | "on" | "off" | "missing" | "task"
 
 const quickFilters: { key: Filter; label: string }[] = [
   { key: "all", label: "전체" },
   { key: "on", label: "켜짐" },
   { key: "off", label: "꺼짐" },
   { key: "missing", label: "파일 없음" },
+  { key: "task", label: "예약 작업" },
 ]
 
 const LIST_GRID = "grid grid-cols-[minmax(0,1fr)_10rem_6.5rem_2.5rem] items-center gap-4"
@@ -54,6 +56,7 @@ function matches(e: StartupEntry, filter: Filter) {
   if (filter === "on") return e.enabled
   if (filter === "off") return !e.enabled
   if (filter === "missing") return e.targetMissing
+  if (filter === "task") return e.source === "task"
   return true
 }
 
@@ -100,6 +103,7 @@ export function StartupPage() {
           !q ||
           e.name.toLowerCase().includes(q) ||
           (e.publisher ?? "").toLowerCase().includes(q) ||
+          (e.author ?? "").toLowerCase().includes(q) ||
           (e.description ?? "").toLowerCase().includes(q),
       )
   }, [all, filter, query])
@@ -111,8 +115,8 @@ export function StartupPage() {
       <FadeUp>
         <h1 className="text-2xl font-bold tracking-tight">시작프로그램</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Windows에 로그인할 때 함께 실행되는 프로그램이에요. 꺼도 프로그램이나 등록 정보는 지우지 않아서 언제든 다시 켤
-          수 있어요.
+          Windows에 로그인하거나 켤 때 함께 실행되는 프로그램과 예약 작업이에요. 꺼도 프로그램이나 등록 정보는 지우지
+          않아서 언제든 다시 켤 수 있어요.
         </p>
       </FadeUp>
 
@@ -320,7 +324,8 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
   const [busy, setBusy] = useState(false)
   const machine = isMachineStartup(entry)
   const source = sourceLabels[entry.source]
-  const subtitle = [entry.publisher, entry.description !== entry.name ? entry.description : null]
+  const isTask = entry.source === "task"
+  const subtitle = [entry.publisher ?? entry.author, entry.description !== entry.name ? entry.description : null]
     .filter(Boolean)
     .join(" · ")
 
@@ -427,12 +432,20 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
               <dd data-selectable className="font-mono break-all">
                 {entry.command}
               </dd>
-              <dt className="text-muted-foreground">등록 위치</dt>
+              <dt className="text-muted-foreground">{isTask ? "작업 경로" : "등록 위치"}</dt>
               <dd data-selectable className="font-mono break-all">
                 {entry.location}
                 {" › "}
                 {entry.approvedName}
               </dd>
+              {entry.author && (
+                <>
+                  <dt className="text-muted-foreground">만든 이</dt>
+                  <dd data-selectable className="break-all">
+                    {entry.author}
+                  </dd>
+                </>
+              )}
               {entry.targetPath && (
                 <>
                   <dt className="text-muted-foreground">실행 파일</dt>
@@ -449,7 +462,9 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
                     {entry.disabledAt ? `${formatDate(entry.disabledAt)}에 끔` : "꺼져 있어요"}
                     {entry.changedByUs
                       ? " · RobinUninstaller가 끔 (다시 켜면 원래 값으로 되돌려요)"
-                      : " · 작업 관리자 등 다른 곳에서 끔"}
+                      : isTask
+                        ? " · 작업 스케줄러 등 다른 곳에서 끔"
+                        : " · 작업 관리자 등 다른 곳에서 끔"}
                   </dd>
                 </>
               )}

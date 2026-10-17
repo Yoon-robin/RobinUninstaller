@@ -364,7 +364,7 @@ async fn get_startup_icon(
     Ok(icon)
 }
 
-/// 시작 항목을 끄거나 다시 켠다. HKLM·공용 폴더 항목은 관리자 권한 작업자(UAC)로 처리한다.
+/// 시작 항목을 끄거나 다시 켠다. HKLM·공용 폴더 항목과 다른 계정의 예약 작업은 관리자 권한 작업자(UAC)로 처리한다.
 #[tauri::command]
 async fn set_startup_enabled(
     id: String,
@@ -407,7 +407,7 @@ async fn set_startup_enabled(
     Ok(entry)
 }
 
-/// 시작 항목을 탐색기에서 보여 준다: 시작 폴더 항목은 그 파일, Run 항목은 실행 파일.
+/// 시작 항목을 탐색기에서 보여 준다: 시작 폴더 항목은 그 파일, Run 항목과 예약 작업은 실행 파일.
 #[tauri::command]
 fn reveal_startup_item(id: String, cache: State<'_, AppCache>) -> Result<(), String> {
     let entry = cache

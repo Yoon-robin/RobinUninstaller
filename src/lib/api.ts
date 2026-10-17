@@ -131,7 +131,7 @@ export const recoveryApi = {
 export const countStatus = (op: Operation, status: ItemStatus) => op.items.filter((i) => i.status === status).length
 
 // crates/startup 의 StartupEntry 와 맞춰야 한다.
-export type StartupSource = "runUser" | "runMachine" | "runMachine32" | "folderUser" | "folderCommon"
+export type StartupSource = "runUser" | "runMachine" | "runMachine32" | "folderUser" | "folderCommon" | "task"
 
 export interface StartupEntry {
   id: string
@@ -144,6 +144,10 @@ export interface StartupEntry {
   targetMissing: boolean
   publisher: string | null
   description: string | null
+  /** 예약 작업을 만든 이 (작업에만 있음) */
+  author: string | null
+  /** 바꾸려면 관리자 권한(UAC)이 필요해 보임 */
+  needsAdmin: boolean
   enabled: boolean
   /** 끈 시각 (유닉스 초) */
   disabledAt: number | null
@@ -151,8 +155,8 @@ export interface StartupEntry {
   changedByUs: boolean
 }
 
-/** HKLM·공용 시작 폴더 항목은 바꿀 때 관리자 권한(UAC)이 필요하다. */
-export const isMachineStartup = (e: StartupEntry) => e.source !== "runUser" && e.source !== "folderUser"
+/** HKLM·공용 시작 폴더 항목과 다른 계정으로 실행되는 예약 작업은 바꿀 때 관리자 권한(UAC)이 필요하다. */
+export const isMachineStartup = (e: StartupEntry) => e.needsAdmin
 
 export const startupApi = {
   list: () => invoke<StartupEntry[]>("list_startup_items"),

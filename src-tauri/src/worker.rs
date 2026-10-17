@@ -9,7 +9,7 @@
 //! robin-uninstaller.exe --elevated-startup <on|off> <시작 항목 ID> --store <시작프로그램 기록 폴더>
 //! ```
 //!
-//! 시작 항목도 마찬가지로 ID만 받고, 목록을 다시 읽어 그 ID의 항목을 찾는다.
+//! 시작 항목(Run 키·시작 폴더·예약 작업)도 마찬가지로 ID만 받고, 목록을 다시 읽어 그 ID의 항목을 찾는다.
 
 use std::path::PathBuf;
 

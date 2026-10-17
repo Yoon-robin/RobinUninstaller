@@ -17,6 +17,7 @@
 //!   - `HKCU\Software\Robin Test Labs\Fixture Notes`
 //!   - `HKCU\...\Run` 값 `FixtureNotes` (설치 폴더를 가리킴)
 //!   - 시작 폴더의 `Fixture Notes.lnk` (설치 폴더의 notes.exe를 가리킴)
+//!   - 예약 작업 `\Fixture Notes Updater` (현재 사용자 로그인 때 notes.exe 실행. 테스트 중에는 실행되지 않는다)
 //! - 미끼 (확실 후보가 되면 안 됨)
 //!   - `%APPDATA%\Robin Test Labs\Other Product\data.txt`, `HKCU\Software\Robin Test Labs\Other Product`
 //!   - `%APPDATA%\Fixture Notes 2019\old.txt` (다른 버전)
@@ -28,6 +29,7 @@
 //!   - `HKLM\SOFTWARE\Robin Test Labs\Fixture Notes`
 //!   - `C:\Program Files\Robin Test Labs\Fixture Notes\data.txt`
 //!   - `HKLM\...\Run` 값 `FixtureNotesMachine` (없는 파일을 가리킴 → "파일 없음" 표시 확인용)
+//!   - 예약 작업 `\Fixture Notes Machine Task` (부팅 때 SYSTEM으로 없는 파일 실행 → 실행돼도 아무 일 없음)
 //!
 //! 시작프로그램 화면에서 끈 상태(`Explorer\StartupApproved` 값)도 `remove`가 함께 지운다.
 
@@ -60,6 +62,8 @@ mod imp {
     const SHORTCUT: &str = "Fixture Notes.lnk";
     const PUBLISHER: &str = "Robin Test Labs";
     const PRODUCT: &str = "Fixture Notes";
+    const TASK_NAME: &str = "Fixture Notes Updater";
+    const MACHINE_TASK_NAME: &str = "Fixture Notes Machine Task";
 
     fn env_dir(var: &str) -> PathBuf {
         PathBuf::from(std::env::var(var).unwrap_or_else(|_| panic!("{var}")))
@@ -79,11 +83,40 @@ mod imp {
             quote(link),
             quote(target)
         );
-        let ok = Command::new("powershell.exe")
-            .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+        assert!(powershell(&script), "시작 폴더 바로 가기 만들기");
+    }
+
+    fn powershell(script: &str) -> bool {
+        Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-Command", script])
             .status()
-            .is_ok_and(|s| s.success());
-        assert!(ok, "시작 폴더 바로 가기 만들기");
+            .is_ok_and(|s| s.success())
+    }
+
+    /// 현재 사용자가 로그인할 때만 실행되는 예약 작업 (관리자 권한 없이 만들 수 있다).
+    /// notes.exe는 진짜 프로그램이 아니라서 혹시 실행돼도 아무 일도 일어나지 않는다.
+    fn register_task(target: &Path) {
+        let script = format!(
+            "$u = \"$env:USERDOMAIN\\$env:USERNAME\"; \
+             $t = New-ScheduledTask \
+               -Action (New-ScheduledTaskAction -Execute '{}' -Argument '--update') \
+               -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $u) \
+               -Principal (New-ScheduledTaskPrincipal -UserId $u -LogonType Interactive -RunLevel Limited) \
+               -Description 'RobinUninstaller test task'; \
+             $t.Author = '{PUBLISHER}'; \
+             Register-ScheduledTask -TaskName '{TASK_NAME}' -InputObject $t -Force | Out-Null",
+            target.display().to_string().replace('\'', "''")
+        );
+        assert!(powershell(&script), "예약 작업 만들기");
+    }
+
+    /// 관리자 예약 작업은 권한이 없으면 지워지지 않고 그대로 남는다 (조용히 건너뜀).
+    fn unregister_task() {
+        for name in [TASK_NAME, MACHINE_TASK_NAME] {
+            let _ = powershell(&format!(
+                "Unregister-ScheduledTask -TaskName '{name}' -Confirm:$false -ErrorAction SilentlyContinue"
+            ));
+        }
     }
 
     fn install_dir() -> PathBuf {
@@ -159,6 +192,23 @@ mod imp {
             &format!("\"{}\" --tray", dir.join("notes.exe").display()),
         )
         .unwrap();
+        let script = format!(
+            "$t = New-ScheduledTask \
+               -Action (New-ScheduledTaskAction -Execute '{}') \
+               -Trigger (New-ScheduledTaskTrigger -AtStartup) \
+               -Principal (New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount) \
+               -Description 'RobinUninstaller test task (machine)'; \
+             $t.Author = '{PUBLISHER}'; \
+             Register-ScheduledTask -TaskName '{MACHINE_TASK_NAME}' -InputObject $t -Force | Out-Null",
+            dir.join("missing.exe")
+                .display()
+                .to_string()
+                .replace('\'', "''")
+        );
+        assert!(
+            powershell(&script),
+            "관리자 예약 작업 만들기 (관리자 권한 필요)"
+        );
         println!("관리자 권한 흔적 만듦: {}", dir.display());
     }
 
@@ -189,6 +239,7 @@ mod imp {
         )
         .unwrap();
         create_shortcut(&startup_shortcut(), &dir.join("notes.exe"));
+        register_task(&dir.join("notes.exe"));
 
         let (key, _) = hkcu.create_subkey(UNINSTALL_KEY).expect("레지스트리 등록");
         let mut cmd = format!("\"{}\" --uninstall", uninstaller.display());
@@ -272,6 +323,7 @@ mod imp {
             }
         }
         let _ = std::fs::remove_file(startup_shortcut());
+        unregister_task();
         let _ = std::fs::remove_dir_all(install_dir());
         for (path, _) in extra_files() {
             if let Some(parent) = path.parent() {

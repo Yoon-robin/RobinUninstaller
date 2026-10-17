@@ -1,18 +1,23 @@
 //! 시작프로그램 목록과 끄기·원상복구.
 //!
-//! 대상: Run 키(HKCU, HKLM 64·32비트)와 시작 폴더(사용자, 공용).
+//! 대상: Run 키(HKCU, HKLM 64·32비트), 시작 폴더(사용자, 공용), 로그인·부팅 때 실행되는 예약 작업.
 //! 끄기는 작업 관리자와 같은 방식(`StartupApproved` 값)이라 Run 값이나 바로 가기 파일은 그대로 남는다.
+//! 예약 작업은 작업의 "사용" 여부(`Enabled`)만 바꾸고 작업 자체는 그대로 둔다.
 //! RobinUninstaller가 끈 항목은 원래 값을 기록해 두었다가, 다시 켤 때 그대로 되돌린다.
 
 pub mod history;
 pub mod model;
 
 #[cfg(windows)]
+mod com;
+#[cfg(windows)]
 mod fileinfo;
 #[cfg(windows)]
 mod folder;
 #[cfg(windows)]
 mod registry;
+#[cfg(windows)]
+mod tasks;
 
 pub use history::{Change, History};
 pub use model::{StartupEntry, StartupSource, is_valid_id};
@@ -21,7 +26,7 @@ pub use model::{StartupEntry, StartupSource, is_valid_id};
 pub enum ToggleError {
     /// 목록에 없는 항목 (그 사이 지워졌거나 잘못된 ID)
     NotFound,
-    /// HKLM·공용 폴더 항목이라 관리자 권한이 필요함
+    /// HKLM·공용 폴더 항목이나 다른 계정의 작업이라 관리자 권한이 필요함
     NeedsAdmin,
     Failed(String),
 }
@@ -136,8 +141,53 @@ pub fn list(history: &History) -> Vec<StartupEntry> {
         }
     }
 
+    for task in tasks::list() {
+        entries.push(build_task(task, &changed));
+    }
+
     entries.sort_by_key(|e| e.name.to_lowercase());
     entries
+}
+
+#[cfg(windows)]
+fn build_task(
+    task: tasks::Task,
+    changed: &std::collections::BTreeMap<String, Change>,
+) -> StartupEntry {
+    let exists = |p: &str| std::path::Path::new(p).is_file();
+    let target = task
+        .command
+        .as_deref()
+        .and_then(|c| model::resolve_target(c, |v| std::env::var(v).ok(), exists));
+    let target_missing = target.as_deref().is_some_and(|p| !exists(p));
+    let info = match &target {
+        Some(p) if !target_missing => fileinfo::read(p),
+        _ => fileinfo::FileInfo::default(),
+    };
+    let id = model::make_id(StartupSource::Task, &task.path);
+    // 작업 스케줄러는 끈 시각을 남기지 않는다. 우리가 끈 것이면 기록의 시각을 쓴다.
+    let change = changed.get(&id).filter(|_| !task.enabled);
+
+    StartupEntry {
+        changed_by_us: change.is_some(),
+        disabled_at: change.map(|c| c.changed_at),
+        id,
+        name: task.name,
+        source: StartupSource::Task,
+        location: "작업 스케줄러".to_string(),
+        approved_name: task.path,
+        // 프로그램 실행이 아닌 작업(COM 처리기 등)
+        command: task
+            .command
+            .unwrap_or_else(|| "(프로그램 실행이 아닌 작업)".to_string()),
+        target_path: target,
+        target_missing,
+        publisher: info.company,
+        description: info.description,
+        author: task.author,
+        needs_admin: task.needs_admin,
+        enabled: task.enabled,
+    }
 }
 
 #[cfg(windows)]
@@ -172,6 +222,8 @@ fn build(
         target_missing,
         publisher: info.company,
         description: info.description,
+        author: None,
+        needs_admin: source.is_machine(),
         enabled,
         disabled_at,
     }
@@ -196,6 +248,10 @@ pub fn set_enabled(
     };
     let save_err =
         |e: std::io::Error| ToggleError::Failed(format!("변경 기록을 저장하지 못했어요: {e}"));
+
+    if entry.source == StartupSource::Task {
+        return set_task_enabled(history, entry, enabled, find);
+    }
 
     if entry.enabled == enabled {
         if enabled {
@@ -232,6 +288,7 @@ pub fn set_enabled(
                 id,
                 Change {
                     previous: registry::read_approved(entry.source, &entry.approved_name),
+                    previous_enabled: None,
                     name: entry.name.clone(),
                     changed_at: now,
                 },
@@ -243,6 +300,64 @@ pub fn set_enabled(
             Some(&model::disabled_value(now)),
         ) {
             let _ = history.forget(id);
+            return Err(io_err(e));
+        }
+    }
+
+    find().ok_or(ToggleError::NotFound)
+}
+
+/// 예약 작업 끄기·켜기: 작업의 `Enabled` 값만 바꾸고, 끄기 전 값을 기록해 두었다가 켤 때 되돌린다.
+#[cfg(windows)]
+fn set_task_enabled(
+    history: &History,
+    entry: StartupEntry,
+    enabled: bool,
+    find: impl Fn() -> Option<StartupEntry>,
+) -> Result<StartupEntry, ToggleError> {
+    let id = entry.id.clone();
+    let io_err = |e: std::io::Error| match e.kind() {
+        std::io::ErrorKind::PermissionDenied => ToggleError::NeedsAdmin,
+        _ => ToggleError::Failed(e.to_string()),
+    };
+    let save_err =
+        |e: std::io::Error| ToggleError::Failed(format!("변경 기록을 저장하지 못했어요: {e}"));
+
+    if entry.enabled == enabled {
+        if enabled {
+            history.forget(&id).map_err(save_err)?;
+        }
+        return Ok(entry);
+    }
+
+    if enabled {
+        // 끄기 전 값이 기록돼 있으면 그 값으로 (끌 때는 항상 켜져 있었으므로 보통 "사용")
+        let restore = history
+            .get(&id)
+            .and_then(|c| c.previous_enabled)
+            .unwrap_or(true);
+        tasks::set_enabled(&entry.approved_name, restore).map_err(io_err)?;
+        history.forget(&id).map_err(save_err)?;
+    } else {
+        history.forget(&id).map_err(save_err)?;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        // 바꾸는 도중 꺼져도 원래 값을 잃지 않도록 기록을 먼저 남긴다
+        history
+            .remember(
+                &id,
+                Change {
+                    previous: None,
+                    previous_enabled: Some(entry.enabled),
+                    name: entry.name.clone(),
+                    changed_at: now,
+                },
+            )
+            .map_err(save_err)?;
+        if let Err(e) = tasks::set_enabled(&entry.approved_name, false) {
+            let _ = history.forget(&id);
             return Err(io_err(e));
         }
     }

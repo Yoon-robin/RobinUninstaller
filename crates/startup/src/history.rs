@@ -1,4 +1,4 @@
-//! RobinUninstaller가 끈 항목의 원래 `StartupApproved` 값 기록.
+//! RobinUninstaller가 끈 항목의 원래 `StartupApproved` 값(작업이면 원래 `Enabled` 값) 기록.
 //!
 //! 다시 켤 때 이 값을 그대로 되돌려 놓는다 (원래 값이 없었다면 값을 지운다).
 //! 작업 관리자 등 다른 곳에서 끈 항목은 기록이 없으므로 작업 관리자와 같은 "켜짐" 값을 쓴다.
@@ -16,8 +16,11 @@ use serde::{Deserialize, Serialize};
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Change {
-    /// 끄기 전의 값. `None`이면 값이 없었음.
+    /// 끄기 전의 `StartupApproved` 값. `None`이면 값이 없었음 (작업은 항상 `None`).
     pub previous: Option<Vec<u8>>,
+    /// 작업 스케줄러 작업의 끄기 전 `Enabled` 값. 작업이 아니면 `None`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub previous_enabled: Option<bool>,
     /// 사람이 기록을 읽을 때 알아보기 위한 이름
     pub name: String,
     pub changed_at: u64,
@@ -103,6 +106,7 @@ mod tests {
         let history = History::new(&dir);
         let first = Change {
             previous: None,
+            previous_enabled: None,
             name: "A".into(),
             changed_at: 1,
         };
@@ -112,6 +116,7 @@ mod tests {
                 "0123456789abcdef",
                 Change {
                     previous: Some(vec![3]),
+                    previous_enabled: None,
                     name: "A".into(),
                     changed_at: 2,
                 },
