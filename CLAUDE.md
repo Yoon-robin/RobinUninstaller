@@ -12,6 +12,7 @@ Windows용 언인스톨러 (Revo Uninstaller 같은 프로그램). Tauri 2 + Rea
 ## 안전 원칙 (반드시 지킬 것)
 
 - **사용자 PC의 실제 프로그램을 제거하거나 실제 잔여물을 지우는 테스트를 하지 않는다.** 제거·정리 기능은 `crates/fixture`의 가짜 앱 "Fixture Notes"(게시자 "Robin Test Labs")로만 시험하고, 끝나면 `robin-fixture remove`로 정리한다.
+- 시작프로그램 끄기·켜기도 실제 항목으로는 시험하지 않는다. 테스트 앱 항목(`FixtureNotes`, `Fixture Notes.lnk`)만 쓴다.
 - 실제 프로그램 대상으로는 읽기 전용 확인만 한다 (`cargo run -p robin-scanner --example scan -- "이름"`).
 - 영구 삭제 기능을 만들지 않는다. 정리는 항상 백업·격리(`crates/recovery`)를 거친다.
 - `Revo Uninstaller Pro.zip`(상용 프로그램)과 `docs/private/`(분석 메모)는 **절대 커밋하지 않는다** (.gitignore에 있음). 리포지토리는 공개 상태다.
@@ -29,6 +30,8 @@ cargo run -p robin-fixture -- remove
 cargo run -p robin-execution --example uninstall_fixture
 cargo run -p robin-scanner --example scan_fixture
 cargo run -p robin-recovery --example clean_fixture
+cargo run -p robin-startup --example list             # 시작 항목 보기 (읽기 전용)
+cargo run -p robin-startup --example toggle_fixture   # 테스트 앱 시작 항목만 껐다 켜기
 ```
 
 앱 화면을 자동으로 확인할 때는 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9223"`를 주고 `pnpm tauri dev`로 띄운 뒤,
@@ -36,9 +39,10 @@ DevTools 프로토콜(`http://127.0.0.1:9223/json`)로 클릭·캡처한다. 마
 
 ## 코드 구조
 
-- `src/` React 화면 (`features/programs`, `features/leftovers`, `features/restore`, `components/`)
+- `src/` React 화면 (`features/programs`, `features/leftovers`, `features/startup`, `features/restore`, `components/`)
 - `src-tauri/` Tauri command 계층(얇게 유지) + `worker.rs`(관리자 권한 작업자 모드)
 - `crates/core` 공통 모델 · `crates/discovery` 설치 목록·아이콘 · `crates/execution` 언인스톨러 실행
 - `crates/scanner` 잔여물 탐지(읽기 전용) · `crates/recovery` 백업·정리·복원 · `crates/fixture` 테스트 앱
+- `crates/startup` 시작프로그램 목록·끄기·원상복구 (작업 관리자와 같은 `StartupApproved` 값만 바꾼다)
 
 프론트엔드는 경로가 아니라 ID만 넘긴다. 경로·명령은 항상 Rust 쪽이 자기 데이터에서 찾는다.

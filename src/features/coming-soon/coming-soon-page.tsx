@@ -1,4 +1,4 @@
-import { Check, Radar, Rocket, Settings, type LucideIcon } from "lucide-react"
+import { Check, Radar, Settings, type LucideIcon } from "lucide-react"
 
 import { FadeUp, Stagger } from "@/components/motion"
 import type { Page } from "@/components/app-sidebar"
@@ -11,14 +11,7 @@ type Info = {
   points: string[]
 }
 
-const pages: Record<Exclude<Page, "programs" | "leftovers" | "restore">, Info> = {
-  startup: {
-    icon: Rocket,
-    title: "시작프로그램",
-    description: "Windows가 켜질 때 함께 실행되는 프로그램을 확인하고 끄거나 다시 켤 수 있어요.",
-    phase: "Phase 5",
-    points: ["Run 키·시작 폴더·예약 작업", "끈 항목은 언제든 원상 복구", "게시자와 파일 위치 표시"],
-  },
+const pages: Record<Exclude<Page, "programs" | "leftovers" | "restore" | "startup">, Info> = {
   tracking: {
     icon: Radar,
     title: "설치 추적",
@@ -35,7 +28,7 @@ const pages: Record<Exclude<Page, "programs" | "leftovers" | "restore">, Info> =
   },
 }
 
-export function ComingSoonPage({ page }: { page: Exclude<Page, "programs" | "leftovers" | "restore"> }) {
+export function ComingSoonPage({ page }: { page: Exclude<Page, "programs" | "leftovers" | "restore" | "startup"> }) {
   const info = pages[page]
   const Icon = info.icon
 

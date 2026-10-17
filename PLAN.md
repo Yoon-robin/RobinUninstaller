@@ -179,3 +179,21 @@ MVP 품질 목표: 앱 목록 2초 이내(캐시 먼저 표시), 일반 스캔 1
   - 서비스 정리(중지·삭제)
   - 백업 보존 기간 자동 정리
 - 레지스트리 삭제는 부모 키를 읽기 권한으로만 열고 DELETE는 지울 키에만 요청한다. `HKLM\SOFTWARE` 같은 하이브 루트는 관리자에게도 DELETE를 주지 않는다. UAC 실행으로 HKLM·Program Files 정리와 복원을 검증했다(2026-10-16).
+
+## Phase 5 구현 메모 — 시작프로그램 관리
+
+- `crates/startup`이 담당한다. 대상: Run 키(HKCU, HKLM 64·32비트)와 시작 폴더(사용자, 공용). 예약 작업은 아직 없다.
+- **끄기 방식:** 작업 관리자와 같은 `Explorer\StartupApproved\{Run|Run32|StartupFolder}` 바이너리 값을 쓴다.
+  - Run 값이나 바로 가기 파일은 그대로 두므로 지우는 것이 아니다.
+  - 첫 바이트가 홀수(03)면 꺼짐, 짝수(02·04·06)거나 값이 없으면 켜짐. 4~11바이트는 끈 시각(FILETIME).
+- **원상복구:** RobinUninstaller가 끌 때 원래 값(없었으면 "없음")을 `%LOCALAPPDATA%\RobinUninstaller\startup\changes.json`에 **먼저** 기록한다.
+  - 다시 켜면 그 값을 그대로 돌려놓거나, 원래 값이 없었으면 값을 지운다.
+  - 다른 곳(작업 관리자 등)에서 끈 항목은 기록이 없으므로 작업 관리자와 같은 "켜짐" 값(02)을 쓴다.
+- **ID:** 등록 위치 + 이름(소문자)의 FNV-1a 해시 16자리. 프론트엔드와 관리자 작업자는 이 ID만 주고받고, 엔진이 목록을 다시 읽어 항목을 찾는다.
+- **관리자 권한:** HKLM·공용 시작 폴더 항목은 일반 권한으로 쓰기가 거부되면 작업자 모드(`--elevated-startup <on|off> <ID> --store <...\RobinUninstaller\startup>`)를 UAC로 띄운다.
+- **표시 정보:** 실행 명령에서 실행 파일을 찾고(경로 없는 `rundll32.exe` 등은 Windows 폴더에서), 바로 가기는 IShellLink로 대상을 읽는다. 게시자·설명은 파일 버전 정보에서 읽는다. 파일이 없으면 "파일 없음"으로 표시한다.
+- **검증:** `cargo run -p robin-startup --example toggle_fixture`로 테스트 앱의 Run 값과 시작 폴더 바로 가기를 껐다 켜서 원래 상태(값 없음)로 돌아오는지 확인한다. 앱 화면에서도 같은 흐름을 확인했다(2026-10-17).
+- **아직 안 한 것:**
+  - 관리자 권한(UAC) 경로 실제 시험 (`robin-fixture install --machine`의 `FixtureNotesMachine`)
+  - 예약 작업(로그온 트리거), 서비스
+  - 파일이 없는 항목 정리(백업 후 Run 값·바로 가기 제거)

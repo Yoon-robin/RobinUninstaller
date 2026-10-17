@@ -16,6 +16,7 @@
 //!   - `%LOCALAPPDATA%\Fixture Notes\cache\a.bin`
 //!   - `HKCU\Software\Robin Test Labs\Fixture Notes`
 //!   - `HKCU\...\Run` 값 `FixtureNotes` (설치 폴더를 가리킴)
+//!   - 시작 폴더의 `Fixture Notes.lnk` (설치 폴더의 notes.exe를 가리킴)
 //! - 미끼 (확실 후보가 되면 안 됨)
 //!   - `%APPDATA%\Robin Test Labs\Other Product\data.txt`, `HKCU\Software\Robin Test Labs\Other Product`
 //!   - `%APPDATA%\Fixture Notes 2019\old.txt` (다른 버전)
@@ -26,6 +27,9 @@
 //! `--machine`(관리자 권한 필요)은 아래 흔적을 추가로 남긴다. 지우거나 되돌리려면 관리자 권한이 있어야 한다.
 //!   - `HKLM\SOFTWARE\Robin Test Labs\Fixture Notes`
 //!   - `C:\Program Files\Robin Test Labs\Fixture Notes\data.txt`
+//!   - `HKLM\...\Run` 값 `FixtureNotesMachine` (없는 파일을 가리킴 → "파일 없음" 표시 확인용)
+//!
+//! 시작프로그램 화면에서 끈 상태(`Explorer\StartupApproved` 값)도 `remove`가 함께 지운다.
 
 #[cfg(windows)]
 fn main() {
@@ -44,17 +48,42 @@ mod imp {
     use std::time::Duration;
 
     use winreg::RegKey;
-    use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+    use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE, KEY_SET_VALUE, KEY_WOW64_64KEY};
 
     const UNINSTALL_KEY: &str =
         r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\RobinFixtureApp";
     const RUN_KEY: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run";
     const RUN_VALUE: &str = "FixtureNotes";
+    const MACHINE_RUN_VALUE: &str = "FixtureNotesMachine";
+    const APPROVED_KEY: &str =
+        r"SOFTWARE\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved";
+    const SHORTCUT: &str = "Fixture Notes.lnk";
     const PUBLISHER: &str = "Robin Test Labs";
     const PRODUCT: &str = "Fixture Notes";
 
     fn env_dir(var: &str) -> PathBuf {
         PathBuf::from(std::env::var(var).unwrap_or_else(|_| panic!("{var}")))
+    }
+
+    fn startup_shortcut() -> PathBuf {
+        env_dir("APPDATA")
+            .join(r"Microsoft\Windows\Start Menu\Programs\Startup")
+            .join(SHORTCUT)
+    }
+
+    /// 바로 가기는 COM(IShellLink)이 필요해서, 테스트 앱에서는 PowerShell의 WScript.Shell로 만든다.
+    fn create_shortcut(link: &Path, target: &Path) {
+        let quote = |p: &Path| p.display().to_string().replace('\'', "''");
+        let script = format!(
+            "$s = (New-Object -ComObject WScript.Shell).CreateShortcut('{}'); $s.TargetPath = '{}'; $s.Arguments = '--tray'; $s.Save()",
+            quote(link),
+            quote(target)
+        );
+        let ok = Command::new("powershell.exe")
+            .args(["-NoProfile", "-NonInteractive", "-Command", &script])
+            .status()
+            .is_ok_and(|s| s.success());
+        assert!(ok, "시작 폴더 바로 가기 만들기");
     }
 
     fn install_dir() -> PathBuf {
@@ -122,6 +151,14 @@ mod imp {
             .expect("HKLM 키 생성 (관리자 권한 필요)");
         k.set_value("Theme", &"dark").unwrap();
         k.set_value("Level", &7u32).unwrap();
+        let (run, _) = RegKey::predef(HKEY_LOCAL_MACHINE)
+            .create_subkey_with_flags(RUN_KEY, KEY_SET_VALUE | KEY_WOW64_64KEY)
+            .expect("HKLM Run 키 (관리자 권한 필요)");
+        run.set_value(
+            MACHINE_RUN_VALUE,
+            &format!("\"{}\" --tray", dir.join("notes.exe").display()),
+        )
+        .unwrap();
         println!("관리자 권한 흔적 만듦: {}", dir.display());
     }
 
@@ -151,6 +188,7 @@ mod imp {
             &format!("\"{}\" --tray", dir.join("notes.exe").display()),
         )
         .unwrap();
+        create_shortcut(&startup_shortcut(), &dir.join("notes.exe"));
 
         let (key, _) = hkcu.create_subkey(UNINSTALL_KEY).expect("레지스트리 등록");
         let mut cmd = format!("\"{}\" --uninstall", uninstaller.display());
@@ -207,6 +245,15 @@ mod imp {
         let _ = hklm.delete_subkey_all(machine_key());
         let _ = hklm.delete_subkey(format!(r"SOFTWARE\{PUBLISHER}"));
         let _ = std::fs::remove_dir_all(machine_dir());
+        if let Ok(run) = hklm.open_subkey_with_flags(RUN_KEY, KEY_SET_VALUE | KEY_WOW64_64KEY) {
+            let _ = run.delete_value(MACHINE_RUN_VALUE);
+        }
+        if let Ok(k) = hklm.open_subkey_with_flags(
+            format!(r"{APPROVED_KEY}\Run"),
+            KEY_SET_VALUE | KEY_WOW64_64KEY,
+        ) {
+            let _ = k.delete_value(MACHINE_RUN_VALUE);
+        }
 
         let hkcu = RegKey::predef(HKEY_CURRENT_USER);
         let _ = hkcu.delete_subkey_all(UNINSTALL_KEY);
@@ -214,9 +261,17 @@ mod imp {
             let _ = hkcu.delete_subkey_all(&key);
         }
         let _ = hkcu.delete_subkey(format!(r"Software\{PUBLISHER}"));
-        if let Ok(run) = hkcu.open_subkey_with_flags(RUN_KEY, winreg::enums::KEY_SET_VALUE) {
+        if let Ok(run) = hkcu.open_subkey_with_flags(RUN_KEY, KEY_SET_VALUE) {
             let _ = run.delete_value(RUN_VALUE);
         }
+        for (sub, name) in [("Run", RUN_VALUE), ("StartupFolder", SHORTCUT)] {
+            if let Ok(k) =
+                hkcu.open_subkey_with_flags(format!(r"{APPROVED_KEY}\{sub}"), KEY_SET_VALUE)
+            {
+                let _ = k.delete_value(name);
+            }
+        }
+        let _ = std::fs::remove_file(startup_shortcut());
         let _ = std::fs::remove_dir_all(install_dir());
         for (path, _) in extra_files() {
             if let Some(parent) = path.parent() {

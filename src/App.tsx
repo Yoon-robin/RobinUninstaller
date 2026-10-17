@@ -10,6 +10,7 @@ import { WindowControls } from "@/components/window-controls"
 import { ComingSoonPage } from "@/features/coming-soon/coming-soon-page"
 import { LeftoversPage } from "@/features/leftovers/leftovers-page"
 import { RestorePage } from "@/features/restore/restore-page"
+import { StartupPage } from "@/features/startup/startup-page"
 import { ProgramsPage } from "@/features/programs/programs-page"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
@@ -88,7 +89,8 @@ export default function App() {
                   </div>
                   {page === "leftovers" && <LeftoversPage />}
                   {page === "restore" && <RestorePage />}
-                  {page !== "programs" && page !== "leftovers" && page !== "restore" && <ComingSoonPage page={page} />}
+                  {page === "startup" && <StartupPage />}
+                  {(page === "tracking" || page === "settings") && <ComingSoonPage page={page} />}
                 </main>
               </SidebarInset>
             </SidebarProvider>

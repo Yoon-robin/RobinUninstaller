@@ -50,9 +50,21 @@ pnpm tauri dev    # 앱 실행
 - 수정 후: HKLM 키·Program Files 폴더 정리 성공 → 관리자 권한 복원 성공(값 `Theme=dark`, DWORD `Level=7` 원본과 같음) → 테스트 흔적 전부 정리.
 - 이 PC에 남은 테스트 흔적과 테스트 백업은 없다.
 
+### Phase 5 시작프로그램 관리 — 완료 (2026-10-17)
+
+- Run 키(HKCU, HKLM 64·32비트)와 시작 폴더(사용자·공용) 목록, 게시자·설명·아이콘, "파일 없음" 표시.
+- 끄기·다시 켜기는 작업 관리자와 같은 `StartupApproved` 값만 바꾼다. RobinUninstaller가 끈 항목은 원래 값을 기록해 두었다가 그대로 되돌린다.
+- 테스트 앱 항목으로 엔진 예제와 앱 화면 모두에서 끄기 → 원상복구(값 없음)를 확인했다. 테스트 흔적은 정리했다.
+- **아직 안 함:** 관리자 권한 항목(HKLM·공용 폴더)의 UAC 경로 실제 시험. `robin-fixture install --machine`(관리자)로 `FixtureNotesMachine`을 만든 뒤 앱에서 껐다 켜 본다.
+
+### 새 PC에서 겪은 것 (2026-10-17)
+
+- Git for Windows 기본값(`core.autocrlf=true`) 때문에 CRLF로 받아져 prettier 검사가 실패했다. `.gitattributes`로 LF를 고정했다.
+- pnpm은 Git Bash에서 실행되지 않을 수 있다. PowerShell에서 실행한다.
+
 ### 다음 단계 후보
 
-- Phase 5: 강제 제거(언인스톨러 없는 프로그램), 시작프로그램 관리
+- Phase 5 나머지: 강제 제거(언인스톨러 없는 프로그램), 시작프로그램의 예약 작업
 - 시스템 복원 지점, 서비스 정리(중지·삭제), 오래된 백업 자동 정리
 - Phase 6: 설치 추적(스냅샷 비교 → ETW, 커널 드라이버는 쓰지 않음)
 - 배포: 코드 서명, NSIS 설치 파일(`pnpm tauri build`)

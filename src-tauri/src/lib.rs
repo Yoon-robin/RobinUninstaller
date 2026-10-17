@@ -13,6 +13,7 @@ use robin_core::InstalledApplication;
 use robin_execution::{UninstallEvent, UninstallOutcome};
 use robin_recovery::{Guard, Operation, Store};
 use robin_scanner::{Leftover, LeftoverKind, ScanReport};
+use robin_startup::{StartupEntry, ToggleError};
 use tauri::ipc::Channel;
 use tauri::window::{Effect, EffectsBuilder};
 use tauri::{Manager, State};
@@ -25,11 +26,22 @@ struct AppCache {
     removed: Mutex<Vec<InstalledApplication>>,
     /// 마지막 스캔 결과의 항목. 탐색기로 열기 같은 요청은 여기 있는 경로만 허용한다.
     last_scan: Mutex<Vec<Leftover>>,
+    /// 마지막으로 읽은 시작 항목. 아이콘·탐색기 요청은 여기 있는 항목만 허용한다.
+    startup: Mutex<Vec<StartupEntry>>,
 }
 
 impl AppCache {
     fn get(&self, id: &str) -> Option<InstalledApplication> {
         self.apps.lock().ok()?.get(id).cloned()
+    }
+
+    fn get_startup(&self, id: &str) -> Option<StartupEntry> {
+        self.startup
+            .lock()
+            .ok()?
+            .iter()
+            .find(|e| e.id == id)
+            .cloned()
     }
 
     fn get_removed(&self, id: &str) -> Option<InstalledApplication> {
@@ -305,6 +317,126 @@ async fn delete_backup(op_id: String) -> Result<(), String> {
         .map_err(|e| e.to_string())?
 }
 
+fn startup_history() -> Result<robin_startup::History, String> {
+    robin_startup::History::default_location()
+        .ok_or_else(|| "시작프로그램 기록 위치를 찾을 수 없어요".to_string())
+}
+
+/// 시작프로그램 목록 (읽기 전용).
+#[tauri::command]
+async fn list_startup_items(cache: State<'_, AppCache>) -> Result<Vec<StartupEntry>, String> {
+    let items = tauri::async_runtime::spawn_blocking(|| {
+        startup_history().map(|history| robin_startup::list(&history))
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+
+    if let Ok(mut startup) = cache.startup.lock() {
+        *startup = items.clone();
+    }
+    Ok(items)
+}
+
+/// 시작 항목이 실행하는 파일의 아이콘. 없으면 `None`.
+#[tauri::command]
+async fn get_startup_icon(
+    id: String,
+    cache: State<'_, AppCache>,
+) -> Result<Option<String>, String> {
+    let key = format!("startup:{id}");
+    if let Some(hit) = cache.icons.lock().ok().and_then(|m| m.get(&key).cloned()) {
+        return Ok(hit);
+    }
+    let Some(target) = cache
+        .get_startup(&id)
+        .filter(|e| !e.target_missing)
+        .and_then(|e| e.target_path)
+    else {
+        return Ok(None);
+    };
+
+    let icon = tauri::async_runtime::spawn_blocking(move || robin_discovery::file_icon(&target))
+        .await
+        .map_err(|e| e.to_string())?;
+    if let Ok(mut map) = cache.icons.lock() {
+        map.insert(key, icon.clone());
+    }
+    Ok(icon)
+}
+
+/// 시작 항목을 끄거나 다시 켠다. HKLM·공용 폴더 항목은 관리자 권한 작업자(UAC)로 처리한다.
+#[tauri::command]
+async fn set_startup_enabled(
+    id: String,
+    enabled: bool,
+    cache: State<'_, AppCache>,
+) -> Result<StartupEntry, String> {
+    let entry = tauri::async_runtime::spawn_blocking(move || {
+        let history = startup_history()?;
+        match robin_startup::set_enabled(&history, &id, enabled) {
+            Ok(entry) => Ok(entry),
+            // ID는 set_enabled가 이미 검사했다 (형식이 틀리면 NotFound)
+            Err(ToggleError::NeedsAdmin) => {
+                let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+                let args = format!(
+                    "{} {} {id} --store \"{}\"",
+                    worker::STARTUP,
+                    if enabled { "on" } else { "off" },
+                    history.root().display()
+                );
+                match robin_execution::run_elevated_and_wait(&exe.to_string_lossy(), &args) {
+                    Ok(_) => robin_startup::list(&history)
+                        .into_iter()
+                        .find(|e| e.id == id && e.enabled == enabled)
+                        .ok_or_else(|| "관리자 권한으로도 바꾸지 못했어요".to_string()),
+                    Err(None) => Err("관리자 권한 요청이 거절됐어요".into()),
+                    Err(Some(m)) => Err(m),
+                }
+            }
+            Err(e) => Err(e.to_string()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())??;
+
+    if let Ok(mut startup) = cache.startup.lock()
+        && let Some(slot) = startup.iter_mut().find(|e| e.id == entry.id)
+    {
+        *slot = entry.clone();
+    }
+    Ok(entry)
+}
+
+/// 시작 항목을 탐색기에서 보여 준다: 시작 폴더 항목은 그 파일, Run 항목은 실행 파일.
+#[tauri::command]
+fn reveal_startup_item(id: String, cache: State<'_, AppCache>) -> Result<(), String> {
+    let entry = cache
+        .get_startup(&id)
+        .ok_or("시작프로그램 목록에 없는 항목이에요")?;
+    let path = match entry.source {
+        robin_startup::StartupSource::FolderUser | robin_startup::StartupSource::FolderCommon => {
+            Path::new(&entry.location)
+                .join(&entry.approved_name)
+                .to_string_lossy()
+                .into_owned()
+        }
+        _ => entry
+            .target_path
+            .filter(|_| !entry.target_missing)
+            .ok_or("실행 파일을 찾을 수 없어요")?,
+    };
+    if !Path::new(&path).exists() {
+        return Err("파일이 이미 없어요".into());
+    }
+    // 경로는 엔진이 읽은 목록에서 온 것이다. 파일 이름에는 따옴표가 들어갈 수 없다.
+    use std::os::windows::process::CommandExt;
+    std::process::Command::new("explorer.exe")
+        .raw_arg(format!("/select,\"{path}\""))
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 /// Mica 배경이 켜졌는지. 프론트엔드는 이 값을 보고 배경을 반투명하게 그린다.
 static MICA_ENABLED: AtomicBool = AtomicBool::new(false);
 
@@ -373,6 +505,10 @@ pub fn run() {
             restore_backup,
             restore_backup_elevated,
             delete_backup,
+            list_startup_items,
+            get_startup_icon,
+            set_startup_enabled,
+            reveal_startup_item,
             window_material
         ])
         .run(tauri::generate_context!())

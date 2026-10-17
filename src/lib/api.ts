@@ -130,6 +130,37 @@ export const recoveryApi = {
 
 export const countStatus = (op: Operation, status: ItemStatus) => op.items.filter((i) => i.status === status).length
 
+// crates/startup 의 StartupEntry 와 맞춰야 한다.
+export type StartupSource = "runUser" | "runMachine" | "runMachine32" | "folderUser" | "folderCommon"
+
+export interface StartupEntry {
+  id: string
+  name: string
+  source: StartupSource
+  location: string
+  approvedName: string
+  command: string
+  targetPath: string | null
+  targetMissing: boolean
+  publisher: string | null
+  description: string | null
+  enabled: boolean
+  /** 끈 시각 (유닉스 초) */
+  disabledAt: number | null
+  /** RobinUninstaller가 끈 항목이라 원래 값으로 되돌릴 수 있음 */
+  changedByUs: boolean
+}
+
+/** HKLM·공용 시작 폴더 항목은 바꿀 때 관리자 권한(UAC)이 필요하다. */
+export const isMachineStartup = (e: StartupEntry) => e.source !== "runUser" && e.source !== "folderUser"
+
+export const startupApi = {
+  list: () => invoke<StartupEntry[]>("list_startup_items"),
+  icon: (id: string) => invoke<string | null>("get_startup_icon", { id }),
+  setEnabled: (id: string, enabled: boolean) => invoke<StartupEntry>("set_startup_enabled", { id, enabled }),
+  reveal: (id: string) => invoke<void>("reveal_startup_item", { id }),
+}
+
 /** 다른 화면으로 이동 요청 (App이 받아 처리). */
 export function navigate(page: "programs" | "leftovers" | "restore") {
   window.dispatchEvent(new CustomEvent("robin:navigate", { detail: page }))

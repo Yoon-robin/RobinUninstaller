@@ -1,0 +1,202 @@
+//! 시작프로그램 목록과 끄기·원상복구.
+//!
+//! 대상: Run 키(HKCU, HKLM 64·32비트)와 시작 폴더(사용자, 공용).
+//! 끄기는 작업 관리자와 같은 방식(`StartupApproved` 값)이라 Run 값이나 바로 가기 파일은 그대로 남는다.
+//! RobinUninstaller가 끈 항목은 원래 값을 기록해 두었다가, 다시 켤 때 그대로 되돌린다.
+
+pub mod history;
+pub mod model;
+
+#[cfg(windows)]
+mod fileinfo;
+#[cfg(windows)]
+mod folder;
+#[cfg(windows)]
+mod registry;
+
+pub use history::{Change, History};
+pub use model::{StartupEntry, StartupSource, is_valid_id};
+
+#[derive(Debug)]
+pub enum ToggleError {
+    /// 목록에 없는 항목 (그 사이 지워졌거나 잘못된 ID)
+    NotFound,
+    /// HKLM·공용 폴더 항목이라 관리자 권한이 필요함
+    NeedsAdmin,
+    Failed(String),
+}
+
+impl std::fmt::Display for ToggleError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ToggleError::NotFound => write!(f, "시작프로그램 목록에 없는 항목이에요"),
+            ToggleError::NeedsAdmin => write!(f, "관리자 권한이 필요해요"),
+            ToggleError::Failed(m) => write!(f, "{m}"),
+        }
+    }
+}
+
+/// 시작 항목 전체 (이름순). 읽기 전용.
+#[cfg(windows)]
+pub fn list(history: &History) -> Vec<StartupEntry> {
+    let changed = history.load();
+    let mut entries = Vec::new();
+
+    for source in model::ALL_SOURCES {
+        if let Some(dir) = folder::folder(source) {
+            for path in folder::files(source) {
+                let file_name = path
+                    .file_name()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_default();
+                let full = path.to_string_lossy().into_owned();
+                let is_link = path
+                    .extension()
+                    .is_some_and(|e| e.eq_ignore_ascii_case("lnk"));
+                let command = match is_link.then(|| folder::resolve_shortcut(&path)).flatten() {
+                    Some((target, args)) if !target.is_empty() => {
+                        format!("\"{target}\" {args}").trim_end().to_string()
+                    }
+                    // 대상을 알 수 없는 바로 가기, 또는 스크립트·실행 파일 자체
+                    _ => format!("\"{full}\""),
+                };
+                let name = path
+                    .file_stem()
+                    .map(|n| n.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| file_name.clone());
+                entries.push(build(
+                    source,
+                    name,
+                    file_name,
+                    dir.to_string_lossy().into_owned(),
+                    command,
+                    &changed,
+                ));
+            }
+        } else {
+            for (name, command) in registry::run_values(source) {
+                entries.push(build(
+                    source,
+                    name.clone(),
+                    name,
+                    registry::run_location(source),
+                    command,
+                    &changed,
+                ));
+            }
+        }
+    }
+
+    entries.sort_by_key(|e| e.name.to_lowercase());
+    entries
+}
+
+#[cfg(windows)]
+fn build(
+    source: StartupSource,
+    name: String,
+    approved_name: String,
+    location: String,
+    command: String,
+    changed: &std::collections::BTreeMap<String, Change>,
+) -> StartupEntry {
+    let exists = |p: &str| std::path::Path::new(p).is_file();
+    let target = model::resolve_target(&command, |v| std::env::var(v).ok(), exists);
+    let target_missing = target.as_deref().is_some_and(|p| !exists(p));
+    let info = match &target {
+        Some(p) if !target_missing => fileinfo::read(p),
+        _ => fileinfo::FileInfo::default(),
+    };
+    let (enabled, disabled_at) =
+        model::parse_approved(registry::read_approved(source, &approved_name).as_deref());
+    let id = model::make_id(source, &approved_name);
+
+    StartupEntry {
+        changed_by_us: !enabled && changed.contains_key(&id),
+        id,
+        name,
+        source,
+        location,
+        approved_name,
+        command,
+        target_path: target,
+        target_missing,
+        publisher: info.company,
+        description: info.description,
+        enabled,
+        disabled_at,
+    }
+}
+
+/// 항목을 끄거나 다시 켠다. 끌 때는 원래 값을 기록하고, 켤 때는 그 값으로 되돌린다.
+/// 바뀐 뒤의 항목을 돌려준다.
+#[cfg(windows)]
+pub fn set_enabled(
+    history: &History,
+    id: &str,
+    enabled: bool,
+) -> Result<StartupEntry, ToggleError> {
+    if !is_valid_id(id) {
+        return Err(ToggleError::NotFound);
+    }
+    let find = || list(history).into_iter().find(|e| e.id == id);
+    let entry = find().ok_or(ToggleError::NotFound)?;
+    let io_err = |e: std::io::Error| match e.kind() {
+        std::io::ErrorKind::PermissionDenied => ToggleError::NeedsAdmin,
+        _ => ToggleError::Failed(e.to_string()),
+    };
+    let save_err =
+        |e: std::io::Error| ToggleError::Failed(format!("변경 기록을 저장하지 못했어요: {e}"));
+
+    if entry.enabled == enabled {
+        if enabled {
+            // 다른 곳에서 이미 다시 켰다면 남은 기록은 더 이상 맞지 않는다
+            history.forget(id).map_err(save_err)?;
+        }
+        return Ok(entry);
+    }
+
+    if enabled {
+        let restore = match history.get(id) {
+            // 원래 값이 "켜짐"이었으면 그대로, 원래 값이 없었으면 값을 지운다
+            Some(change) => match change.previous {
+                Some(prev) if model::parse_approved(Some(&prev)).0 => Some(prev),
+                Some(_) => Some(model::enabled_value()),
+                None => None,
+            },
+            // 다른 곳(작업 관리자 등)에서 끈 항목은 작업 관리자와 같은 값으로 켠다
+            None => Some(model::enabled_value()),
+        };
+        registry::write_approved(entry.source, &entry.approved_name, restore.as_deref())
+            .map_err(io_err)?;
+        history.forget(id).map_err(save_err)?;
+    } else {
+        // 켜진 상태에서 남아 있는 기록은 낡은 것이다. 지금 값을 원래 값으로 새로 기록한다.
+        history.forget(id).map_err(save_err)?;
+        let now = std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .unwrap_or_default()
+            .as_secs();
+        // 쓰는 도중 꺼져도 원래 값을 잃지 않도록 기록을 먼저 남긴다
+        history
+            .remember(
+                id,
+                Change {
+                    previous: registry::read_approved(entry.source, &entry.approved_name),
+                    name: entry.name.clone(),
+                    changed_at: now,
+                },
+            )
+            .map_err(save_err)?;
+        if let Err(e) = registry::write_approved(
+            entry.source,
+            &entry.approved_name,
+            Some(&model::disabled_value(now)),
+        ) {
+            let _ = history.forget(id);
+            return Err(io_err(e));
+        }
+    }
+
+    find().ok_or(ToggleError::NotFound)
+}
