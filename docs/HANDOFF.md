@@ -116,6 +116,7 @@ pnpm tauri dev    # 앱 실행
   2. 관리자 작업자 허용 목록 때문에 정상 항목이 "Windows 설정 영역이라…"로 막히지 않는지 (예: 설치 추적 기록의 `HKLM\SOFTWARE\Classes` 항목은 막히는 게 정상)
   3. 저장공간 "Windows 임시 파일"(관리자) 정리가 여전히 되는지 (핸들 기반 삭제로 바뀜)
   4. 언인스톨러 대기: 실제 NSIS·Inno 언인스톨러가 아니라 테스트 앱으로 `uninstall_fixture`
+  5. 1번에서 관리자 권한으로 정리한 Program Files 백업을 복구 기록에서 "영구 삭제" → UAC 후 지워지는지 (`--elevated-delete`)
 
 ### 다음 단계 후보
 
