@@ -27,6 +27,8 @@ pub enum ItemStatus {
     Failed,
     /// 원래 자리로 되돌림
     Restored,
+    /// 일부만 정리됨: 백업은 온전하지만 원래 자리에 일부가 남음 (다시 정리하거나 되돌릴 수 있다)
+    Partial,
 }
 
 /// 백업이 어디에 있는지 (작업 폴더 기준 상대 경로).
@@ -75,6 +77,26 @@ pub struct Operation {
     /// 유닉스 시간(초)
     pub created_at: u64,
     pub items: Vec<OperationItem>,
+}
+
+impl OperationItem {
+    /// 이 항목에 쓸 수 있는 백업 상대 경로인지. 매니페스트는 일반 사용자도 고칠 수 있는 곳에 있으므로,
+    /// 관리자 작업자가 엉뚱한 파일을 읽거나 옮기지 않게 정해진 모양만 받는다.
+    pub fn backup_path_is_valid(&self, index: usize) -> bool {
+        match &self.backup {
+            None => true,
+            Some(Backup::Registry { path }) => *path == format!("registry\\{index}.json"),
+            Some(Backup::Quarantine { path }) => path
+                .strip_prefix(&format!("files\\{index}\\"))
+                .is_some_and(|name| {
+                    !name.is_empty()
+                        && name == safe_file_name(name)
+                        && name != "."
+                        && name != ".."
+                        && !name.contains('\\')
+                }),
+        }
+    }
 }
 
 impl Operation {

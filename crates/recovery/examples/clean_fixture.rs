@@ -145,6 +145,7 @@ fn main() {
     let guard = Guard {
         known: robin_scanner::protect::KnownFolders::from_env(),
         store_root: store.root().to_path_buf(),
+        ..Default::default()
     };
     let mut op = robin_recovery::new_operation(&app.display_name, &targets);
     robin_recovery::clean(&store, &mut op, &guard, |i| {
@@ -187,7 +188,7 @@ fn main() {
     check("매니페스트 저장됨", store.load(&op.id).is_ok());
 
     let mut reloaded = store.load(&op.id).unwrap();
-    robin_recovery::restore(&store, &mut reloaded, None, |i| {
+    robin_recovery::restore(&store, &mut reloaded, &guard, None, |i| {
         println!(
             "  복원 {:?} {} {}",
             i.status,
@@ -208,7 +209,7 @@ fn main() {
 
     // 복원한 것을 다시 복원하려 하면 아무 일도 없어야 함 (상태가 Restored)
     let mut again = store.load(&op.id).unwrap();
-    robin_recovery::restore(&store, &mut again, None, |_| {});
+    robin_recovery::restore(&store, &mut again, &guard, None, |_| {});
     check(
         "두 번 복원해도 안전",
         again

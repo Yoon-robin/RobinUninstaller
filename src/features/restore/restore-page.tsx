@@ -15,7 +15,7 @@ import {
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
-import { countStatus, recoveryApi, type ItemStatus, type LeftoverKind, type Operation } from "@/lib/api"
+import { isRestorable, recoveryApi, type ItemStatus, type LeftoverKind, type Operation } from "@/lib/api"
 import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
@@ -31,6 +31,7 @@ const statusLabels: Record<ItemStatus, { label: string; tone: string }> = {
   blocked: { label: "보호됨", tone: "text-muted-foreground" },
   failed: { label: "실패", tone: "text-destructive" },
   restored: { label: "복원됨", tone: "text-chart-5" },
+  partial: { label: "일부만 정리됨", tone: "text-chart-3" },
 }
 
 const kindIcons: Record<LeftoverKind, typeof Folder> = {
@@ -96,16 +97,19 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
 
-  const kept = countStatus(op, "removed")
-  const restored = countStatus(op, "restored")
-  const keptBytes = op.items.filter((i) => i.status === "removed").reduce((s, i) => s + (i.sizeBytes ?? 0), 0)
-  const needsAdminRestore = op.items.some((i) => i.status === "removed" && i.error?.includes("관리자"))
+  const kept = op.items.filter((i) => isRestorable(i.status)).length
+  const restored = op.items.filter((i) => i.status === "restored").length
+  const keptBytes = op.items.filter((i) => isRestorable(i.status)).reduce((s, i) => s + (i.sizeBytes ?? 0), 0)
+  // 관리자 권한이 없어 되돌리지 못한 항목만 관리자 권한으로 다시 시도한다
+  const adminRestoreIds = op.items
+    .filter((i) => isRestorable(i.status) && i.error?.startsWith("복원 실패") && i.error.includes("관리자"))
+    .map((i) => i.id)
 
   const run = async (key: string, action: () => Promise<Operation>) => {
     setBusy(key)
     try {
       const updated = await action()
-      const failed = updated.items.filter((i) => i.status === "removed" && i.error).length
+      const failed = updated.items.filter((i) => isRestorable(i.status) && i.error?.startsWith("복원 실패")).length
       if (failed > 0) toast.error(`${failed}개는 되돌리지 못했어요. 항목을 펼쳐 이유를 확인하세요`)
       else toast.success("되돌렸어요")
     } catch (e) {
@@ -142,14 +146,14 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
             </p>
           </div>
         </button>
-        {needsAdminRestore && (
+        {adminRestoreIds.length > 0 && (
           <Button
             size="sm"
             variant="outline"
             disabled={busy != null}
-            onClick={() => run("admin", () => recoveryApi.restoreElevated(op.id))}
+            onClick={() => run("admin", () => recoveryApi.restoreElevated(op.id, adminRestoreIds))}
           >
-            <ShieldAlert />
+            {busy === "admin" ? <Loader2 className="animate-spin" /> : <ShieldAlert />}
             관리자 권한으로 복원
           </Button>
         )}
@@ -198,7 +202,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
                       {item.error && <p className="mt-1 text-destructive">{item.error}</p>}
                     </div>
                     <span className={cn("shrink-0 font-medium", s.tone)}>{s.label}</span>
-                    {item.status === "removed" && (
+                    {isRestorable(item.status) && (
                       <Button
                         size="sm"
                         variant="ghost"
@@ -229,7 +233,7 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
   useEffect(() => {
     if (op) setShown(op)
   }, [op])
-  const kept = shown ? countStatus(shown, "removed") : 0
+  const kept = shown ? shown.items.filter((i) => isRestorable(i.status)).length : 0
 
   const confirm = async () => {
     if (!op) return

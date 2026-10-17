@@ -18,7 +18,7 @@ pub use model::{Backup, ItemStatus, Operation, OperationItem};
 pub use store::Store;
 
 #[cfg(windows)]
-pub use clean::{Guard, clean, restore};
+pub use clean::{Guard, clean, clean_only, restore};
 
 /// 새 작업을 만든다 (아직 아무것도 지우지 않음).
 pub fn new_operation(app_name: &str, items: &[robin_scanner::Leftover]) -> Operation {

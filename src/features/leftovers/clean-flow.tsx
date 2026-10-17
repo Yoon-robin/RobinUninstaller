@@ -101,8 +101,13 @@ export function CleanResult({
   const [error, setError] = useState<string | null>(null)
 
   const removed = countStatus(current, "removed") + countStatus(current, "alreadyGone")
-  const needsAdmin = countStatus(current, "needsAdmin")
-  const problems = current.items.filter((i) => i.status === "failed" || i.status === "blocked")
+  // 관리자 권한이 없어 일부만 정리된 항목도 관리자 권한으로 마저 정리할 수 있다
+  const needsAdmin =
+    countStatus(current, "needsAdmin") +
+    current.items.filter((i) => i.status === "partial" && i.error?.includes("관리자")).length
+  const problems = current.items.filter(
+    (i) => i.status === "failed" || i.status === "blocked" || i.status === "partial",
+  )
   const freed = current.items.filter((i) => i.status === "removed").reduce((s, i) => s + (i.sizeBytes ?? 0), 0)
 
   const elevate = async () => {
@@ -174,6 +179,7 @@ export function CleanResult({
                 </p>
                 <p className={cn("mt-1", i.status === "blocked" ? "text-primary" : "text-destructive")}>
                   {i.status === "blocked" ? "안전을 위해 건드리지 않았어요: " : ""}
+                  {i.status === "partial" ? "일부만 정리됐어요 (백업은 온전해요): " : ""}
                   {i.error}
                 </p>
               </li>

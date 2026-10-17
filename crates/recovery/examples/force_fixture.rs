@@ -67,6 +67,7 @@ fn main() {
     let guard = Guard {
         known: robin_scanner::protect::KnownFolders::from_env(),
         store_root: store.root().to_path_buf(),
+        ..Default::default()
     };
     let mut op = robin_recovery::new_operation(&app.display_name, &strong);
     robin_recovery::clean(&store, &mut op, &guard, |i| {
@@ -84,7 +85,7 @@ fn main() {
     check("프로그램 목록에서 사라짐", find_fixture().is_none());
 
     let mut reloaded = store.load(&op.id).expect("매니페스트");
-    robin_recovery::restore(&store, &mut reloaded, None, |_| {});
+    robin_recovery::restore(&store, &mut reloaded, &guard, None, |_| {});
     check(
         "모두 복원됨",
         reloaded

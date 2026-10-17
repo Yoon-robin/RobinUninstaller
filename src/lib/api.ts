@@ -117,7 +117,16 @@ export const scanApi = {
 }
 
 // crates/recovery 의 Operation 과 맞춰야 한다.
-export type ItemStatus = "pending" | "removed" | "needsAdmin" | "alreadyGone" | "blocked" | "failed" | "restored"
+export type ItemStatus =
+  | "pending"
+  | "removed"
+  | "needsAdmin"
+  | "alreadyGone"
+  | "blocked"
+  | "failed"
+  | "restored"
+  /** 일부만 정리됨: 백업은 온전하고 원래 자리에 일부가 남음 (다시 정리하거나 되돌릴 수 있다) */
+  | "partial"
 
 export interface OperationItem {
   id: string
@@ -145,11 +154,16 @@ export const recoveryApi = {
   list: () => invoke<Operation[]>("list_backups"),
   restore: (opId: string, itemIds?: string[]) =>
     invoke<Operation>("restore_backup", { opId, itemIds: itemIds ?? null }),
-  restoreElevated: (opId: string) => invoke<Operation>("restore_backup_elevated", { opId }),
+  /** 관리자 권한으로 되돌린다. `itemIds`가 없으면 되돌릴 수 있는 항목 전부. */
+  restoreElevated: (opId: string, itemIds?: string[]) =>
+    invoke<Operation>("restore_backup_elevated", { opId, itemIds: itemIds ?? null }),
   deleteBackup: (opId: string) => invoke<void>("delete_backup", { opId }),
 }
 
 export const countStatus = (op: Operation, status: ItemStatus) => op.items.filter((i) => i.status === status).length
+
+/** 복구 기록에서 되돌릴 수 있는 항목 (정리했거나 일부만 정리한 항목) */
+export const isRestorable = (status: ItemStatus) => status === "removed" || status === "partial"
 
 // crates/startup 의 StartupEntry 와 맞춰야 한다.
 export type StartupSource = "runUser" | "runMachine" | "runMachine32" | "folderUser" | "folderCommon" | "task"

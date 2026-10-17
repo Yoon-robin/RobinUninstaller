@@ -12,6 +12,10 @@ cd "$(dirname "$0")/.."
 export WINEDEBUG=-all
 export WINEPREFIX="${WINEPREFIX:-$HOME/.wine-robin}"
 export ROBIN_SKIP_TASKS=1
+# 다른 드라이브(Wine의 Z: = 리눅스 /)로 옮겼다가 되돌리는 시험용 폴더
+CROSS_DIR="$HOME/robin-cross-drive"
+mkdir -p "$CROSS_DIR"
+export ROBIN_CROSS_DRIVE_DIR="Z:${CROSS_DIR//\//\\}"
 TARGET=x86_64-pc-windows-gnu
 D="target/$TARGET/debug"
 
@@ -32,6 +36,7 @@ CASES=(
   "robin-recovery clean_fixture install"
   "robin-recovery force_fixture install --broken"
   "robin-recovery startup_cleanup_fixture install"
+  "robin-recovery recovery_edge_fixture remove"
   "robin-tracker track_fixture remove"
   "robin-startup toggle_fixture install"
   "robin-storage storage_clean_fixture install"
@@ -51,6 +56,7 @@ for case in "${CASES[@]}"; do
   fi
 done
 fixture remove
+rm -rf "$CROSS_DIR"
 
 if [ "$failed" -gt 0 ]; then
   echo "실패 $failed건"

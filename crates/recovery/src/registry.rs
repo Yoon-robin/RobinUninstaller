@@ -266,6 +266,82 @@ pub fn restore(backup: &RegistryBackup) -> Result<(), RegError> {
     }
 }
 
+/// 지금 있는 키·값은 그대로 두고, 백업에만 있는 것을 채워 넣는다.
+/// 일부만 지워진 항목이나, 함께 정리한 하위 항목을 먼저 복원해 키가 이미 생긴 경우에 쓴다.
+/// 값이 다르게 이미 있으면 덮어쓰지 않고 그 이름을 돌려준다.
+pub fn restore_merge(backup: &RegistryBackup) -> Result<Vec<String>, RegError> {
+    let mut kept = Vec::new();
+    match backup {
+        RegistryBackup::Key { location, dump } => {
+            let (root, path) = split_location(location).ok_or(RegError::NotFound)?;
+            merge_key(&root, path, dump, &mut kept)?;
+        }
+        RegistryBackup::Value { location, value } => {
+            let (root, path) = split_location(location).ok_or(RegError::NotFound)?;
+            let (key, _) = root.create_subkey_with_flags(path, KEY_ALL_ACCESS | KEY_WOW64_64KEY)?;
+            merge_value(&key, value, location, &mut kept)?;
+        }
+    }
+    Ok(kept)
+}
+
+fn merge_value(
+    key: &RegKey,
+    value: &ValueDump,
+    location: &str,
+    kept: &mut Vec<String>,
+) -> Result<(), RegError> {
+    let wanted = to_reg_value(value)?;
+    match key.get_raw_value(&value.name) {
+        Ok(current) if current == wanted => Ok(()),
+        Ok(_) => {
+            kept.push(format!("{location} › {}", value.name));
+            Ok(())
+        }
+        Err(_) => Ok(key.set_raw_value(&value.name, &wanted)?),
+    }
+}
+
+fn merge_key(
+    root: &RegKey,
+    path: &str,
+    dump: &KeyDump,
+    kept: &mut Vec<String>,
+) -> Result<(), RegError> {
+    let (key, _) = root.create_subkey_with_flags(path, KEY_ALL_ACCESS | KEY_WOW64_64KEY)?;
+    for v in &dump.values {
+        merge_value(&key, v, path, kept)?;
+    }
+    for sub in &dump.subkeys {
+        merge_key(root, &format!("{path}\\{}", sub.name), sub, kept)?;
+    }
+    Ok(())
+}
+
+/// 백업한 내용과 지금 키가 같은지 (지우다 멈췄는지 판단용). 키가 없으면 false.
+pub fn matches_backup(backup: &RegistryBackup) -> bool {
+    match backup {
+        RegistryBackup::Key { location, dump } => match backup_key(location) {
+            Ok(RegistryBackup::Key { dump: now, .. }) => &now == dump,
+            _ => false,
+        },
+        RegistryBackup::Value { location, value } => match backup_value(location, &value.name) {
+            Ok(RegistryBackup::Value { value: now, .. }) => &now == value,
+            _ => false,
+        },
+    }
+}
+
+impl RegistryBackup {
+    /// 이 백업이 가리키는 위치 (키, 값 이름)
+    pub fn target(&self) -> (&str, Option<&str>) {
+        match self {
+            RegistryBackup::Key { location, .. } => (location, None),
+            RegistryBackup::Value { location, value } => (location, Some(&value.name)),
+        }
+    }
+}
+
 fn write_key(root: &RegKey, path: &str, dump: &KeyDump) -> Result<(), RegError> {
     let (key, _) = root.create_subkey_with_flags(path, KEY_ALL_ACCESS | KEY_WOW64_64KEY)?;
     for v in &dump.values {

@@ -231,6 +231,7 @@ fn guard(store: &Store) -> Guard {
     Guard {
         known: robin_scanner::protect::KnownFolders::from_env(),
         store_root: store.root().to_path_buf(),
+        ..Default::default()
     }
 }
 
@@ -253,6 +254,19 @@ async fn clean_leftovers(
         .collect();
     if items.is_empty() {
         return Err("정리할 항목이 없어요. 다시 찾은 뒤 시도해 주세요".into());
+    }
+    // 강제 제거는 화면에서 이미 확인했어도 여기서 다시 확인한다 (보안 프로그램·실행 중인 프로그램)
+    if let Some(app) = force_app_id.as_deref().and_then(|id| cache.get(id)) {
+        let check =
+            tauri::async_runtime::spawn_blocking(move || robin_execution::force::check(&app))
+                .await
+                .map_err(|e| e.to_string())?;
+        if let Some(reason) = check.blocked {
+            return Err(reason);
+        }
+        if !check.running.is_empty() {
+            return Err("프로그램이 실행 중이에요. 닫은 뒤 다시 시도해 주세요".into());
+        }
     }
 
     let op = tauri::async_runtime::spawn_blocking(move || {
@@ -303,14 +317,21 @@ async fn force_uninstall_check(
 }
 
 /// 관리자 권한 작업자를 띄워(UAC) 남은 항목을 처리하고, 갱신된 기록을 돌려준다.
-fn run_worker(mode: &str, op_id: &str) -> Result<Operation, String> {
+fn run_worker(mode: &str, op_id: &str, extra: &str) -> Result<Operation, String> {
     let store = store()?;
     if !robin_recovery::store::is_valid_id(op_id) {
         return Err("잘못된 작업이에요".into());
     }
     let exe = std::env::current_exe().map_err(|e| e.to_string())?;
-    let args = format!("{mode} {op_id} --store \"{}\"", store.root().display());
+    let args = format!(
+        "{mode} {op_id} --store \"{}\"{extra}",
+        store.root().display()
+    );
     match robin_execution::run_elevated_and_wait(&exe.to_string_lossy(), &args) {
+        // 작업자가 기록을 읽지 못하거나 인자를 거부하면 0이 아닌 코드로 끝난다
+        Ok(Some(code)) if code != 0 => Err(format!(
+            "관리자 권한 작업이 끝나지 못했어요 (코드 {code}). 복구 기록을 확인해 주세요"
+        )),
         Ok(_) => store.load(op_id).map_err(|e| e.to_string()),
         Err(None) => Err("관리자 권한 요청이 거절됐어요".into()),
         Err(Some(m)) => Err(m),
@@ -323,7 +344,7 @@ async fn clean_leftovers_elevated(
     force_app_id: Option<String>,
     cache: State<'_, AppCache>,
 ) -> Result<Operation, String> {
-    let op = tauri::async_runtime::spawn_blocking(move || run_worker(worker::CLEAN, &op_id))
+    let op = tauri::async_runtime::spawn_blocking(move || run_worker(worker::CLEAN, &op_id, ""))
         .await
         .map_err(|e| e.to_string())??;
     note_force_removed(&cache, force_app_id).await;
@@ -344,18 +365,41 @@ async fn restore_backup(op_id: String, item_ids: Option<Vec<String>>) -> Result<
     tauri::async_runtime::spawn_blocking(move || {
         let store = store()?;
         let mut op = store.load(&op_id).map_err(|e| e.to_string())?;
-        robin_recovery::restore(&store, &mut op, item_ids.as_deref(), |_| {});
+        robin_recovery::restore(&store, &mut op, &guard(&store), item_ids.as_deref(), |_| {});
         Ok(op)
     })
     .await
     .map_err(|e| e.to_string())?
 }
 
+/// 관리자 권한으로 되돌린다. `item_ids`가 있으면 그 항목만 (작업자에게는 항목 번호만 넘긴다).
 #[tauri::command]
-async fn restore_backup_elevated(op_id: String) -> Result<Operation, String> {
-    tauri::async_runtime::spawn_blocking(move || run_worker(worker::RESTORE, &op_id))
-        .await
-        .map_err(|e| e.to_string())?
+async fn restore_backup_elevated(
+    op_id: String,
+    item_ids: Option<Vec<String>>,
+) -> Result<Operation, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let extra = match item_ids {
+            None => String::new(),
+            Some(ids) => {
+                let op = store()?.load(&op_id).map_err(|e| e.to_string())?;
+                let indices: Vec<String> = op
+                    .items
+                    .iter()
+                    .enumerate()
+                    .filter(|(_, item)| ids.contains(&item.id))
+                    .map(|(i, _)| i.to_string())
+                    .collect();
+                if indices.is_empty() {
+                    return Err("되돌릴 항목이 없어요".to_string());
+                }
+                format!(" {} {}", worker::ITEMS, indices.join(","))
+            }
+        };
+        run_worker(worker::RESTORE, &op_id, &extra)
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 /// 백업을 완전히 지운다. 이후에는 복원할 수 없다 (사용자가 확인한 뒤에만 부른다).

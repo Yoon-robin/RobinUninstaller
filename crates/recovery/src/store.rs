@@ -53,7 +53,15 @@ impl Store {
             ));
         }
         let text = std::fs::read_to_string(self.dir(op_id).join("manifest.json"))?;
-        serde_json::from_str(&text).map_err(std::io::Error::other)
+        let op: Operation = serde_json::from_str(&text).map_err(std::io::Error::other)?;
+        // 다른 작업의 매니페스트를 복사해 넣은 경우 등: 폴더 이름과 기록의 ID가 같아야 한다
+        if op.id != op_id {
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::InvalidData,
+                "작업 기록의 ID가 폴더와 달라요",
+            ));
+        }
+        Ok(op)
     }
 
     /// 최근 작업부터.
@@ -77,7 +85,15 @@ impl Store {
                 "잘못된 작업 ID",
             ));
         }
-        std::fs::remove_dir_all(self.dir(op_id))
+        // 보관한 파일을 먼저 지우고 기록은 마지막에 지운다. 중간에 실패해도(권한 등) 기록이 남아 목록에 보인다.
+        let dir = self.dir(op_id);
+        for sub in ["files", "registry"] {
+            match std::fs::remove_dir_all(dir.join(sub)) {
+                Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
+                _ => {}
+            }
+        }
+        std::fs::remove_dir_all(dir)
     }
 }
 

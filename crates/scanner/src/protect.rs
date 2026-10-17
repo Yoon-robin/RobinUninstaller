@@ -88,6 +88,29 @@ impl KnownFolders {
         }
     }
 
+    /// 사용자가 직접 만든 파일이 있는 폴더 (바탕 화면, 문서, 다운로드 등). 이 아래는 자동 선택하지 않는다.
+    pub fn user_content_dirs(&self) -> impl Iterator<Item = &String> {
+        const NAMES: [&str; 7] = [
+            "desktop",
+            "documents",
+            "downloads",
+            "pictures",
+            "music",
+            "videos",
+            "onedrive",
+        ];
+        self.others.iter().filter(|p| {
+            let last = normalize_path(p);
+            let last = last.rsplit('\\').next().unwrap_or_default().to_string();
+            NAMES.contains(&last.as_str())
+        })
+    }
+
+    /// `path`가 사용자 파일 폴더(바탕 화면·문서 등) 안에 있는지.
+    pub fn is_user_content(&self, path: &str) -> bool {
+        self.user_content_dirs().any(|d| is_within(path, d))
+    }
+
     fn exact_roots(&self) -> impl Iterator<Item = &String> {
         self.program_files
             .iter()
@@ -129,8 +152,40 @@ const SHARED_FOLDER_NAMES: &[&str] = &[
     "tmp",
 ];
 
+/// 정규화하면 다른 곳을 가리킬 수 있는 경로인지 (`..`, `.`, `\\?\`, 겹친 구분자, 끝 점·공백, 8.3 짧은 이름).
+/// 이런 경로는 글자 비교로 보호 규칙을 피해 갈 수 있으므로 아예 다루지 않는다.
+pub fn is_suspicious_path(path: &str) -> bool {
+    // 끝 공백은 Windows가 조용히 잘라 다른 곳을 가리키므로 남겨 둔 채 검사한다
+    let p = path.trim_start().trim_matches('"').replace('/', "\\");
+    if p.starts_with(r"\\?\") || p.starts_with(r"\\.\") {
+        return true;
+    }
+    // UNC(\\server\share)의 앞 두 글자 말고는 구분자가 겹치면 안 된다
+    let body = p.strip_prefix(r"\\").unwrap_or(&p);
+    if body.contains(r"\\") {
+        return true;
+    }
+    body.trim_end_matches('\\')
+        .split('\\')
+        .enumerate()
+        .any(|(i, seg)| {
+            let drive = i == 0 && seg.len() == 2 && seg.ends_with(':');
+            !drive
+                && (seg == "."
+                    || seg == ".."
+                    || seg.ends_with('.')
+                    || seg.ends_with(' ')
+                    || seg
+                        .find('~')
+                        .is_some_and(|t| seg[t + 1..].starts_with(|c: char| c.is_ascii_digit())))
+        })
+}
+
 /// 경로가 보호 대상이면 이유를 돌려준다.
 pub fn protected_path_reason(path: &str, known: &KnownFolders) -> Option<&'static str> {
+    if is_suspicious_path(path) {
+        return Some("확인할 수 없는 형태의 경로");
+    }
     let p = normalize_path(path);
 
     // 드라이브 루트 ("c:\")
@@ -169,6 +224,14 @@ const PROTECTED_KEYS: &[&str] = &[
     "software\\microsoft\\windows\\currentversion\\run",
     "software\\microsoft\\windows\\currentversion\\runonce",
     "software\\microsoft\\windows\\currentversion\\app paths",
+    "software\\wow6432node\\microsoft\\windows",
+    "software\\wow6432node\\microsoft\\windows\\currentversion",
+    "software\\wow6432node\\microsoft\\windows\\currentversion\\uninstall",
+    "software\\wow6432node\\microsoft\\windows\\currentversion\\run",
+    "software\\wow6432node\\microsoft\\windows\\currentversion\\runonce",
+    "software\\wow6432node\\microsoft\\windows\\currentversion\\app paths",
+    "software\\wow6432node\\classes",
+    "software\\wow6432node\\policies",
     "system",
     "system\\currentcontrolset",
     "system\\currentcontrolset\\services",
@@ -180,13 +243,33 @@ const PROTECTED_KEY_PREFIXES: &[&str] = &[
     "software\\wow6432node\\microsoft\\",
     "software\\classes\\",
     "software\\policies\\",
+    "software\\wow6432node\\classes\\",
+    "software\\wow6432node\\policies\\",
 ];
+
+/// `SYSTEM\CurrentControlSet\Services\X` 또는 `SYSTEM\ControlSet001\Services\X` 같은 서비스 키인지 (하이브 이름 제외).
+pub fn is_service_key(key: &str) -> bool {
+    let k = key.trim_matches('\\').to_lowercase();
+    let mut parts = k.split('\\');
+    parts.next() == Some("system")
+        && parts.next().is_some_and(|cs| {
+            cs == "currentcontrolset"
+                || cs
+                    .strip_prefix("controlset")
+                    .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()))
+        })
+        && parts.next() == Some("services")
+        && parts.next().is_some()
+}
 
 /// 레지스트리 키(하이브 이름 제외, 예: `Software\Vendor\Product`)가 보호 대상이면 이유.
 /// `by_name_only`: 이름만 보고 찾은 후보면 Microsoft·Classes 영역 전체를 막는다.
 /// Uninstall·Run처럼 정확한 근거(경로·ID)로 찾은 항목은 false로 넘겨 그 아래 개별 키·값을 허용한다.
 pub fn protected_key_reason(key: &str, by_name_only: bool) -> Option<&'static str> {
     let k = key.trim_matches('\\').to_lowercase();
+    if k.contains("\\\\") || k.split('\\').any(|s| s.is_empty() || s == "." || s == "..") {
+        return Some("확인할 수 없는 형태의 레지스트리 경로");
+    }
     if PROTECTED_KEYS.contains(&k.as_str()) {
         return Some("Windows 기본 레지스트리 키");
     }
@@ -270,5 +353,46 @@ mod tests {
             protected_key_reason(r"Software\Robin Test Labs\Fixture Notes", true),
             None
         );
+    }
+
+    #[test]
+    fn suspicious_paths_are_protected() {
+        let k = known();
+        for p in [
+            r"C:\\Program Files",
+            r"C:\Program Files.",
+            r"C:\PROGRA~1",
+            r"\\?\C:\Program Files",
+            r"C:\Program Files\.",
+            r"C:\Program Files\..",
+            r"C:\Program Files\X\..\..\Windows",
+            r"C:\Windows.\System32",
+            r"C:\Program Files\Acme ",
+        ] {
+            assert!(protected_path_reason(p, &k).is_some(), "{p}");
+        }
+        // 평범한 경로와 UNC는 그대로
+        assert!(!is_suspicious_path(r"C:\Program Files\Acme\"));
+        assert!(!is_suspicious_path(r"\\server\share\Acme"));
+        assert!(!is_suspicious_path(r"C:\Apps\v1.2\a~b"));
+    }
+
+    #[test]
+    fn user_content_and_services() {
+        let k = known();
+        assert!(k.is_user_content(r"C:\Users\robin\Documents\report.docx"));
+        assert!(!k.is_user_content(r"C:\Users\robin\AppData\Roaming\Acme"));
+        assert!(is_service_key(r"SYSTEM\ControlSet001\Services\Acme"));
+        assert!(is_service_key(r"system\currentcontrolset\services\acme\"));
+        assert!(!is_service_key(r"SYSTEM\ControlSet001\Services"));
+        assert!(!is_service_key(r"SOFTWARE\Acme\Services\X"));
+        assert!(
+            protected_key_reason(
+                r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Run",
+                false
+            )
+            .is_some()
+        );
+        assert!(protected_key_reason(r"Software\..\Microsoft", false).is_some());
     }
 }
