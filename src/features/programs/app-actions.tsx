@@ -56,11 +56,10 @@ function actionsFor(
     { key: "leftovers", label: "흔적 미리 보기", icon: Sparkles, run: () => onFindLeftovers(app) },
     {
       key: "uninstall",
-      label: canUninstall(app) ? "제거" : "제거 불가 (언인스톨러 없음)",
+      label: canUninstall(app) ? "제거" : "강제 제거 (언인스톨러 없음)",
       icon: Trash2,
       destructive: true,
       separatorBefore: true,
-      disabled: !canUninstall(app),
       run: () => onUninstall(app),
     },
   ]

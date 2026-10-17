@@ -82,7 +82,16 @@ export function Cleaning({ label }: { label: string }) {
 }
 
 /** 정리 결과. 관리자 권한이 필요한 항목이 남았으면 이어서 처리할 수 있다. */
-export function CleanResult({ op, onDone }: { op: Operation; onDone: () => void }) {
+export function CleanResult({
+  op,
+  forceAppId,
+  onDone,
+}: {
+  op: Operation
+  /** 강제 제거 중이면 대상 프로그램 ID */
+  forceAppId?: string
+  onDone: () => void
+}) {
   const queryClient = useQueryClient()
   const [current, setCurrent] = useState(op)
   const [elevating, setElevating] = useState(false)
@@ -97,12 +106,13 @@ export function CleanResult({ op, onDone }: { op: Operation; onDone: () => void 
     setElevating(true)
     setError(null)
     try {
-      setCurrent(await recoveryApi.cleanElevated(current.id))
+      setCurrent(await recoveryApi.cleanElevated(current.id, forceAppId))
     } catch (e) {
       setError(String(e))
     } finally {
       setElevating(false)
       queryClient.invalidateQueries({ queryKey: ["backups"] })
+      queryClient.invalidateQueries({ queryKey: ["installed-apps"] })
     }
   }
 

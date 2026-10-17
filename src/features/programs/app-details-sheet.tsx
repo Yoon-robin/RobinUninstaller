@@ -57,12 +57,11 @@ export function AppDetailsSheet({
                 <Button
                   variant="destructive"
                   className="rounded-lg"
-                  disabled={!canUninstall(app)}
-                  title={canUninstall(app) ? undefined : "언인스톨러가 없어요. 강제 제거는 이후 버전에서 지원해요."}
+                  title={canUninstall(app) ? undefined : "언인스톨러가 없어서 등록 정보와 파일을 직접 정리해요"}
                   onClick={() => onUninstall(app)}
                 >
                   <Trash2 />
-                  제거
+                  {canUninstall(app) ? "제거" : "강제 제거"}
                 </Button>
                 <Button variant="outline" className="rounded-lg" onClick={openFolder} disabled={!app.installLocation}>
                   <FolderOpen />
@@ -74,7 +73,7 @@ export function AppDetailsSheet({
                   onClick={() => onFindLeftovers(app)}
                 >
                   <Sparkles />
-                  {app.uninstaller === "missing" ? "남은 흔적 찾기 (언인스톨러 없음)" : "흔적 미리 보기"}
+                  흔적 미리 보기
                 </Button>
               </div>
             </SheetHeader>

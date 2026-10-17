@@ -3,8 +3,9 @@
 //! 현재 사용자(HKCU)와 사용자 AppData에만 쓰므로 관리자 권한이 필요 없고 다른 프로그램에 영향을 주지 않는다.
 //!
 //! ```text
-//! robin-fixture install [--cancel|--hang|--machine]   등록 + 일부러 흔적과 미끼를 만든다
+//! robin-fixture install [--cancel|--hang|--machine|--broken]   등록 + 일부러 흔적과 미끼를 만든다
 //!                                         (--machine: 관리자 권한 흔적도 만든다. 관리자로 실행해야 함)
+//!                                         (--broken: 언인스톨러 파일을 지워 "언인스톨러 없음" 상태로 만든다 → 강제 제거 시험용)
 //! robin-fixture remove                      만든 것을 전부 지운다 (정리용)
 //! ```
 //!
@@ -160,7 +161,9 @@ mod imp {
             Some("--uninstall") => stage1(args.get(1).map(String::as_str)),
             Some("--stage2") => stage2(Path::new(&args[1])),
             _ => {
-                eprintln!("사용법: robin-fixture install [--cancel|--hang] | remove");
+                eprintln!(
+                    "사용법: robin-fixture install [--cancel|--hang|--machine|--broken] | remove"
+                );
                 exit(2);
             }
         }
@@ -216,7 +219,8 @@ mod imp {
         if mode == Some("--machine") {
             install_machine();
         }
-        let mode = mode.filter(|m| *m != "--machine");
+        let broken = mode == Some("--broken");
+        let mode = mode.filter(|m| *m != "--machine" && *m != "--broken");
         let dir = install_dir();
         std::fs::create_dir_all(&dir).expect("폴더 생성");
         let uninstaller = dir.join("uninstall.exe");
@@ -256,6 +260,11 @@ mod imp {
         key.set_value("DisplayIcon", &uninstaller.display().to_string())
             .unwrap();
         key.set_value("EstimatedSize", &1024u32).unwrap();
+        if broken {
+            // 등록 정보는 남기고 언인스톨러 파일만 없앤다 (언인스톨러가 손상된 프로그램 흉내)
+            std::fs::remove_file(&uninstaller).expect("언인스톨러 삭제");
+            println!("언인스톨러 없음 상태로 만듦");
+        }
         println!("등록함: {}", dir.display());
     }
 

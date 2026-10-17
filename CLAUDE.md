@@ -30,11 +30,12 @@ pnpm install
 pnpm tauri dev                 # 개발 모드 실행
 pnpm check                     # tsc + prettier + cargo fmt + clippy + cargo test
 pnpm format                    # 프론트엔드 포맷
-cargo run -p robin-fixture -- install [--cancel|--hang|--machine]   # 테스트 앱 (--machine은 관리자로)
+cargo run -p robin-fixture -- install [--cancel|--hang|--machine|--broken]   # 테스트 앱 (--machine은 관리자로, --broken은 언인스톨러 없음)
 cargo run -p robin-fixture -- remove
 cargo run -p robin-execution --example uninstall_fixture
 cargo run -p robin-scanner --example scan_fixture
 cargo run -p robin-recovery --example clean_fixture
+cargo run -p robin-recovery --example force_fixture   # install --broken 뒤 강제 제거 → 복원
 cargo run -p robin-startup --example list             # 시작 항목 보기 (읽기 전용)
 cargo run -p robin-startup --example toggle_fixture   # 테스트 앱 시작 항목만 껐다 켜기
 cargo run -p robin-storage --example storage_scan            # 정리할 수 있는 항목 보기 (읽기 전용)

@@ -23,6 +23,10 @@ struct Proc {
 }
 
 /// pid → (부모 pid, 실행 파일 이름)
+pub(crate) fn snapshot_pids() -> Vec<u32> {
+    snapshot().into_keys().collect()
+}
+
 fn snapshot() -> HashMap<u32, Proc> {
     let mut map = HashMap::new();
     unsafe {

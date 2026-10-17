@@ -15,7 +15,7 @@ import {
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 
-import { api, type InstalledApplication } from "@/lib/api"
+import { api, canUninstall, type InstalledApplication } from "@/lib/api"
 import { formatSize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { IconTooltip } from "@/components/icon-tooltip"
@@ -124,9 +124,18 @@ export function ProgramsPage() {
     return () => window.removeEventListener("keydown", onKey)
   }, [])
 
+  // 언인스톨러가 있으면 실행하고, 없으면 강제 제거(확인 → 스캔 → 백업 정리)로 간다.
+  const startUninstall = (app: InstalledApplication) => {
+    if (canUninstall(app)) {
+      setUninstallTarget(app)
+    } else {
+      setSelected(null)
+      setLeftoversTarget({ id: app.id, name: app.displayName, removed: false, force: true })
+    }
+  }
   const handlers = {
     onSelect: setSelected,
-    onUninstall: setUninstallTarget,
+    onUninstall: startUninstall,
     onFindLeftovers: (app: InstalledApplication) =>
       setLeftoversTarget({ id: app.id, name: app.displayName, removed: false }),
   }
@@ -352,7 +361,7 @@ export function ProgramsPage() {
       <AppDetailsSheet
         app={selected}
         onOpenChange={(open) => !open && setSelected(null)}
-        onUninstall={setUninstallTarget}
+        onUninstall={startUninstall}
         onFindLeftovers={handlers.onFindLeftovers}
       />
       <UninstallDialog

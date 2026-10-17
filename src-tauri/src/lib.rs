@@ -239,6 +239,7 @@ fn guard(store: &Store) -> Guard {
 async fn clean_leftovers(
     app_name: String,
     item_ids: Vec<String>,
+    force_app_id: Option<String>,
     cache: State<'_, AppCache>,
 ) -> Result<Operation, String> {
     let items: Vec<Leftover> = cache
@@ -253,17 +254,51 @@ async fn clean_leftovers(
         return Err("정리할 항목이 없어요. 다시 찾은 뒤 시도해 주세요".into());
     }
 
-    tauri::async_runtime::spawn_blocking(move || {
+    let op = tauri::async_runtime::spawn_blocking(move || {
         let store = store()?;
         let mut op = robin_recovery::new_operation(&app_name, &items);
         store
             .save(&op)
             .map_err(|e| format!("작업 기록을 만들지 못했어요: {e}"))?;
         robin_recovery::clean(&store, &mut op, &guard(&store), |_| {});
-        Ok(op)
+        Ok::<_, String>(op)
     })
     .await
-    .map_err(|e| e.to_string())?
+    .map_err(|e| e.to_string())??;
+
+    note_force_removed(&cache, force_app_id).await;
+    Ok(op)
+}
+
+/// 강제 제거로 등록 정보가 사라졌으면 "제거한 프로그램"으로 옮겨, 나중에 남은 흔적을 다시 찾을 수 있게 한다.
+async fn note_force_removed(cache: &AppCache, force_app_id: Option<String>) {
+    let Some(app) = force_app_id.and_then(|id| cache.get(&id)) else {
+        return;
+    };
+    let id = app.id.clone();
+    let still_installed = tauri::async_runtime::spawn_blocking(move || {
+        robin_discovery::list_installed().iter().any(|a| a.id == id)
+    })
+    .await
+    .unwrap_or(true);
+    if !still_installed && let Ok(mut removed) = cache.removed.lock() {
+        removed.retain(|a| a.id != app.id);
+        removed.insert(0, app);
+    }
+}
+
+/// 강제 제거 전 확인: 대상에서 빼야 하는 프로그램인지, 설치 폴더 안에서 실행 중인 프로세스가 있는지.
+#[tauri::command]
+async fn force_uninstall_check(
+    id: String,
+    cache: State<'_, AppCache>,
+) -> Result<robin_execution::force::ForceCheck, String> {
+    let app = cache
+        .get(&id)
+        .ok_or("알 수 없는 프로그램이에요. 목록을 새로고침해 주세요")?;
+    tauri::async_runtime::spawn_blocking(move || robin_execution::force::check(&app))
+        .await
+        .map_err(|e| e.to_string())
 }
 
 /// 관리자 권한 작업자를 띄워(UAC) 남은 항목을 처리하고, 갱신된 기록을 돌려준다.
@@ -282,10 +317,16 @@ fn run_worker(mode: &str, op_id: &str) -> Result<Operation, String> {
 }
 
 #[tauri::command]
-async fn clean_leftovers_elevated(op_id: String) -> Result<Operation, String> {
-    tauri::async_runtime::spawn_blocking(move || run_worker(worker::CLEAN, &op_id))
+async fn clean_leftovers_elevated(
+    op_id: String,
+    force_app_id: Option<String>,
+    cache: State<'_, AppCache>,
+) -> Result<Operation, String> {
+    let op = tauri::async_runtime::spawn_blocking(move || run_worker(worker::CLEAN, &op_id))
         .await
-        .map_err(|e| e.to_string())?
+        .map_err(|e| e.to_string())??;
+    note_force_removed(&cache, force_app_id).await;
+    Ok(op)
 }
 
 /// 복구 기록 (최근 작업부터).
@@ -740,6 +781,7 @@ pub fn run() {
             reveal_leftover,
             clean_leftovers,
             clean_leftovers_elevated,
+            force_uninstall_check,
             list_backups,
             restore_backup,
             restore_backup_elevated,

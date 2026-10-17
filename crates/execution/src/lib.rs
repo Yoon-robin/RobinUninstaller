@@ -3,6 +3,7 @@
 //! 흐름: 실행 계획 → 실행(필요하면 UAC) → 자식 프로세스까지 끝날 때까지 대기 → 설치 정보를 다시 읽어 결과 판정.
 //! 잔여물 스캔·삭제는 여기서 하지 않는다 (Phase 3).
 
+pub mod force;
 mod ignore;
 #[cfg(windows)]
 mod launch;

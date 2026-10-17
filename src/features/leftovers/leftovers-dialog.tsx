@@ -7,8 +7,10 @@ import {
   FolderOpen,
   KeyRound,
   ListTree,
+  Loader2,
   RefreshCw,
   ShieldCheck,
+  ShieldX,
   Sparkles,
   Trash2,
   TriangleAlert,
@@ -16,7 +18,16 @@ import {
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
-import { recoveryApi, scanApi, type Leftover, type LeftoverKind, type Operation, type ScanReport } from "@/lib/api"
+import {
+  forceApi,
+  recoveryApi,
+  scanApi,
+  type ForceCheck,
+  type Leftover,
+  type LeftoverKind,
+  type Operation,
+  type ScanReport,
+} from "@/lib/api"
 import { useQueryClient } from "@tanstack/react-query"
 import { CleanResult, Cleaning, ConfirmClean } from "./clean-flow"
 import { formatBytes } from "@/lib/format"
@@ -28,14 +39,25 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { describeEvidence, kindLabels } from "./evidence"
 
-export type LeftoverTarget = { id: string; name: string; removed: boolean }
+/** `force`: 언인스톨러가 없는 프로그램의 강제 제거. 등록 정보와 파일을 같은 백업 흐름으로 정리한다. */
+export type LeftoverTarget = { id: string; name: string; removed: boolean; force?: boolean }
 
-/** 남은 흔적 찾기 결과. 지금은 보여 주기만 하고, 삭제는 백업·복원과 함께 다음 단계에서 켠다. */
+/** 남은 흔적 찾기 결과. 고른 항목은 백업·격리한 뒤 정리한다. */
 export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | null; onClose: () => void }) {
+  const force = target?.force === true
+  // 강제 제거는 먼저 대상에서 빼야 하는 프로그램인지, 실행 중인지 확인한다
+  const check = useQuery({
+    queryKey: ["force-check", target?.id],
+    queryFn: () => forceApi.check(target!.id),
+    enabled: force,
+    staleTime: 0,
+    gcTime: 0,
+  })
+  const ready = !force || (check.data != null && check.data.blocked == null && check.data.running.length === 0)
   const scan = useQuery({
     queryKey: ["leftovers", target?.id],
     queryFn: () => scanApi.scanLeftovers(target!.id),
-    enabled: target != null,
+    enabled: target != null && ready,
     staleTime: 0,
     gcTime: 0,
   })
@@ -46,16 +68,23 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
         {target && (
           <>
             <div className="flex items-center gap-3 border-b px-5 py-4 pr-12">
-              <div className="flex size-10 items-center justify-center rounded-xl bg-primary/12 text-primary">
-                <Sparkles className="size-5" />
+              <div
+                className={cn(
+                  "flex size-10 items-center justify-center rounded-xl",
+                  force ? "bg-destructive/12 text-destructive" : "bg-primary/12 text-primary",
+                )}
+              >
+                {force ? <Trash2 className="size-5" /> : <Sparkles className="size-5" />}
               </div>
               <div className="min-w-0 flex-1">
-                <DialogTitle className="text-base">남은 흔적</DialogTitle>
+                <DialogTitle className="text-base">{force ? "강제 제거" : "남은 흔적"}</DialogTitle>
                 <DialogDescription className="truncate">
                   {target.name}
-                  {target.removed
-                    ? " · 제거한 뒤 남은 파일과 레지스트리"
-                    : " · 설치된 상태라 대부분 지금 쓰고 있는 항목이에요"}
+                  {force
+                    ? " · 언인스톨러 없이 등록 정보와 파일을 직접 정리해요"
+                    : target.removed
+                      ? " · 제거한 뒤 남은 파일과 레지스트리"
+                      : " · 설치된 상태라 대부분 지금 쓰고 있는 항목이에요"}
                 </DialogDescription>
               </div>
               <IconTooltip label="다시 찾기">
@@ -64,7 +93,7 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
                   size="icon"
                   className="size-9 rounded-lg"
                   aria-label="다시 찾기"
-                  disabled={scan.isFetching}
+                  disabled={scan.isFetching || !ready}
                   onClick={() => scan.refetch()}
                 >
                   <RefreshCw className={cn(scan.isFetching && "animate-spin")} />
@@ -73,7 +102,15 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
             </div>
 
             <AnimatePresence mode="wait" initial={false}>
-              {scan.isFetching ? (
+              {!ready ? (
+                <ForceGate
+                  key="gate"
+                  check={check.data}
+                  error={check.error}
+                  onRetry={() => check.refetch()}
+                  onClose={onClose}
+                />
+              ) : scan.isFetching ? (
                 <Scanning key="scanning" />
               ) : scan.isError ? (
                 <div key="error" className="flex flex-1 items-center justify-center p-8 text-sm text-destructive">
@@ -84,6 +121,7 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
                   key={`result-${scan.dataUpdatedAt}`}
                   report={scan.data}
                   appName={target.name}
+                  forceAppId={force ? target.id : undefined}
                   onClose={onClose}
                 />
               ) : null}
@@ -92,6 +130,92 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** 강제 제거 전 확인 화면: 확인 중 / 대상 아님 / 실행 중이라 닫아 달라고 안내. */
+function ForceGate({
+  check,
+  error,
+  onRetry,
+  onClose,
+}: {
+  check: ForceCheck | undefined
+  error: unknown
+  onRetry: () => void
+  onClose: () => void
+}) {
+  const panel = "flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center"
+  const motionProps = {
+    initial: { opacity: 0 },
+    animate: { opacity: 1 },
+    exit: { opacity: 0, transition: { duration: 0.12 } },
+  }
+
+  if (error) {
+    return (
+      <motion.div {...motionProps} className={cn(panel, "text-sm text-destructive")}>
+        확인하지 못했어요: {String(error)}
+      </motion.div>
+    )
+  }
+  if (!check) {
+    return (
+      <motion.div {...motionProps} className={panel}>
+        <Loader2 className="size-7 animate-spin text-primary" />
+        <p className="font-medium">강제로 지워도 되는지 확인하고 있어요</p>
+      </motion.div>
+    )
+  }
+  if (check.blocked) {
+    return (
+      <motion.div {...motionProps} className={panel}>
+        <div className="flex size-14 items-center justify-center rounded-full bg-chart-3/15 text-chart-3">
+          <ShieldX className="size-7" />
+        </div>
+        <div className="max-w-md">
+          <p className="text-base font-semibold">이 프로그램은 강제 제거하지 않아요</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">{check.blocked}</p>
+        </div>
+        <Button variant="outline" onClick={onClose}>
+          닫기
+        </Button>
+      </motion.div>
+    )
+  }
+  return (
+    <motion.div {...motionProps} className={panel}>
+      <div className="flex size-14 items-center justify-center rounded-full bg-chart-3/15 text-chart-3">
+        <TriangleAlert className="size-7" />
+      </div>
+      <div className="max-w-md">
+        <p className="text-base font-semibold">프로그램이 실행 중이에요</p>
+        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+          실행 중인 파일은 옮길 수 없어요. 아래 프로그램을 직접 닫은 뒤 다시 확인해 주세요. 작업 중인 내용이 있을 수
+          있어 RobinUninstaller가 대신 끄지는 않아요.
+        </p>
+      </div>
+      <ul className="flex w-full max-w-md flex-col gap-1.5 text-left">
+        {check.running.map((p) => (
+          <li
+            key={p.pid}
+            data-selectable
+            className="rounded-lg border bg-muted/30 px-3 py-2 font-mono text-xs break-all"
+          >
+            {p.path}
+          </li>
+        ))}
+      </ul>
+      <div className="flex gap-2">
+        <Button variant="outline" onClick={onClose}>
+          닫기
+        </Button>
+        <Button onClick={onRetry}>
+          <RefreshCw />
+          다시 확인
+        </Button>
+      </div>
+    </motion.div>
   )
 }
 
@@ -116,7 +240,17 @@ function Scanning() {
 
 type Stage = { step: "review" } | { step: "confirm" } | { step: "cleaning" } | { step: "done"; op: Operation }
 
-function Results({ report, appName, onClose }: { report: ScanReport; appName: string; onClose: () => void }) {
+function Results({
+  report,
+  appName,
+  forceAppId,
+  onClose,
+}: {
+  report: ScanReport
+  appName: string
+  forceAppId?: string
+  onClose: () => void
+}) {
   const queryClient = useQueryClient()
   const [stage, setStage] = useState<Stage>({ step: "review" })
   const [cleanError, setCleanError] = useState<string | null>(null)
@@ -136,7 +270,7 @@ function Results({ report, appName, onClose }: { report: ScanReport; appName: st
     setStage({ step: "cleaning" })
     setCleanError(null)
     try {
-      const op = await recoveryApi.clean(appName, [...selected])
+      const op = await recoveryApi.clean(appName, [...selected], forceAppId)
       setStage({ step: "done", op })
     } catch (e) {
       setCleanError(String(e))
@@ -154,7 +288,7 @@ function Results({ report, appName, onClose }: { report: ScanReport; appName: st
     return <Cleaning label="백업하고 정리하는 중이에요" />
   }
   if (stage.step === "done") {
-    return <CleanResult op={stage.op} onDone={onClose} />
+    return <CleanResult op={stage.op} forceAppId={forceAppId} onDone={onClose} />
   }
 
   const toggle = (id: string) =>
@@ -177,6 +311,15 @@ function Results({ report, appName, onClose }: { report: ScanReport; appName: st
         <Clean protectedSkipped={report.protectedSkipped} />
       ) : (
         <>
+          {forceAppId && (
+            <div className="flex gap-2 border-b bg-destructive/5 px-5 py-2.5 text-xs leading-relaxed text-muted-foreground">
+              <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-primary" />
+              <span>
+                <b className="text-foreground">프로그램 등록 정보</b>와 설치 폴더를 지우면 목록에서 사라져요. 모두
+                백업돼 복구 기록에서 되돌릴 수 있어요. Windows 서비스는 건드리지 않아요.
+              </span>
+            </div>
+          )}
           <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-5 py-2.5 text-xs">
             <SummaryChip tone="primary" label="확실" value={strong.length} />
             <SummaryChip tone="warn" label="검토 필요" value={review.length} />

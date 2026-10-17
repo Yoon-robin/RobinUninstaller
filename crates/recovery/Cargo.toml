@@ -15,6 +15,7 @@ winreg = "0.55"
 base64 = "0.23"
 
 [dev-dependencies]
+robin-core.workspace = true
 robin-discovery.workspace = true
 robin-execution.workspace = true
 robin-startup.workspace = true

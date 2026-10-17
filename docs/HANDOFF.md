@@ -73,9 +73,21 @@ pnpm tauri dev    # 앱 실행
 - 테스트 앱 캐시(디버그 빌드 전용 항목)로 앱 화면에서 정리를 확인했다. 실제 캐시는 지우지 않았다. 되돌릴 수 없는 항목(휴지통)은 확인 창의 경고까지만 확인했다.
 - **아직 안 함:** 관리자 항목(Windows 임시 파일, 메모리 덤프)의 UAC 정리 실제 시험(테스트 항목이 없음), 정리 기록, Windows Update 캐시·DISM·개발 산출물(node_modules/target) 찾기, 트리맵.
 
+### Phase 5 강제 제거 — 작성 (2026-10-17, 클라우드 세션, 브랜치 `claude/force-uninstall`)
+
+- 언인스톨러 없는 프로그램에 "강제 제거"를 켰다. 자세한 내용은 PLAN.md "Phase 5 구현 메모 — 강제 제거".
+- 클라우드(리눅스)에서 확인한 범위: Windows 대상 `cargo clippy`, 유닛 테스트, `tsc`·prettier, 가짜 백엔드 응답으로 화면 캡처
+  (실행 중 안내 → 다시 확인 → 스캔 결과, VPN 이름 프로그램 차단).
+- **Windows PC에서 아직 확인하지 않은 것:**
+  1. `pnpm check`
+  2. `robin-fixture install --broken` → `cargo run -p robin-recovery --example force_fixture` → `robin-fixture remove`
+  3. `install --broken` 뒤 앱에서 Fixture Notes "강제 제거" → 목록에서 사라짐 → 잔여물 정리 화면의 "제거한 프로그램"에 보임 → 복구 기록에서 되돌리면 다시 목록에 보임
+  4. 실행 중 안내: 설치 폴더의 프로그램을 실행할 수 없으니(가짜 exe), 확인하려면 테스트 앱에 실제로 도는 실행 파일을 두는 방법을 찾아야 한다
+- 확인이 끝나면 `main`에 합친다.
+
 ### 다음 단계 후보
 
-- Phase 5 나머지: 강제 제거(언인스톨러 없는 프로그램), SYSTEM 예약 작업의 UAC 끄기·켜기 시험
+- Phase 5 나머지: SYSTEM 예약 작업의 UAC 끄기·켜기 시험
 - 시스템 복원 지점, 서비스 정리(중지·삭제), 오래된 백업 자동 정리
 - Phase 6: 설치 추적(스냅샷 비교 → ETW, 커널 드라이버는 쓰지 않음)
 - 배포: 코드 서명, NSIS 설치 파일(`pnpm tauri build`)

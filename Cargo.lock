@@ -2570,6 +2570,7 @@ name = "robin-recovery"
 version = "0.1.0"
 dependencies = [
  "base64 0.23.1",
+ "robin-core",
  "robin-discovery",
  "robin-execution",
  "robin-scanner",

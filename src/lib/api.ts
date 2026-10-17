@@ -51,9 +51,21 @@ export function uninstallCommandPreview(app: InstalledApplication): string | nul
   return app.uninstallCommand
 }
 
-/** 기본 언인스톨러를 실행할 수 있는지. 언인스톨러 파일이 없으면 강제 제거(이후 버전) 대상이다. */
+/** 기본 언인스톨러를 실행할 수 있는지. 언인스톨러 파일이 없으면 강제 제거 대상이다. */
 export function canUninstall(app: InstalledApplication) {
   return app.uninstaller === "available" || app.uninstaller === "unknown"
+}
+
+// crates/execution 의 ForceCheck 와 맞춰야 한다.
+export interface ForceCheck {
+  /** 강제 제거하면 안 되는 이유 (보안 프로그램·드라이버 등) */
+  blocked: string | null
+  /** 설치 폴더 안에서 실행 중인 프로세스 */
+  running: { pid: number; path: string }[]
+}
+
+export const forceApi = {
+  check: (id: string) => invoke<ForceCheck>("force_uninstall_check", { id }),
 }
 
 // crates/scanner 의 Leftover / ScanReport 와 맞춰야 한다.
@@ -119,8 +131,11 @@ export interface Operation {
 }
 
 export const recoveryApi = {
-  clean: (appName: string, itemIds: string[]) => invoke<Operation>("clean_leftovers", { appName, itemIds }),
-  cleanElevated: (opId: string) => invoke<Operation>("clean_leftovers_elevated", { opId }),
+  /** `forceAppId`: 강제 제거 중이면 대상 프로그램 ID (등록 정보가 사라지면 "제거한 프로그램"으로 옮긴다). */
+  clean: (appName: string, itemIds: string[], forceAppId?: string) =>
+    invoke<Operation>("clean_leftovers", { appName, itemIds, forceAppId: forceAppId ?? null }),
+  cleanElevated: (opId: string, forceAppId?: string) =>
+    invoke<Operation>("clean_leftovers_elevated", { opId, forceAppId: forceAppId ?? null }),
   list: () => invoke<Operation[]>("list_backups"),
   restore: (opId: string, itemIds?: string[]) =>
     invoke<Operation>("restore_backup", { opId, itemIds: itemIds ?? null }),
