@@ -2,10 +2,30 @@
 //!
 //! 순서: `robin-fixture install` → 이 예제 실행(언인스톨러 실행 → 스캔 → 확인) → `robin-fixture remove`
 //! 이 예제는 아무것도 지우지 않는다 (언인스톨러가 지우는 것 제외).
+//! 테스트 앱의 시작 항목은 미리 꺼 둔다 (`StartupApproved` 값이 생겨야 그 값도 찾는지 볼 수 있다).
 
 use robin_scanner::Confidence;
 
 const FIXTURE_ID: &str = "hkcu:robinfixtureapp";
+
+/// 테스트 앱의 시작 항목 두 개(Run 값, 시작 폴더 바로 가기)를 꺼서 `StartupApproved` 값을 만든다.
+/// 기록은 임시 폴더에 두고 바로 지운다. 다른 시작 항목은 건드리지 않는다.
+fn disable_fixture_startup() {
+    use robin_startup::{History, StartupSource};
+    let dir = std::env::temp_dir().join(format!("robin-scan-startup-{}", std::process::id()));
+    let history = History::new(&dir);
+    for (name, source) in [
+        ("FixtureNotes", StartupSource::RunUser),
+        ("Fixture Notes", StartupSource::FolderUser),
+    ] {
+        let entry = robin_startup::list(&history)
+            .into_iter()
+            .find(|e| e.name == name && e.source == source)
+            .unwrap_or_else(|| panic!("시작 항목 {name} 없음"));
+        robin_startup::set_enabled(&history, &entry.id, false).expect("테스트 앱 시작 항목 끄기");
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
 
 fn main() {
     let installed = robin_discovery::list_installed();
@@ -14,6 +34,7 @@ fn main() {
         .find(|a| a.id == FIXTURE_ID)
         .cloned()
         .expect("테스트 앱을 먼저 등록하세요");
+    disable_fixture_startup();
 
     let outcome = robin_execution::run_uninstaller(
         &app,
@@ -55,6 +76,14 @@ fn main() {
             .any(|i| i.confidence == Confidence::Strong && i.location.contains(needle))
     };
 
+    let strong_value = |key_end: &str, value: &str| {
+        report.items.iter().any(|i| {
+            i.confidence == Confidence::Strong
+                && i.location.ends_with(key_end)
+                && i.value_name.as_deref() == Some(value)
+        })
+    };
+
     let checks = [
         (
             "설정 폴더 (게시자/제품) = 확실",
@@ -65,6 +94,21 @@ fn main() {
             strong(r"HKCU\SOFTWARE\Robin Test Labs\Fixture Notes"),
         ),
         ("Run 값 = 확실", strong("FixtureNotes")),
+        (
+            "시작 폴더 바로 가기 = 확실",
+            report.items.iter().any(|i| {
+                i.confidence == Confidence::Strong
+                    && i.location.ends_with(r"Programs\Startup\Fixture Notes.lnk")
+            }),
+        ),
+        (
+            "Run의 StartupApproved 값 = 확실",
+            strong_value(r"StartupApproved\Run", "FixtureNotes"),
+        ),
+        (
+            "바로 가기의 StartupApproved 값 = 확실",
+            strong_value(r"StartupApproved\StartupFolder", "Fixture Notes.lnk"),
+        ),
         (
             "캐시 폴더(이름 일치) = 목록에 있음",
             listed(r"AppData\Local\Fixture Notes"),

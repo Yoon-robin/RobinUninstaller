@@ -66,6 +66,20 @@ pub fn read_approved(source: StartupSource, name: &str) -> Option<Vec<u8>> {
         .map(|v| v.bytes)
 }
 
+/// `StartupApproved` 키의 값 이름 목록.
+pub fn approved_names(source: StartupSource) -> Vec<String> {
+    let Ok(key) =
+        root(source).open_subkey_with_flags(approved_path(source), KEY_READ | KEY_WOW64_64KEY)
+    else {
+        return Vec::new();
+    };
+    key.enum_values()
+        .flatten()
+        .map(|(name, _)| name)
+        .filter(|name| !name.is_empty())
+        .collect()
+}
+
 /// `StartupApproved` 값을 쓴다. `None`이면 값을 지운다 (원래 값이 없었던 경우).
 pub fn write_approved(source: StartupSource, name: &str, value: Option<&[u8]>) -> io::Result<()> {
     let (key, _) = root(source).create_subkey_with_flags(

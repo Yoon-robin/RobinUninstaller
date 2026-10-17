@@ -2528,6 +2528,7 @@ dependencies = [
  "robin-discovery",
  "robin-execution",
  "robin-scanner",
+ "robin-startup",
  "serde",
  "serde_json",
  "winreg 0.55.0",
@@ -2540,6 +2541,7 @@ dependencies = [
  "robin-core",
  "robin-discovery",
  "robin-execution",
+ "robin-startup",
  "serde",
  "winreg 0.55.0",
 ]

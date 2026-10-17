@@ -1,5 +1,6 @@
 //! 테스트 앱(Fixture Notes)의 흔적으로 정리 → 확인 → 복원 → 원본과 같은지까지 검증한다.
 //! 순서: `robin-fixture install` → 이 예제 → `robin-fixture remove`
+//! 테스트 앱의 시작 항목은 미리 꺼 둔다 (`StartupApproved` 값도 정리·복원되는지 보려고).
 //! 백업은 임시 폴더에 둔다. 테스트 앱 흔적과, 일부러 넣은 위험 항목(차단돼야 함) 외에는 건드리지 않는다.
 
 use std::path::Path;
@@ -8,6 +9,25 @@ use robin_recovery::{Guard, ItemStatus, Store, registry};
 use robin_scanner::{Confidence, Leftover, LeftoverKind};
 
 const FIXTURE_ID: &str = "hkcu:robinfixtureapp";
+
+/// 테스트 앱의 시작 항목 두 개(Run 값, 시작 폴더 바로 가기)를 꺼서 `StartupApproved` 값을 만든다.
+/// 기록은 임시 폴더에 두고 바로 지운다. 다른 시작 항목은 건드리지 않는다.
+fn disable_fixture_startup() {
+    use robin_startup::{History, StartupSource};
+    let dir = std::env::temp_dir().join(format!("robin-scan-startup-{}", std::process::id()));
+    let history = History::new(&dir);
+    for (name, source) in [
+        ("FixtureNotes", StartupSource::RunUser),
+        ("Fixture Notes", StartupSource::FolderUser),
+    ] {
+        let entry = robin_startup::list(&history)
+            .into_iter()
+            .find(|e| e.name == name && e.source == source)
+            .unwrap_or_else(|| panic!("시작 항목 {name} 없음"));
+        robin_startup::set_enabled(&history, &entry.id, false).expect("테스트 앱 시작 항목 끄기");
+    }
+    let _ = std::fs::remove_dir_all(dir);
+}
 
 /// 비교용 스냅샷: 레지스트리는 백업 덤프, 파일은 (상대 경로, 내용) 목록.
 fn snapshot(item: &Leftover) -> String {
@@ -76,6 +96,7 @@ fn main() {
         .into_iter()
         .find(|a| a.id == FIXTURE_ID)
         .expect("테스트 앱을 먼저 등록하세요");
+    disable_fixture_startup();
     let outcome = robin_execution::run_uninstaller(
         &app,
         &Default::default(),
@@ -97,9 +118,23 @@ fn main() {
         .collect();
     assert!(
         strong.iter().all(|i| i.location.contains("Robin Test Labs")
-            || i.value_name.as_deref() == Some("FixtureNotes")),
+            || i.location.ends_with(r"\Fixture Notes.lnk")
+            || matches!(
+                i.value_name.as_deref(),
+                Some("FixtureNotes" | "Fixture Notes.lnk")
+            )),
         "테스트 앱 흔적만 대상이어야 함"
     );
+    for needle in [
+        r"\Fixture Notes.lnk",
+        r"StartupApproved\Run",
+        r"StartupApproved\StartupFolder",
+    ] {
+        assert!(
+            strong.iter().any(|i| i.location.ends_with(needle)),
+            "{needle} 항목이 확실 목록에 있어야 함"
+        );
+    }
     let before: Vec<String> = strong.iter().map(snapshot).collect();
 
     let mut targets = strong.clone();

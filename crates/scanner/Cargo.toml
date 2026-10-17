@@ -12,6 +12,7 @@ serde.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
+robin-startup.workspace = true
 
 [dev-dependencies]
 robin-execution.workspace = true

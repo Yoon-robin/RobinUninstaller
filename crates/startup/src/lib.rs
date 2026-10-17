@@ -36,6 +36,55 @@ impl std::fmt::Display for ToggleError {
     }
 }
 
+/// 시작 폴더 경로. Run 키 출처면 `None`. (잔여물 스캐너도 쓴다)
+#[cfg(windows)]
+pub fn startup_folder(source: StartupSource) -> Option<std::path::PathBuf> {
+    folder::folder(source)
+}
+
+/// 시작 폴더 안의 파일 (하위 폴더와 desktop.ini는 뺀다). Run 키 출처면 빈 목록.
+#[cfg(windows)]
+pub fn startup_folder_files(source: StartupSource) -> Vec<std::path::PathBuf> {
+    folder::files(source)
+}
+
+/// 바로 가기(.lnk)의 (대상 경로, 인자). 대상이 파일이 아닌 바로 가기는 대상이 빈 문자열.
+#[cfg(windows)]
+pub fn shortcut_target(path: &std::path::Path) -> Option<(String, String)> {
+    folder::resolve_shortcut(path)
+}
+
+/// Run 키의 (값 이름, 명령) 목록. 시작 폴더 출처면 빈 목록.
+#[cfg(windows)]
+pub fn run_values(source: StartupSource) -> Vec<(String, String)> {
+    if folder::folder(source).is_some() {
+        return Vec::new();
+    }
+    registry::run_values(source)
+}
+
+/// `StartupApproved` 키 위치 (화면 표시·정리용, 예: `HKCU\Software\...\StartupApproved\Run`).
+pub fn approved_location(source: StartupSource) -> String {
+    let hive = if source.is_machine() { "HKLM" } else { "HKCU" };
+    format!(
+        r"{hive}\{}\{}",
+        model::APPROVED_KEY,
+        source.approved_subkey()
+    )
+}
+
+/// `StartupApproved` 키에 있는 값 이름들. 읽기 전용.
+#[cfg(windows)]
+pub fn approved_names(source: StartupSource) -> Vec<String> {
+    registry::approved_names(source)
+}
+
+/// `StartupApproved` 값이 있는지. 읽기 전용.
+#[cfg(windows)]
+pub fn has_approved(source: StartupSource, name: &str) -> bool {
+    registry::read_approved(source, name).is_some()
+}
+
 /// 시작 항목 전체 (이름순). 읽기 전용.
 #[cfg(windows)]
 pub fn list(history: &History) -> Vec<StartupEntry> {

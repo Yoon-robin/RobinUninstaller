@@ -1,6 +1,7 @@
 //! 잔여물 탐지 (읽기 전용 — 아무것도 지우지 않는다).
 //!
-//! 1. 후보 찾기: 설치 폴더, Program Files·AppData 등의 1~2단계, `Software` 레지스트리, Run·App Paths·서비스·MSI 등록
+//! 1. 후보 찾기: 설치 폴더, Program Files·AppData 등의 1~2단계, `Software` 레지스트리, Run·App Paths·서비스·MSI 등록,
+//!    시작 폴더 바로 가기와 `StartupApproved` 값
 //! 2. 근거 붙이기: 설치 폴더 일치, `게시자\제품` 구조, 이름 일치, 다른 프로그램과 공유(감점), 사용자 문서(감점)
 //! 3. 보호 규칙: Windows·기본 폴더·공유 폴더·상위 레지스트리 키는 점수와 상관없이 제외
 //! 4. 분류: 확실(기본 선택) / 검토 / 낮음(숨김)
@@ -15,6 +16,8 @@ pub mod protect;
 mod files;
 #[cfg(windows)]
 mod registry;
+#[cfg(windows)]
+mod startup;
 
 pub use context::ScanContext;
 pub use model::{Confidence, Evidence, Leftover, LeftoverKind, ScanReport};
@@ -70,6 +73,7 @@ pub fn scan(
     let mut protected = 0;
     files::scan(&ctx, &mut items, &mut protected);
     registry::scan(&ctx, &mut items, &mut protected);
+    startup::scan(&ctx, &mut items, &mut protected);
     finalize(
         app.display_name.clone(),
         items,
