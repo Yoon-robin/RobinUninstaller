@@ -1,0 +1,18 @@
+[package]
+name = "robin-storage"
+description = "저장공간 정리: 다시 만들어지는 캐시·임시 파일 정리와 폴더 크기 분석"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+serde.workspace = true
+rayon = "1"
+
+[target.'cfg(windows)'.dependencies]
+robin-execution.workspace = true
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Storage_FileSystem",
+  "Win32_UI_Shell",
+] }

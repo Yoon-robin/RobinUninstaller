@@ -7,6 +7,7 @@
 //! robin-uninstaller.exe --elevated-clean   <작업 ID> --store <백업 저장소>
 //! robin-uninstaller.exe --elevated-restore <작업 ID> --store <백업 저장소>
 //! robin-uninstaller.exe --elevated-startup <on|off> <시작 항목 ID> --store <시작프로그램 기록 폴더>
+//! robin-uninstaller.exe --elevated-storage <0|1> <정리 규칙 ID,...> --store <저장공간 기록 폴더>
 //! ```
 //!
 //! 시작 항목(Run 키·시작 폴더·예약 작업)도 마찬가지로 ID만 받고, 목록을 다시 읽어 그 ID의 항목을 찾는다.
@@ -18,6 +19,7 @@ use robin_recovery::{Guard, ItemStatus, Store};
 pub const CLEAN: &str = "--elevated-clean";
 pub const RESTORE: &str = "--elevated-restore";
 pub const STARTUP: &str = "--elevated-startup";
+pub const STORAGE: &str = "--elevated-storage";
 
 /// 작업자 모드가 아니면 None. 맞으면 작업을 마친 뒤 종료 코드.
 pub fn main() -> Option<i32> {
@@ -25,6 +27,9 @@ pub fn main() -> Option<i32> {
     let mode = args.first()?.as_str();
     if mode == STARTUP {
         return Some(run_startup(&args[1..]).unwrap_or(2));
+    }
+    if mode == STORAGE {
+        return Some(run_storage(&args[1..]).unwrap_or(2));
     }
     if mode != CLEAN && mode != RESTORE {
         return None;
@@ -60,6 +65,28 @@ fn run_startup(rest: &[String]) -> Option<i32> {
         Ok(_) => 0,
         Err(_) => 1,
     })
+}
+
+/// 저장공간 정리 결과 파일 이름. 기록 폴더(`...\RobinUninstaller\storage`) 안에 쓴다.
+pub const STORAGE_RESULT: &str = "elevated-result.json";
+
+/// `--elevated-storage <irreversible:0|1> <규칙ID,규칙ID> --store <...\RobinUninstaller\storage>`
+/// 규칙 ID만 받고, 경로와 조건은 엔진이 처음부터 다시 계산한다.
+fn run_storage(rest: &[String]) -> Option<i32> {
+    let allow_irreversible = match rest.first()?.as_str() {
+        "1" => true,
+        "0" => false,
+        _ => return None,
+    };
+    let ids: Vec<String> = rest.get(1)?.split(',').map(str::to_string).collect();
+    if ids.is_empty() || !ids.iter().all(|id| robin_storage::rules::is_valid_id(id)) {
+        return None;
+    }
+    let dir = store_arg(&rest[2..], r"\robinuninstaller\storage")?;
+    let results = robin_storage::clean(&ids, allow_irreversible);
+    std::fs::create_dir_all(&dir).ok()?;
+    std::fs::write(dir.join(STORAGE_RESULT), serde_json::to_vec(&results).ok()?).ok()?;
+    Some(0)
 }
 
 fn run(mode: &str, rest: &[String]) -> Option<i32> {

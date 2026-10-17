@@ -14,6 +14,8 @@ use robin_core::InstalledApplication;
 use serde::Serialize;
 
 pub use plan::{LaunchPlan, PlanError, plan_for};
+#[cfg(windows)]
+pub use track::running_exe_names;
 
 /// 진행 상황. 프론트엔드로 그대로 전달된다.
 #[derive(Debug, Clone, Serialize)]

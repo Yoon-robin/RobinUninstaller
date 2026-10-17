@@ -165,6 +165,76 @@ export const startupApi = {
   reveal: (id: string) => invoke<void>("reveal_startup_item", { id }),
 }
 
+// crates/storage 의 Category / CleanResult / FolderEntry 와 맞춰야 한다.
+export type StorageRisk = "regenerable" | "irreversible"
+export type StorageKind = "files" | "recycleBin" | "info"
+
+export interface StorageCategory {
+  id: string
+  name: string
+  description: string
+  why: string
+  risk: StorageRisk
+  kind: StorageKind
+  admin: boolean
+  defaultSelected: boolean
+  bytes: number
+  files: number
+  /** 권한이 없어 크기를 다 세지 못한 폴더 수 */
+  inaccessible: number
+  locations: string[]
+  /** 실행 중이라 지금은 정리할 수 없게 만드는 프로그램 */
+  running: string[]
+  guidance: string | null
+}
+
+export interface CleanResult {
+  id: string
+  freedBytes: number
+  deletedFiles: number
+  failedFiles: number
+  skipped: string | null
+  needsAdmin: boolean
+}
+
+export interface DiskUsage {
+  drive: string
+  total: number
+  free: number
+}
+
+export interface FolderItem {
+  id: string
+  name: string
+  path: string
+  isDir: boolean
+  bytes: number
+  files: number
+  inaccessible: number
+}
+
+export interface FolderAnalysis {
+  id: string
+  path: string
+  parentId: string | null
+  items: FolderItem[]
+  cancelled: boolean
+}
+
+export const storageApi = {
+  diskUsage: () => invoke<DiskUsage>("disk_usage"),
+  scan: () => invoke<StorageCategory[]>("scan_storage"),
+  clean: (ids: string[], allowIrreversible: boolean) =>
+    invoke<CleanResult[]>("clean_storage", { ids, allowIrreversible }),
+  cleanElevated: (ids: string[], allowIrreversible: boolean) =>
+    invoke<CleanResult[]>("clean_storage_elevated", { ids, allowIrreversible }),
+  revealCategory: (id: string) => invoke<void>("reveal_storage_category", { id }),
+  openSettings: () => invoke<void>("open_storage_settings"),
+  analyze: (id?: string) => invoke<FolderAnalysis>("analyze_folder", { id: id ?? null }),
+  cancelAnalysis: () => invoke<void>("cancel_folder_analysis"),
+  revealFolderItem: (id: string) => invoke<void>("reveal_folder_item", { id }),
+}
+
 /** 다른 화면으로 이동 요청 (App이 받아 처리). */
 export function navigate(page: "programs" | "leftovers" | "restore") {
   window.dispatchEvent(new CustomEvent("robin:navigate", { detail: page }))

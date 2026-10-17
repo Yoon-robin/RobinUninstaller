@@ -11,7 +11,7 @@ type Info = {
   points: string[]
 }
 
-const pages: Record<Exclude<Page, "programs" | "leftovers" | "restore" | "startup">, Info> = {
+const pages: Record<Exclude<Page, "programs" | "leftovers" | "restore" | "startup" | "storage">, Info> = {
   tracking: {
     icon: Radar,
     title: "설치 추적",
@@ -28,7 +28,11 @@ const pages: Record<Exclude<Page, "programs" | "leftovers" | "restore" | "startu
   },
 }
 
-export function ComingSoonPage({ page }: { page: Exclude<Page, "programs" | "leftovers" | "restore" | "startup"> }) {
+export function ComingSoonPage({
+  page,
+}: {
+  page: Exclude<Page, "programs" | "leftovers" | "restore" | "startup" | "storage">
+}) {
   const info = pages[page]
   const Icon = info.icon
 

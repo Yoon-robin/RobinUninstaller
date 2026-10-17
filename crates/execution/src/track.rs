@@ -57,6 +57,14 @@ fn snapshot() -> HashMap<u32, Proc> {
     map
 }
 
+/// 지금 실행 중인 프로세스의 실행 파일 이름 (소문자). 정리 전에 "실행 중이면 건너뜀" 확인용.
+pub fn running_exe_names() -> std::collections::HashSet<String> {
+    snapshot()
+        .into_values()
+        .map(|p| p.exe.to_lowercase())
+        .collect()
+}
+
 /// `root_pid`와 그 자손이 모두 끝날 때까지 기다린다. 살아 있는 개수가 바뀔 때마다 `on_count`를 부른다.
 ///
 /// - pid는 재사용될 수 있으므로 (pid, 부모 pid) 쌍으로 추적한다. 같은 pid라도 부모가 다르면 다른 프로세스다.

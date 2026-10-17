@@ -11,6 +11,7 @@ import { ComingSoonPage } from "@/features/coming-soon/coming-soon-page"
 import { LeftoversPage } from "@/features/leftovers/leftovers-page"
 import { RestorePage } from "@/features/restore/restore-page"
 import { StartupPage } from "@/features/startup/startup-page"
+import { StoragePage } from "@/features/storage/storage-page"
 import { ProgramsPage } from "@/features/programs/programs-page"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
@@ -23,6 +24,7 @@ const queryClient = new QueryClient({
 const titles: Record<Page, string> = {
   programs: "프로그램",
   leftovers: "잔여물 정리",
+  storage: "저장공간",
   startup: "시작프로그램",
   tracking: "설치 추적",
   restore: "복구 기록",
@@ -89,6 +91,7 @@ export default function App() {
                   </div>
                   {page === "leftovers" && <LeftoversPage />}
                   {page === "restore" && <RestorePage />}
+                  {page === "storage" && <StoragePage />}
                   {page === "startup" && <StartupPage />}
                   {(page === "tracking" || page === "settings") && <ComingSoonPage page={page} />}
                 </main>

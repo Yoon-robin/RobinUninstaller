@@ -5,9 +5,9 @@
 pub mod worker;
 
 use std::collections::HashMap;
-use std::path::Path;
-use std::sync::Mutex;
-use std::sync::atomic::{AtomicBool, Ordering};
+use std::path::{Path, PathBuf};
+use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
 use robin_core::InstalledApplication;
 use robin_execution::{UninstallEvent, UninstallOutcome};
@@ -28,6 +28,13 @@ struct AppCache {
     last_scan: Mutex<Vec<Leftover>>,
     /// 마지막으로 읽은 시작 항목. 아이콘·탐색기 요청은 여기 있는 항목만 허용한다.
     startup: Mutex<Vec<StartupEntry>>,
+    /// 폴더 분석에서 화면에 보낸 항목 ID → 경로. 화면은 경로 대신 이 ID만 넘긴다.
+    folders: Mutex<HashMap<String, PathBuf>>,
+    next_folder: AtomicU64,
+    /// 진행 중인 폴더 분석의 취소 신호 (새 분석을 시작하면 이전 것을 멈춘다)
+    analysis_cancel: Mutex<Option<Arc<AtomicBool>>>,
+    /// 마지막 저장공간 스캔 결과 (탐색기로 열기는 여기 있는 위치만 허용)
+    storage: Mutex<Vec<robin_storage::Category>>,
 }
 
 impl AppCache {
@@ -437,6 +444,238 @@ fn reveal_startup_item(id: String, cache: State<'_, AppCache>) -> Result<(), Str
         .map_err(|e| e.to_string())
 }
 
+/// 시스템 드라이브 (`C:\`)
+fn system_drive() -> String {
+    format!(
+        "{}\\",
+        std::env::var("SystemDrive").unwrap_or_else(|_| "C:".into())
+    )
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DiskUsage {
+    drive: String,
+    total: u64,
+    free: u64,
+}
+
+/// 시스템 드라이브 용량
+#[tauri::command]
+fn disk_usage() -> Result<DiskUsage, String> {
+    let drive = system_drive();
+    let (total, free) =
+        robin_storage::system::disk_space(&drive).ok_or("드라이브 용량을 읽지 못했어요")?;
+    Ok(DiskUsage { drive, total, free })
+}
+
+/// 정리할 수 있는 항목 (읽기 전용).
+#[tauri::command]
+async fn scan_storage(cache: State<'_, AppCache>) -> Result<Vec<robin_storage::Category>, String> {
+    let items = tauri::async_runtime::spawn_blocking(robin_storage::scan)
+        .await
+        .map_err(|e| e.to_string())?;
+    if let Ok(mut storage) = cache.storage.lock() {
+        *storage = items.clone();
+    }
+    Ok(items)
+}
+
+/// 고른 항목을 정리한다. 다시 만들어지는 항목만 기본이고, 되돌릴 수 없는 항목은 `allow_irreversible`이 있어야 한다.
+/// 관리자 권한이 필요한 항목은 `needsAdmin`으로 돌아온다 → `clean_storage_elevated`.
+#[tauri::command]
+async fn clean_storage(
+    ids: Vec<String>,
+    allow_irreversible: bool,
+) -> Result<Vec<robin_storage::CleanResult>, String> {
+    tauri::async_runtime::spawn_blocking(move || robin_storage::clean(&ids, allow_irreversible))
+        .await
+        .map_err(|e| e.to_string())
+}
+
+/// 관리자 권한 작업자를 띄워(UAC) 정리한다. 작업자는 규칙 ID만 받고 결과를 파일로 남긴다.
+#[tauri::command]
+async fn clean_storage_elevated(
+    ids: Vec<String>,
+    allow_irreversible: bool,
+) -> Result<Vec<robin_storage::CleanResult>, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        if ids.is_empty() || !ids.iter().all(|id| robin_storage::rules::is_valid_id(id)) {
+            return Err("알 수 없는 항목이에요".to_string());
+        }
+        let dir = PathBuf::from(std::env::var("LOCALAPPDATA").map_err(|e| e.to_string())?)
+            .join("RobinUninstaller")
+            .join("storage");
+        let result_file = dir.join(worker::STORAGE_RESULT);
+        let _ = std::fs::remove_file(&result_file);
+
+        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        let args = format!(
+            "{} {} {} --store \"{}\"",
+            worker::STORAGE,
+            if allow_irreversible { "1" } else { "0" },
+            ids.join(","),
+            dir.display()
+        );
+        match robin_execution::run_elevated_and_wait(&exe.to_string_lossy(), &args) {
+            Ok(_) => {
+                let text = std::fs::read_to_string(&result_file)
+                    .map_err(|_| "관리자 권한으로 정리하지 못했어요".to_string())?;
+                let _ = std::fs::remove_file(&result_file);
+                serde_json::from_str(&text).map_err(|e| e.to_string())
+            }
+            Err(None) => Err("관리자 권한 요청이 거절됐어요".into()),
+            Err(Some(m)) => Err(m),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// 정리 항목의 첫 위치를 탐색기로 연다. 마지막 스캔에 있던 위치만 허용한다.
+#[tauri::command]
+fn reveal_storage_category(id: String, cache: State<'_, AppCache>) -> Result<(), String> {
+    let location = cache
+        .storage
+        .lock()
+        .ok()
+        .and_then(|items| {
+            items
+                .iter()
+                .find(|c| c.id == id)?
+                .locations
+                .first()
+                .cloned()
+        })
+        .ok_or("열 수 있는 위치가 없어요")?;
+    open_in_explorer(Path::new(&location))
+}
+
+/// Windows 설정의 저장소 화면을 연다 (Windows.old 등 직접 정리 안내용)
+#[tauri::command]
+fn open_storage_settings() -> Result<(), String> {
+    std::process::Command::new("explorer.exe")
+        .arg("ms-settings:storagesense")
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+/// 탐색기로 연다. 폴더면 그 폴더를, 파일이면 파일을 선택한 채로.
+fn open_in_explorer(path: &Path) -> Result<(), String> {
+    if !path.exists() {
+        return Err("이미 없는 항목이에요".into());
+    }
+    let mut cmd = std::process::Command::new("explorer.exe");
+    if path.is_dir() {
+        cmd.arg(path);
+    } else {
+        // 경로는 엔진이 읽은 것이다. 파일 이름에는 따옴표가 들어갈 수 없다.
+        use std::os::windows::process::CommandExt;
+        cmd.raw_arg(format!("/select,\"{}\"", path.display()));
+    }
+    cmd.spawn().map(|_| ()).map_err(|e| e.to_string())
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FolderItem {
+    id: String,
+    #[serde(flatten)]
+    entry: robin_storage::FolderEntry,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct FolderAnalysis {
+    id: String,
+    path: String,
+    /// 상위 폴더 ID (드라이브 루트면 없음)
+    parent_id: Option<String>,
+    items: Vec<FolderItem>,
+    cancelled: bool,
+}
+
+impl AppCache {
+    fn folder_id(&self, path: &Path) -> String {
+        let mut map = self.folders.lock().unwrap_or_else(|e| e.into_inner());
+        if let Some((id, _)) = map.iter().find(|(_, p)| p.as_path() == path) {
+            return id.clone();
+        }
+        let id = format!("f{}", self.next_folder.fetch_add(1, Ordering::Relaxed));
+        map.insert(id.clone(), path.to_path_buf());
+        id
+    }
+
+    fn folder_path(&self, id: &str) -> Option<PathBuf> {
+        self.folders.lock().ok()?.get(id).cloned()
+    }
+}
+
+/// 폴더 바로 아래 항목의 크기 (읽기 전용). `id`가 없으면 시스템 드라이브.
+#[tauri::command]
+async fn analyze_folder(
+    id: Option<String>,
+    cache: State<'_, AppCache>,
+) -> Result<FolderAnalysis, String> {
+    let path = match &id {
+        Some(id) => cache.folder_path(id).ok_or("알 수 없는 폴더예요")?,
+        None => PathBuf::from(system_drive()),
+    };
+    if !path.is_dir() {
+        return Err("폴더가 없어요".into());
+    }
+
+    let cancel = Arc::new(AtomicBool::new(false));
+    if let Ok(mut slot) = cache.analysis_cancel.lock()
+        && let Some(previous) = slot.replace(cancel.clone())
+    {
+        previous.store(true, Ordering::Relaxed);
+    }
+
+    let (entries, cancelled) = {
+        let path = path.clone();
+        let cancel = cancel.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            let entries = robin_storage::analyze(&path, &cancel);
+            (entries, cancel.load(Ordering::Relaxed))
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    };
+
+    let items = entries
+        .into_iter()
+        .map(|entry| FolderItem {
+            id: cache.folder_id(Path::new(&entry.path)),
+            entry,
+        })
+        .collect();
+    Ok(FolderAnalysis {
+        id: cache.folder_id(&path),
+        path: path.display().to_string(),
+        parent_id: path.parent().map(|p| cache.folder_id(p)),
+        items,
+        cancelled,
+    })
+}
+
+/// 진행 중인 폴더 분석을 멈춘다.
+#[tauri::command]
+fn cancel_folder_analysis(cache: State<'_, AppCache>) {
+    if let Ok(slot) = cache.analysis_cancel.lock()
+        && let Some(cancel) = slot.as_ref()
+    {
+        cancel.store(true, Ordering::Relaxed);
+    }
+}
+
+/// 분석 결과의 항목을 탐색기로 연다.
+#[tauri::command]
+fn reveal_folder_item(id: String, cache: State<'_, AppCache>) -> Result<(), String> {
+    open_in_explorer(&cache.folder_path(&id).ok_or("알 수 없는 항목이에요")?)
+}
+
 /// Mica 배경이 켜졌는지. 프론트엔드는 이 값을 보고 배경을 반투명하게 그린다.
 static MICA_ENABLED: AtomicBool = AtomicBool::new(false);
 
@@ -509,6 +748,15 @@ pub fn run() {
             get_startup_icon,
             set_startup_enabled,
             reveal_startup_item,
+            disk_usage,
+            scan_storage,
+            clean_storage,
+            clean_storage_elevated,
+            reveal_storage_category,
+            open_storage_settings,
+            analyze_folder,
+            cancel_folder_analysis,
+            reveal_folder_item,
             window_material
         ])
         .run(tauri::generate_context!())
