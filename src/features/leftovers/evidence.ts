@@ -24,7 +24,7 @@ export function describeEvidence(e: Evidence): { label: string; warn?: boolean }
     case "trackedInstall":
       return { label: "설치 추적 기록에 있음" }
     case "sharedWithOtherApp":
-      return { label: `${e.appName}와 함께 쓰는 것 같아요`, warn: true }
+      return { label: `다른 프로그램(${e.appName})과 함께 쓰는 것 같아요`, warn: true }
     case "containsUserDocuments":
       return { label: `직접 만든 문서 ${e.count}개 포함`, warn: true }
   }

@@ -2,7 +2,7 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArchiveRestore, ArrowRight, Sparkles, Trash2, TriangleAlert } from "lucide-react"
 
-import { api, scanApi, type InstalledApplication } from "@/lib/api"
+import { api, needsForce, scanApi, type InstalledApplication } from "@/lib/api"
 import { FadeUp, Stagger } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { AppIcon } from "@/features/programs/app-icon"
@@ -13,7 +13,7 @@ export function LeftoversPage() {
   const [target, setTarget] = useState<LeftoverTarget | null>(null)
   const removed = useQuery({ queryKey: ["recently-removed"], queryFn: scanApi.recentlyRemoved })
   const installed = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
-  const broken = (installed.data ?? []).filter((a) => a.uninstaller === "missing")
+  const broken = (installed.data ?? []).filter(needsForce)
 
   return (
     <Stagger className="relative mx-auto flex max-w-4xl min-w-0 flex-col gap-6 px-7 pt-7 pb-10">
@@ -48,9 +48,9 @@ export function LeftoversPage() {
             title="언인스톨러가 없는 프로그램"
             hint="등록 정보만 남았거나 언인스톨러 파일이 사라진 프로그램이에요"
             apps={broken}
-            action="흔적 찾기"
+            action="강제 제거"
             warn
-            onPick={(app) => setTarget({ id: app.id, name: app.displayName, removed: true })}
+            onPick={(app) => setTarget({ id: app.id, name: app.displayName, removed: false, force: true })}
           />
         </FadeUp>
       )}

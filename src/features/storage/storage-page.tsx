@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ChevronRight,
@@ -382,6 +382,10 @@ function CleanDialog({
 }) {
   const [busy, setBusy] = useState(false)
   const [understood, setUnderstood] = useState(false)
+  // 되돌릴 수 없는 항목의 확인은 창을 열 때마다 새로 받는다
+  useEffect(() => {
+    if (open) setUnderstood(false)
+  }, [open])
   const irreversible = items.filter((c) => c.risk === "irreversible")
   const needsAdmin = items.some((c) => c.admin)
   const total = items.reduce((s, c) => s + c.bytes, 0)
@@ -406,7 +410,8 @@ function CleanDialog({
         }
       }
       const { freed, failed, skipped } = summarize(all)
-      toast.success(`${formatBytes(freed)}를 확보했어요`, {
+      const notify = freed > 0 ? toast.success : toast.warning
+      notify(freed > 0 ? `${formatBytes(freed)}를 확보했어요` : "확보한 공간이 없어요", {
         description:
           [
             failed > 0 ? `사용 중인 파일 ${failed.toLocaleString()}개는 건너뛰었어요` : null,
@@ -458,7 +463,7 @@ function CleanDialog({
                 되돌릴 수 없는 항목이 있어요
               </span>
               <span className="mt-1 block text-muted-foreground">
-                지우면 복구할 수 없어요: {irreversible.map((c) => c.name).join(", ")}. 확인했으면 체크해 주세요.
+                지우면 복구할 수 없어요: {irreversible.map((c) => c.name).join(", ")}. 확인했으면 체크해 주세요.{" "}
                 {onlyIrreversible ? "체크해야 정리할 수 있어요." : "체크하지 않으면 이 항목만 빼고 정리해요."}
               </span>
             </span>
@@ -471,7 +476,14 @@ function CleanDialog({
           </p>
         )}
         <div className="mt-1 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose} disabled={busy}>
+          <Button
+            variant="outline"
+            onClick={() => {
+              setUnderstood(false)
+              onClose()
+            }}
+            disabled={busy}
+          >
             취소
           </Button>
           <Button onClick={run} disabled={busy || (onlyIrreversible && !understood)}>

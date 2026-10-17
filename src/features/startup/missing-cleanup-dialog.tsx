@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useLayoutEffect, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { ArchiveRestore, FileWarning, Trash2 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
@@ -28,12 +28,14 @@ export function MissingCleanupDialog({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [stage, setStage] = useState<Stage>({ step: "select" })
   const [error, setError] = useState<string | null>(null)
+  const [elevating, setElevating] = useState(false)
 
-  // 열 때마다 처음 상태로 (전부 선택)
-  useEffect(() => {
+  // 열 때마다 처음 상태로 (전부 선택). 화면에 그리기 전에 바꿔서 지난 결과가 잠깐 보이지 않게 한다.
+  useLayoutEffect(() => {
     if (!open) return
     setStage({ step: "select" })
     setError(null)
+    setElevating(false)
     setSelected(new Set(entries.filter((e) => e.targetMissing && e.source !== "task").map((e) => e.id)))
   }, [open])
 
@@ -49,7 +51,9 @@ export function MissingCleanupDialog({
     setStage({ step: "cleaning" })
     setError(null)
     try {
-      const op = await startupApi.cleanMissing([...selected])
+      // 목록이 그사이 바뀌었으면 지금 있는 항목만 보낸다
+      const ids = targets.map((e) => e.id).filter((id) => selected.has(id))
+      const op = await startupApi.cleanMissing(ids)
       setStage({ step: "done", op })
     } catch (e) {
       setError(String(e))
@@ -61,14 +65,17 @@ export function MissingCleanupDialog({
   }
 
   const close = () => {
-    if (stage.step === "cleaning") return
+    if (stage.step === "cleaning" || elevating) return
     queryClient.invalidateQueries({ queryKey: ["startup-items"] })
     onClose()
   }
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
-      <DialogContent className="flex max-h-[min(640px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl">
+      <DialogContent
+        showCloseButton={stage.step !== "cleaning" && !elevating}
+        className="flex max-h-[min(640px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+      >
         <div className="flex items-center gap-3 border-b px-5 py-4 pr-12">
           <div className="flex size-10 items-center justify-center rounded-xl bg-chart-3/12 text-chart-3">
             <FileWarning className="size-5" />
@@ -83,7 +90,7 @@ export function MissingCleanupDialog({
           {stage.step === "cleaning" ? (
             <Cleaning key="cleaning" label="백업하고 정리하는 중이에요" />
           ) : stage.step === "done" ? (
-            <CleanResult key="done" op={stage.op} onDone={close} />
+            <CleanResult key="done" op={stage.op} onDone={close} onBusyChange={setElevating} />
           ) : (
             <motion.div
               key="select"

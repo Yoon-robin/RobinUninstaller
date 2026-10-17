@@ -86,11 +86,14 @@ export function CleanResult({
   op,
   forceAppId,
   onDone,
+  onBusyChange,
 }: {
   op: Operation
   /** 강제 제거 중이면 대상 프로그램 ID */
   forceAppId?: string
   onDone: () => void
+  /** 관리자 권한 정리(UAC)가 도는 동안 true. 그동안 창을 닫지 못하게 하는 데 쓴다. */
+  onBusyChange?: (busy: boolean) => void
 }) {
   const queryClient = useQueryClient()
   const [current, setCurrent] = useState(op)
@@ -104,6 +107,7 @@ export function CleanResult({
 
   const elevate = async () => {
     setElevating(true)
+    onBusyChange?.(true)
     setError(null)
     try {
       setCurrent(await recoveryApi.cleanElevated(current.id, forceAppId))
@@ -111,8 +115,11 @@ export function CleanResult({
       setError(String(e))
     } finally {
       setElevating(false)
-      queryClient.invalidateQueries({ queryKey: ["backups"] })
-      queryClient.invalidateQueries({ queryKey: ["installed-apps"] })
+      onBusyChange?.(false)
+      // 잔여물·강제 제거·시작 항목 정리가 모두 이 화면을 쓴다
+      for (const key of ["backups", "installed-apps", "recently-removed", "startup-items"]) {
+        queryClient.invalidateQueries({ queryKey: [key] })
+      }
     }
   }
 
@@ -178,6 +185,7 @@ export function CleanResult({
       <div className="mt-auto flex items-center justify-end gap-2 border-t px-5 py-3">
         <Button
           variant="outline"
+          disabled={elevating}
           onClick={() => {
             onDone()
             navigate("restore")
@@ -186,7 +194,9 @@ export function CleanResult({
           <ArchiveRestore />
           복구 기록 보기
         </Button>
-        <Button onClick={onDone}>완료</Button>
+        <Button onClick={onDone} disabled={elevating}>
+          완료
+        </Button>
       </div>
     </motion.div>
   )

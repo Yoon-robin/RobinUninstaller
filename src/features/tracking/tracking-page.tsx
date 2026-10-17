@@ -67,6 +67,8 @@ export function TrackingPage() {
         toast.success("설치 전 상태를 기록했어요", { description: "이제 설치 프로그램을 실행하세요" })
       } else if (kind === "finish") {
         setDraft(await trackingApi.finish())
+        // 방금 설치된 프로그램이 목록과 백엔드 캐시에 들어오게 한다
+        queryClient.invalidateQueries({ queryKey: ["installed-apps"] })
       } else {
         await trackingApi.cancel()
         toast("추적을 그만뒀어요")
@@ -321,9 +323,12 @@ function TraceCard({ trace, appNames }: { trace: Trace; appNames: Map<string, st
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [confirming, setConfirming] = useState(false)
+  const [deleting, setDeleting] = useState(false)
   const linked = trace.appIds.map((id) => appNames.get(id) ?? "제거된 프로그램")
 
   const remove = async () => {
+    if (deleting) return
+    setDeleting(true)
     try {
       await trackingApi.delete(trace.id)
       toast.success("기록을 지웠어요")
@@ -331,6 +336,7 @@ function TraceCard({ trace, appNames }: { trace: Trace; appNames: Map<string, st
       toast.error(String(e))
     } finally {
       setConfirming(false)
+      setDeleting(false)
       queryClient.invalidateQueries({ queryKey: ["traces"] })
     }
   }
@@ -364,7 +370,7 @@ function TraceCard({ trace, appNames }: { trace: Trace; appNames: Map<string, st
             <Button size="sm" variant="outline" onClick={() => setConfirming(false)}>
               취소
             </Button>
-            <Button size="sm" variant="destructive" onClick={remove}>
+            <Button size="sm" variant="destructive" onClick={remove} disabled={deleting}>
               지우기
             </Button>
           </div>

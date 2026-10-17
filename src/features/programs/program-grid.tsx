@@ -2,7 +2,7 @@ import { forwardRef, useEffect, useState, type CSSProperties } from "react"
 import { TriangleAlert } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 
-import type { InstalledApplication } from "@/lib/api"
+import { needsForce, type InstalledApplication } from "@/lib/api"
 import { formatSize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { Highlight } from "@/components/highlight"
@@ -80,7 +80,7 @@ const GridCard = forwardRef<HTMLDivElement, CardProps>(function GridCard(
             introIndex != null && "row-intro",
           )}
         >
-          {app.uninstaller === "missing" && (
+          {needsForce(app) && (
             <TriangleAlert className="absolute top-3 right-3 size-4 text-chart-3" aria-label="언인스톨러 없음" />
           )}
           <AppIcon

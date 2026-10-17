@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArchiveRestore,
@@ -112,8 +112,10 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
       toast.error(String(e))
     } finally {
       setBusy(null)
-      queryClient.invalidateQueries({ queryKey: ["backups"] })
-      queryClient.invalidateQueries({ queryKey: ["installed-apps"] })
+      // 복원하면 프로그램·시작 항목이 다시 생길 수 있다
+      for (const key of ["backups", "installed-apps", "recently-removed", "startup-items"]) {
+        queryClient.invalidateQueries({ queryKey: [key] })
+      }
     }
   }
 
@@ -222,7 +224,12 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
 function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: () => void }) {
   const queryClient = useQueryClient()
   const [busy, setBusy] = useState(false)
-  const kept = op ? countStatus(op, "removed") : 0
+  // 닫히는 애니메이션 동안 op가 null이 돼도 문구가 깨지지 않게 마지막 값을 보여 준다
+  const [shown, setShown] = useState(op)
+  useEffect(() => {
+    if (op) setShown(op)
+  }, [op])
+  const kept = shown ? countStatus(shown, "removed") : 0
 
   const confirm = async () => {
     if (!op) return
@@ -244,7 +251,7 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
       <DialogContent className="sm:max-w-md">
         <DialogTitle>백업을 완전히 삭제할까요?</DialogTitle>
         <DialogDescription className="leading-relaxed">
-          {op?.appName}의 정리 기록과 보관 중인 항목 {kept}개가 영구히 지워져요.{" "}
+          {shown?.appName}의 정리 기록과 보관 중인 항목 {kept}개가 영구히 지워져요.{" "}
           <b className="text-foreground">이후에는 되돌릴 수 없어요.</b>
         </DialogDescription>
         <div className="mt-2 flex justify-end gap-2">

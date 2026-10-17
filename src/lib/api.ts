@@ -56,6 +56,11 @@ export function canUninstall(app: InstalledApplication) {
   return app.uninstaller === "available" || app.uninstaller === "unknown"
 }
 
+/** 기본 언인스톨러를 쓸 수 없어 강제 제거로 가야 하는 프로그램. 필터·경고 표시·잔여물 화면이 함께 쓴다. */
+export function needsForce(app: InstalledApplication) {
+  return !canUninstall(app)
+}
+
 // crates/execution 의 ForceCheck 와 맞춰야 한다.
 export interface ForceCheck {
   /** 강제 제거하면 안 되는 이유 (보안 프로그램·드라이버 등) */

@@ -54,6 +54,9 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
     gcTime: 0,
   })
   const ready = !force || (check.data != null && check.data.blocked == null && check.data.running.length === 0)
+  // 확인·정리·결과 단계에서는 다시 찾기를 막고, 정리 중에는 창도 닫지 못하게 한다
+  const [locked, setLocked] = useState<"none" | "stage" | "busy">("none")
+  useEffect(() => setLocked("none"), [target])
   const scan = useQuery({
     queryKey: ["leftovers", target?.id],
     queryFn: () => scanApi.scanLeftovers(target!.id),
@@ -63,8 +66,11 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
   })
 
   return (
-    <Dialog open={target != null} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="flex h-[min(720px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl">
+    <Dialog open={target != null} onOpenChange={(open) => !open && locked !== "busy" && onClose()}>
+      <DialogContent
+        showCloseButton={locked !== "busy"}
+        className="flex h-[min(720px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl"
+      >
         {target && (
           <>
             <div className="flex items-center gap-3 border-b px-5 py-4 pr-12">
@@ -93,7 +99,7 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
                   size="icon"
                   className="size-9 rounded-lg"
                   aria-label="다시 찾기"
-                  disabled={scan.isFetching || !ready}
+                  disabled={scan.isFetching || !ready || locked !== "none"}
                   onClick={() => scan.refetch()}
                 >
                   <RefreshCw className={cn(scan.isFetching && "animate-spin")} />
@@ -123,6 +129,7 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
                   appName={target.name}
                   forceAppId={force ? target.id : undefined}
                   onClose={onClose}
+                  onLockChange={setLocked}
                 />
               ) : null}
             </AnimatePresence>
@@ -154,8 +161,17 @@ function ForceGate({
 
   if (error) {
     return (
-      <motion.div {...motionProps} className={cn(panel, "text-sm text-destructive")}>
-        확인하지 못했어요: {String(error)}
+      <motion.div {...motionProps} className={panel}>
+        <p className="text-sm text-destructive">확인하지 못했어요: {String(error)}</p>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={onClose}>
+            닫기
+          </Button>
+          <Button onClick={onRetry}>
+            <RefreshCw />
+            다시 확인
+          </Button>
+        </div>
       </motion.div>
     )
   }
@@ -245,15 +261,20 @@ function Results({
   appName,
   forceAppId,
   onClose,
+  onLockChange,
 }: {
   report: ScanReport
   appName: string
   forceAppId?: string
   onClose: () => void
+  onLockChange: (lock: "none" | "stage" | "busy") => void
 }) {
   const queryClient = useQueryClient()
   const [stage, setStage] = useState<Stage>({ step: "review" })
   const [cleanError, setCleanError] = useState<string | null>(null)
+  useEffect(() => {
+    onLockChange(stage.step === "review" ? "none" : stage.step === "cleaning" ? "busy" : "stage")
+  }, [stage.step, onLockChange])
   const strong = report.items.filter((i) => i.confidence === "strong")
   const review = report.items.filter((i) => i.confidence === "review")
   // 확실한 항목만 미리 선택한다.
@@ -276,8 +297,9 @@ function Results({
       setCleanError(String(e))
       setStage({ step: "review" })
     } finally {
-      queryClient.invalidateQueries({ queryKey: ["backups"] })
-      queryClient.invalidateQueries({ queryKey: ["installed-apps"] })
+      for (const key of ["backups", "installed-apps", "recently-removed", "startup-items"]) {
+        queryClient.invalidateQueries({ queryKey: [key] })
+      }
     }
   }
 
@@ -288,7 +310,14 @@ function Results({
     return <Cleaning label="백업하고 정리하는 중이에요" />
   }
   if (stage.step === "done") {
-    return <CleanResult op={stage.op} forceAppId={forceAppId} onDone={onClose} />
+    return (
+      <CleanResult
+        op={stage.op}
+        forceAppId={forceAppId}
+        onDone={onClose}
+        onBusyChange={(busy) => onLockChange(busy ? "busy" : "stage")}
+      />
+    )
   }
 
   const toggle = (id: string) =>

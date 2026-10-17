@@ -1,4 +1,4 @@
-import type { InstalledApplication } from "@/lib/api"
+import { needsForce, type InstalledApplication } from "@/lib/api"
 import { installDateSortKey } from "@/lib/format"
 
 export type QuickFilter = "all" | "recent" | "large" | "user" | "broken"
@@ -29,7 +29,7 @@ export function matchesFilter(app: InstalledApplication, filter: QuickFilter, no
     case "user":
       return app.scope === "user"
     case "broken":
-      return app.uninstaller === "missing"
+      return needsForce(app)
   }
 }
 

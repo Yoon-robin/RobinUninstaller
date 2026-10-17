@@ -2,7 +2,7 @@ import { forwardRef, type CSSProperties } from "react"
 import { MoreHorizontal, TriangleAlert } from "lucide-react"
 import { motion } from "motion/react"
 
-import type { InstalledApplication } from "@/lib/api"
+import { needsForce, type InstalledApplication } from "@/lib/api"
 import { formatInstallDate, formatSize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { Highlight } from "@/components/highlight"
@@ -45,7 +45,14 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
           role="button"
           tabIndex={0}
           onClick={() => handlers.onSelect(app)}
-          onKeyDown={(e) => e.key === "Enter" && handlers.onSelect(app)}
+          onKeyDown={(e) => {
+            // 안쪽 버튼·메뉴에서 누른 키는 행 열기로 처리하지 않는다 (메뉴는 포털이라 이벤트가 여기까지 올라온다)
+            if (e.target !== e.currentTarget) return
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              handlers.onSelect(app)
+            }
+          }}
           style={introStyle}
           className={cn(
             LIST_GRID,
@@ -61,7 +68,7 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
                 <p className="truncate font-medium" title={app.displayName}>
                   <Highlight text={app.displayName} query={query} />
                 </p>
-                {app.uninstaller === "missing" && (
+                {needsForce(app) && (
                   <TriangleAlert className="size-3.5 shrink-0 text-chart-3" aria-label="언인스톨러 없음" />
                 )}
               </div>
@@ -99,7 +106,11 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
             )}
           </div>
 
-          <div onClick={(e) => e.stopPropagation()} onContextMenu={(e) => e.stopPropagation()}>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            onContextMenu={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+          >
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
