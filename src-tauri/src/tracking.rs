@@ -77,7 +77,15 @@ pub async fn finish_tracking(state: State<'_, TrackingState>) -> Result<DraftVie
             .load_pending()
             .ok_or("추적을 시작한 기록이 없어요. 다시 시작해 주세요")?;
         let after = robin_tracker::snapshot::take();
-        Ok(robin_tracker::diff(&before, &after))
+        let draft = robin_tracker::diff(&before, &after);
+        if draft.incomplete {
+            // 끝까지 보지 못한 스냅샷끼리 비교하면 원래 있던 항목이 "새로 생김"으로 보일 수 있다
+            return Err(
+                "검사할 파일·레지스트리가 너무 많아 비교 결과를 믿을 수 없어요. 추적을 그만두고 다시 시도해 주세요"
+                    .to_string(),
+            );
+        }
+        Ok(draft)
     })
     .await?;
 

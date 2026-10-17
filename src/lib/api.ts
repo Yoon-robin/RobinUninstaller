@@ -88,6 +88,7 @@ export type Evidence =
   | { kind: "partialName" }
   | { kind: "emptyPublisherFolder" }
   | { kind: "trackedInstall" }
+  | { kind: "inUserFolder" }
   | { kind: "sharedWithOtherApp"; appName: string }
   | { kind: "containsUserDocuments"; count: number }
 
@@ -287,6 +288,8 @@ export interface TrackedChange {
 }
 
 export interface TraceDraft {
+  /** 스냅샷을 끝까지 보지 못함 (백엔드가 이 경우 오류를 돌려주므로 화면에서는 늘 false) */
+  incomplete: boolean
   startedAt: number
   finishedAt: number
   changes: TrackedChange[]

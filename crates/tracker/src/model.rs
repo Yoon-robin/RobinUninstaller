@@ -35,6 +35,9 @@ pub struct Snapshot {
     pub values: BTreeMap<String, (String, String)>,
     /// 설치된 프로그램 ID (새로 설치된 프로그램을 알아내는 데 쓴다)
     pub apps: Vec<String>,
+    /// 항목이 너무 많아 끝까지 보지 못했음. 이런 스냅샷으로 비교하면 원래 있던 것이 "새로 생김"으로 보일 수 있다.
+    #[serde(default)]
+    pub incomplete: bool,
 }
 
 impl Snapshot {
@@ -59,6 +62,9 @@ impl Snapshot {
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct TraceDraft {
+    /// 스냅샷 하나라도 끝까지 보지 못해 결과를 믿을 수 없음
+    #[serde(default)]
+    pub incomplete: bool,
     pub started_at: u64,
     pub finished_at: u64,
     pub changes: Vec<Change>,
@@ -86,17 +92,20 @@ fn is_under(path: &str, parent: &str) -> bool {
 
 /// 설치하는 동안 계속 바뀌는 곳 (브라우저·Windows·임시 파일). 설치와 관계없는 변화가 섞이지 않게 뺀다.
 const NOISE: &[&str] = &[
-    r"\temp\",
-    r"\tmp\",
+    r"\appdata\local\temp\",
+    r"\windows\temp\",
     r"\appdata\local\packages\",
-    r"\appdata\local\microsoft\windows\",
-    r"\appdata\roaming\microsoft\windows\recent\",
+    r"\appdata\local\microsoft\",
+    r"\appdata\roaming\microsoft\",
+    r"\programdata\microsoft\",
     r"\appdata\local\crashdumps\",
     r"\appdata\local\d3dscache\",
     r"\appdata\local\nvidia\",
     r"\inetcache\",
     r"\webcache\",
-    r"\user data\",
+    r"\google\chrome\user data\",
+    r"\bravesoftware\brave-browser\user data\",
+    r"\vivaldi\user data\",
     r"\mozilla\firefox\profiles\",
     r"\robinuninstaller\",
     r"\microsoft\windows\wer\",
@@ -113,6 +122,7 @@ pub fn is_noise(location: &str) -> bool {
         r"\currentversion\uninstall\",
         r"\currentversion\run\",
         r"\currentversion\app paths\",
+        r"\microsoft\windows\start menu\",
     ];
     if KEEP.iter().any(|k| l.contains(k)) {
         return false;
@@ -181,8 +191,10 @@ pub fn diff(before: &Snapshot, after: &Snapshot) -> TraceDraft {
     }
 
     changes.retain(|c| !is_noise(&c.location));
+    let incomplete = before.incomplete || after.incomplete;
 
     TraceDraft {
+        incomplete,
         started_at: before.taken_at,
         finished_at: after.taken_at,
         changes,
@@ -281,6 +293,16 @@ mod tests {
     #[test]
     fn noise_is_dropped_but_install_records_are_kept() {
         assert!(is_noise(r"C:\Users\me\AppData\Local\Temp\setup123"));
+        assert!(is_noise(
+            r"C:\Users\me\AppData\Local\Microsoft\OneDrive\logs"
+        ));
+        assert!(is_noise(r"C:\ProgramData\Microsoft\Windows Defender\Scans"));
+        // 시작 메뉴는 Microsoft 아래지만 설치 흔적이라 남긴다
+        assert!(!is_noise(
+            r"C:\Users\me\AppData\Roaming\Microsoft\Windows\Start Menu\Programs\Acme"
+        ));
+        // 프로그램 폴더 안의 temp는 잡음이 아니다
+        assert!(!is_noise(r"C:\Program Files\Acme\temp"));
         assert!(is_noise(
             r"C:\Users\me\AppData\Local\Google\Chrome\User Data\Default"
         ));

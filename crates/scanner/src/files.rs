@@ -165,7 +165,10 @@ fn push(
     let (size, docs) = if is_dir {
         measure(&path)
     } else {
-        (std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0), 0)
+        (
+            std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0),
+            usize::from(is_document(&path)),
+        )
     };
     if docs > 0 {
         evidence.push(Evidence::ContainsUserDocuments { count: docs });
@@ -187,6 +190,13 @@ fn push(
 }
 
 /// 폴더 크기와 문서 파일 수 (최대 WALK_LIMIT개까지만 센다).
+/// 사용자가 만든 문서 파일로 보이는지 (확장자 기준)
+pub(crate) fn is_document(path: &Path) -> bool {
+    path.extension()
+        .map(|e| e.to_string_lossy().to_lowercase())
+        .is_some_and(|ext| DOCUMENT_EXTENSIONS.contains(&ext.as_str()))
+}
+
 pub(crate) fn measure(dir: &Path) -> (u64, usize) {
     let mut size = 0u64;
     let mut docs = 0usize;

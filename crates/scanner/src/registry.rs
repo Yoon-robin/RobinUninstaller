@@ -72,8 +72,8 @@ pub fn scan(ctx: &ScanContext, out: &mut Vec<Leftover>, protected: &mut usize) {
     software_keys(ctx, out, protected);
     if let Some(dir) = ctx.install_location.clone() {
         run_values(ctx, &dir, out);
-        app_paths(&dir, out);
-        services(&dir, out);
+        app_paths(ctx, &dir, out);
+        services(ctx, &dir, out);
     }
 }
 
@@ -248,11 +248,24 @@ fn push_key(
     ));
 }
 
+/// 값 데이터 안의 실행 파일 경로
+fn target_of(data: &str) -> String {
+    let expanded = robin_discovery::command::expand_env(data, |n| std::env::var(n).ok());
+    robin_discovery::command::executable_path(&expanded).unwrap_or(expanded)
+}
+
 /// 값 데이터 안의 실행 파일 경로가 설치 폴더 안인지.
 fn points_into(data: &str, dir: &str) -> bool {
-    let expanded = robin_discovery::command::expand_env(data, |n| std::env::var(n).ok());
-    let exe = robin_discovery::command::executable_path(&expanded).unwrap_or(expanded);
-    is_within(&exe, dir)
+    is_within(&target_of(data), dir)
+}
+
+/// "설치 폴더를 가리킴" 근거. 실행 파일이 다른 프로그램의 설치 폴더 안이면(같은 폴더를 함께 쓰는 제품군 등) 감점한다.
+fn pointing_evidence(ctx: &ScanContext, data: &str) -> Vec<Evidence> {
+    let mut evidence = vec![Evidence::PointsIntoInstallLocation];
+    if let Some(other) = ctx.other_app_owning(&target_of(data)) {
+        evidence.push(Evidence::SharedWithOtherApp { app_name: other });
+    }
+    evidence
 }
 
 fn run_values(ctx: &ScanContext, dir: &str, out: &mut Vec<Leftover>) {
@@ -263,12 +276,13 @@ fn run_values(ctx: &ScanContext, dir: &str, out: &mut Vec<Leftover>) {
                 continue;
             };
             for (name, value) in key.enum_values().flatten() {
-                if points_into(&value.to_string(), dir) {
+                let data = value.to_string();
+                if points_into(&data, dir) {
                     let mut item = Leftover::new(
                         LeftoverKind::RegistryValue,
                         hive.display(&path),
                         Some(name),
-                        vec![Evidence::PointsIntoInstallLocation],
+                        pointing_evidence(ctx, &data),
                     );
                     item.note = Some(format!("{} 시작 시 자동 실행 항목이에요.", ctx.app_name));
                     out.push(item);
@@ -278,7 +292,7 @@ fn run_values(ctx: &ScanContext, dir: &str, out: &mut Vec<Leftover>) {
     }
 }
 
-fn app_paths(dir: &str, out: &mut Vec<Leftover>) {
+fn app_paths(ctx: &ScanContext, dir: &str, out: &mut Vec<Leftover>) {
     let path = r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths";
     for hive in HIVES {
         let Some(key) = hive.open(path) else { continue };
@@ -292,14 +306,14 @@ fn app_paths(dir: &str, out: &mut Vec<Leftover>) {
                     LeftoverKind::RegistryKey,
                     hive.display(&format!("{path}\\{exe}")),
                     None,
-                    vec![Evidence::PointsIntoInstallLocation],
+                    pointing_evidence(ctx, &target),
                 ));
             }
         }
     }
 }
 
-fn services(dir: &str, out: &mut Vec<Leftover>) {
+fn services(ctx: &ScanContext, dir: &str, out: &mut Vec<Leftover>) {
     let path = r"SYSTEM\CurrentControlSet\Services";
     let Some(key) = HIVES[1].open(path) else {
         return;
@@ -314,7 +328,7 @@ fn services(dir: &str, out: &mut Vec<Leftover>) {
                 LeftoverKind::RegistryKey,
                 format!("HKLM\\{path}\\{name}"),
                 None,
-                vec![Evidence::PointsIntoInstallLocation],
+                pointing_evidence(ctx, &image),
             );
             item.note =
                 Some("Windows 서비스예요. 지우기 전에 서비스를 중지하고 제거해야 해요.".into());

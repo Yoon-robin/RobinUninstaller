@@ -17,51 +17,78 @@ use winreg::enums::{
 use crate::model::Snapshot;
 
 const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
-/// 한 스냅샷에서 볼 항목 수 상한 (아주 큰 폴더 때문에 멈추지 않게)
-const MAX_ENTRIES: usize = 2_000_000;
+/// 한 스냅샷에서 볼 항목 수 상한 (아주 큰 폴더 때문에 멈추지 않게). 파일과 레지스트리는 따로 센다.
+/// 넘으면 스냅샷에 `incomplete`를 표시하고, 그런 스냅샷으로는 비교 결과를 저장하지 않는다.
+const MAX_FILE_ENTRIES: usize = 2_000_000;
+const MAX_KEY_ENTRIES: usize = 1_000_000;
 
 fn env(var: &str) -> Option<String> {
     std::env::var(var).ok().filter(|v| !v.is_empty())
 }
 
-/// (폴더, 깊이) 목록
-fn file_roots() -> Vec<(String, usize)> {
-    let mut roots = Vec::new();
-    let mut push = |p: Option<String>, depth: usize| {
+/// 바탕 화면에서는 설치 프로그램이 만드는 바로 가기만 기록한다 (사용자 파일은 추적 기록에 넣지 않는다)
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum Filter {
+    All,
+    ShortcutsOnly,
+}
+
+/// (폴더, 깊이, 거르는 방법) 목록
+fn file_roots() -> Vec<(String, usize, Filter)> {
+    let mut roots: Vec<(String, usize, Filter)> = Vec::new();
+    let mut push = |p: Option<String>, depth: usize, filter: Filter| {
         if let Some(p) = p
-            && !roots
-                .iter()
-                .any(|(r, _): &(String, usize)| r.eq_ignore_ascii_case(&p))
+            && !roots.iter().any(|(r, _, _)| r.eq_ignore_ascii_case(&p))
         {
-            roots.push((p, depth));
+            roots.push((p, depth, filter));
         }
     };
-    push(env("ProgramFiles"), 4);
-    push(env("ProgramFiles(x86)"), 4);
-    push(env("ProgramW6432"), 4);
-    push(env("ProgramData"), 4);
-    push(env("APPDATA"), 4);
-    push(env("LOCALAPPDATA"), 4);
-    push(env("LOCALAPPDATA").map(|l| format!(r"{l}\Programs")), 4);
+    push(env("ProgramFiles"), 4, Filter::All);
+    push(env("ProgramFiles(x86)"), 4, Filter::All);
+    push(env("ProgramW6432"), 4, Filter::All);
+    push(env("ProgramData"), 4, Filter::All);
+    push(env("APPDATA"), 4, Filter::All);
+    push(env("LOCALAPPDATA"), 4, Filter::All);
+    push(
+        env("LOCALAPPDATA").map(|l| format!(r"{l}\Programs")),
+        4,
+        Filter::All,
+    );
     push(
         env("APPDATA").map(|a| format!(r"{a}\Microsoft\Windows\Start Menu\Programs")),
         3,
+        Filter::All,
     );
     push(
         env("ProgramData").map(|a| format!(r"{a}\Microsoft\Windows\Start Menu\Programs")),
         3,
+        Filter::All,
     );
-    push(env("USERPROFILE").map(|u| format!(r"{u}\Desktop")), 1);
-    push(env("PUBLIC").map(|u| format!(r"{u}\Desktop")), 1);
+    push(
+        env("USERPROFILE").map(|u| format!(r"{u}\Desktop")),
+        1,
+        Filter::ShortcutsOnly,
+    );
+    push(
+        env("PUBLIC").map(|u| format!(r"{u}\Desktop")),
+        1,
+        Filter::ShortcutsOnly,
+    );
     roots
 }
 
-fn walk_files(dir: &Path, depth: usize, snap: &mut Snapshot, budget: &mut usize) {
+fn is_shortcut(path: &Path) -> bool {
+    path.extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("lnk") || e.eq_ignore_ascii_case("url"))
+}
+
+fn walk_files(dir: &Path, depth: usize, filter: Filter, snap: &mut Snapshot, budget: &mut usize) {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
     };
     for entry in entries.flatten() {
         if *budget == 0 {
+            snap.incomplete = true;
             return;
         }
         *budget -= 1;
@@ -72,10 +99,14 @@ fn walk_files(dir: &Path, depth: usize, snap: &mut Snapshot, budget: &mut usize)
         }
         let path = entry.path();
         let text = path.to_string_lossy();
-        if meta.is_dir() {
+        if filter == Filter::ShortcutsOnly {
+            if !meta.is_dir() && is_shortcut(&path) {
+                snap.add_file(&text);
+            }
+        } else if meta.is_dir() {
             snap.add_folder(&text);
             if depth > 1 {
-                walk_files(&path, depth - 1, snap, budget);
+                walk_files(&path, depth - 1, filter, snap, budget);
             }
         } else {
             snap.add_file(&text);
@@ -136,6 +167,7 @@ fn walk_keys(hive: Hive, path: &str, depth: usize, snap: &mut Snapshot, budget: 
     let Some(key) = hive.open(path) else { return };
     for name in key.enum_keys().flatten() {
         if *budget == 0 {
+            snap.incomplete = true;
             return;
         }
         *budget -= 1;
@@ -167,11 +199,11 @@ pub fn take() -> Snapshot {
             .unwrap_or(0),
         ..Default::default()
     };
-    let mut budget = MAX_ENTRIES;
-
-    for (root, depth) in file_roots() {
-        walk_files(Path::new(&root), depth, &mut snap, &mut budget);
+    let mut budget = MAX_FILE_ENTRIES;
+    for (root, depth, filter) in file_roots() {
+        walk_files(Path::new(&root), depth, filter, &mut snap, &mut budget);
     }
+    let mut budget = MAX_KEY_ENTRIES;
 
     for hive in [HKCU, HKLM64, HKLM32] {
         // Software\X\Y\Z (Microsoft 등은 아래에서 필요한 곳만)

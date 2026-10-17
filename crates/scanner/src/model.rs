@@ -41,6 +41,8 @@ pub enum Evidence {
     /// 사용자가 만든 문서가 들어 있음 (감점·경고)
     #[serde(rename_all = "camelCase")]
     ContainsUserDocuments { count: usize },
+    /// 바탕 화면·문서·다운로드처럼 사용자가 직접 파일을 두는 폴더 안 (감점·경고, 자동 선택 안 함)
+    InUserFolder,
 }
 
 impl Evidence {
@@ -58,6 +60,7 @@ impl Evidence {
             Evidence::EmptyPublisherFolder => 50,
             Evidence::SharedWithOtherApp { .. } => -90,
             Evidence::ContainsUserDocuments { .. } => -40,
+            Evidence::InUserFolder => -60,
         }
     }
 }
@@ -156,12 +159,38 @@ impl Leftover {
     }
 
     /// 근거를 더하고 점수·분류를 다시 계산한다 (같은 항목을 다른 방법으로도 찾았을 때).
+    /// 같은 종류의 감점 근거(다른 프로그램 공유, 문서 포함)는 하나만 둔다.
     pub fn add_evidence(&mut self, evidence: Evidence) {
-        if !self.evidence.contains(&evidence) {
+        let duplicate = self.evidence.iter().any(|e| {
+            e == &evidence
+                || matches!(
+                    (e, &evidence),
+                    (
+                        Evidence::SharedWithOtherApp { .. },
+                        Evidence::SharedWithOtherApp { .. }
+                    ) | (
+                        Evidence::ContainsUserDocuments { .. },
+                        Evidence::ContainsUserDocuments { .. }
+                    )
+                )
+        });
+        if !duplicate {
             self.evidence.push(evidence);
             self.score = score(&self.evidence);
             self.confidence = classify(&self.evidence);
         }
+    }
+
+    /// 위험을 알리는 근거 (상위 폴더로 올려야 하는 것)
+    pub fn risk_evidence(&self) -> impl Iterator<Item = &Evidence> {
+        self.evidence.iter().filter(|e| {
+            matches!(
+                e,
+                Evidence::SharedWithOtherApp { .. }
+                    | Evidence::ContainsUserDocuments { .. }
+                    | Evidence::InUserFolder
+            )
+        })
     }
 }
 

@@ -68,6 +68,7 @@ fn main() {
                 && c.value_name.as_deref() == value
         })
     };
+    check("스냅샷을 끝까지 봄", !draft.incomplete);
     check(
         "새 프로그램으로 Fixture Notes를 알아냄",
         draft.new_app_ids == [FIXTURE_ID],

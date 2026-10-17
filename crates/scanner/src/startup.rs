@@ -19,10 +19,17 @@ const FOLDER_SOURCES: [StartupSource; 2] = [StartupSource::FolderUser, StartupSo
 
 pub fn scan(ctx: &ScanContext, out: &mut Vec<Leftover>, protected: &mut usize) {
     // (출처, StartupApproved 값 이름) — 잔여물로 찾은 시작 항목
-    let mut startup_items: Vec<(StartupSource, String)> = out
+    // (출처, 이름, 근거): 켜짐·꺼짐 상태 값은 짝이 되는 시작 항목과 같은 근거를 쓴다 (공유 감점 포함)
+    let mut startup_items: Vec<(StartupSource, String, Vec<Evidence>)> = out
         .iter()
         .filter(|i| i.kind == LeftoverKind::RegistryValue)
-        .filter_map(|i| Some((run_source(&i.location)?, i.value_name.clone()?)))
+        .filter_map(|i| {
+            Some((
+                run_source(&i.location)?,
+                i.value_name.clone()?,
+                i.evidence.clone(),
+            ))
+        })
         .collect();
 
     if let Some(dir) = &ctx.install_location {
@@ -33,7 +40,7 @@ pub fn scan(ctx: &ScanContext, out: &mut Vec<Leftover>, protected: &mut usize) {
                         .file_name()
                         .map(|n| n.to_string_lossy().into_owned())
                         .unwrap_or_default();
-                    startup_items.push((source, file_name));
+                    startup_items.push((source, file_name, item.evidence.clone()));
                     out.push(item);
                 }
             }
@@ -41,9 +48,9 @@ pub fn scan(ctx: &ScanContext, out: &mut Vec<Leftover>, protected: &mut usize) {
     }
 
     let mut taken: HashSet<(StartupSource, String)> = HashSet::new();
-    for (source, name) in startup_items {
+    for (source, name, evidence) in startup_items {
         if robin_startup::has_approved(source, &name) {
-            let mut item = approved(source, &name, vec![Evidence::PointsIntoInstallLocation]);
+            let mut item = approved(source, &name, evidence);
             item.note = Some(format!(
                 "{}의 시작프로그램 켜짐·꺼짐 상태 값이에요.",
                 ctx.app_name
@@ -73,12 +80,11 @@ fn shortcut(ctx: &ScanContext, path: &Path, dir: &str, protected: &mut usize) ->
         *protected += 1;
         return None;
     }
-    let mut item = Leftover::new(
-        LeftoverKind::File,
-        location,
-        None,
-        vec![Evidence::PointsIntoInstallLocation],
-    );
+    let mut evidence = vec![Evidence::PointsIntoInstallLocation];
+    if let Some(other) = ctx.other_app_owning(&target) {
+        evidence.push(Evidence::SharedWithOtherApp { app_name: other });
+    }
+    let mut item = Leftover::new(LeftoverKind::File, location, None, evidence);
     item.size_bytes = Some(std::fs::metadata(path).map(|m| m.len()).unwrap_or(0));
     item.note = Some(format!(
         "{} 시작 시 자동 실행되는 바로 가기예요.",
