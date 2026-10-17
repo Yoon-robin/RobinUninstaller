@@ -193,7 +193,7 @@ MVP 품질 목표: 앱 목록 2초 이내(캐시 먼저 표시), 일반 스캔 1
 - **관리자 권한:** HKLM·공용 시작 폴더 항목은 일반 권한으로 쓰기가 거부되면 작업자 모드(`--elevated-startup <on|off> <ID> --store <...\RobinUninstaller\startup>`)를 UAC로 띄운다.
 - **표시 정보:** 실행 명령에서 실행 파일을 찾고(경로 없는 `rundll32.exe` 등은 Windows 폴더에서), 바로 가기는 IShellLink로 대상을 읽는다. 게시자·설명은 파일 버전 정보에서 읽는다. 파일이 없으면 "파일 없음"으로 표시한다.
 - **검증:** `cargo run -p robin-startup --example toggle_fixture`로 테스트 앱의 Run 값과 시작 폴더 바로 가기를 껐다 켜서 원래 상태(값 없음)로 돌아오는지 확인한다. 앱 화면에서도 같은 흐름을 확인했다(2026-10-17).
+- **관리자 권한 검증(2026-10-17):** 일반 권한으로 띄운 앱에서 `FixtureNotesMachine`(HKLM Run)을 끄기 → UAC → HKLM `StartupApproved\Run`에 03 값, 원래 값(없음)은 사용자 기록에 남음 → 다시 켜기 → UAC → 값이 지워져 원래 상태, 기록도 비워짐.
 - **아직 안 한 것:**
-  - 관리자 권한(UAC) 경로 실제 시험 (`robin-fixture install --machine`의 `FixtureNotesMachine`)
   - 예약 작업(로그온 트리거), 서비스
   - 파일이 없는 항목 정리(백업 후 Run 값·바로 가기 제거)
