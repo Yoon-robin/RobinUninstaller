@@ -17,6 +17,35 @@ use windows::Win32::System::Diagnostics::ToolHelp::{
 
 const POLL: Duration = Duration::from_millis(250);
 
+/// 프로세스가 만들어진 시각 (FILETIME, 100ns 단위). 열 수 없으면 None.
+fn creation_time(pid: u32) -> Option<u64> {
+    use windows::Win32::Foundation::FILETIME;
+    use windows::Win32::System::Threading::{
+        GetProcessTimes, OpenProcess, PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    unsafe {
+        let handle = OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, pid).ok()?;
+        let (mut created, mut exited, mut kernel, mut user) = (
+            FILETIME::default(),
+            FILETIME::default(),
+            FILETIME::default(),
+            FILETIME::default(),
+        );
+        let ok = GetProcessTimes(handle, &mut created, &mut exited, &mut kernel, &mut user);
+        let _ = CloseHandle(handle);
+        ok.ok()?;
+        Some((u64::from(created.dwHighDateTime) << 32) | u64::from(created.dwLowDateTime))
+    }
+}
+
+/// 지금 시각 (FILETIME, 100ns 단위)
+fn now_filetime() -> u64 {
+    let unix = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .unwrap_or_default();
+    unix.as_nanos() as u64 / 100 + 116_444_736_000_000_000
+}
+
 struct Proc {
     ppid: u32,
     exe: String,
@@ -84,6 +113,13 @@ pub fn wait_for_tree(
     // 살아 있는 추적 대상: pid → 처음 봤을 때의 부모 pid (최상위는 None)
     let mut alive: HashMap<u32, Option<u32>> = HashMap::from([(root_pid, None)]);
     let mut ever_seen: Vec<u32> = vec![root_pid];
+    // 추적한 프로세스가 만들어진 시각과, 끝난 것을 처음 본 시각.
+    // 끝난 프로세스의 pid를 다른 프로그램이 다시 받아 자식을 만들면, 그 자식은 우리 것이 아니다.
+    let mut created: HashMap<u32, u64> = HashMap::new();
+    if let Some(t) = creation_time(root_pid) {
+        created.insert(root_pid, t);
+    }
+    let mut gone_at: HashMap<u32, u64> = HashMap::new();
     let mut last_count = 0;
 
     loop {
@@ -91,10 +127,36 @@ pub fn wait_for_tree(
             return;
         }
         let procs = snapshot();
+        let now = now_filetime();
+
+        // 끝났거나, 같은 pid를 다른 프로세스가 다시 받은(만든 시각이 다름) 추적 대상을 기록한다
+        for &pid in &ever_seen {
+            if gone_at.contains_key(&pid) {
+                continue;
+            }
+            let reused = || {
+                created
+                    .get(&pid)
+                    .is_some_and(|&t| creation_time(pid).is_some_and(|now_t| now_t != t))
+            };
+            if !procs.contains_key(&pid) || reused() {
+                gone_at.insert(pid, now);
+            }
+        }
 
         // 추적 중이었던 프로세스의 자식을 편입한다. 부모가 이미 끝났어도 자식의 ppid 값은 남아 있다.
         for (&pid, proc) in &procs {
             if ever_seen.contains(&proc.ppid) && !ever_seen.contains(&pid) && pid != proc.ppid {
+                let child_created = creation_time(pid);
+                // 부모가 끝난 뒤에 만들어진 프로세스는 pid를 물려받은 남의 자식이다
+                if let (Some(c), Some(&gone)) = (child_created, gone_at.get(&proc.ppid))
+                    && c > gone
+                {
+                    continue;
+                }
+                if let Some(c) = child_created {
+                    created.insert(pid, c);
+                }
                 ever_seen.push(pid);
                 if !is_ignored(&proc.exe, target_name) {
                     alive.insert(pid, Some(proc.ppid));

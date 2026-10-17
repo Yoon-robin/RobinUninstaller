@@ -108,6 +108,15 @@ pnpm tauri dev    # 앱 실행
 - **Windows에서 확인할 것:** 실제 PC에서 스냅샷 시간(Program Files·AppData가 크면 오래 걸릴 수 있음), 추적 중 다른 프로그램 변경이
   얼마나 섞이는지, 앱에서 테스트 앱 설치를 추적 → 저장 → 테스트 앱 제거 후 잔여물 스캔에 "설치 추적 기록에 있음" 근거가 보이는지.
 
+### 코드 리뷰 수정 — 작성 (2026-10-17, 클라우드, 브랜치 `claude/force-uninstall`)
+
+- 리뷰에서 나온 버그를 고쳤다 (PLAN.md "코드 리뷰 수정"). Wine 검사 모두 통과, 화면 변경은 tsc·prettier로 확인.
+- **Windows에서 꼭 확인할 것 (UAC 경로가 바뀜):**
+  1. `install --machine` 후 HKLM·Program Files 항목 "관리자 권한으로 정리" → 복구 기록 "관리자 권한으로 복원"(이제 고른 항목만, `--items`)
+  2. 관리자 작업자 허용 목록 때문에 정상 항목이 "Windows 설정 영역이라…"로 막히지 않는지 (예: 설치 추적 기록의 `HKLM\SOFTWARE\Classes` 항목은 막히는 게 정상)
+  3. 저장공간 "Windows 임시 파일"(관리자) 정리가 여전히 되는지 (핸들 기반 삭제로 바뀜)
+  4. 언인스톨러 대기: 실제 NSIS·Inno 언인스톨러가 아니라 테스트 앱으로 `uninstall_fixture`
+
 ### 다음 단계 후보
 
 - Phase 5 나머지: SYSTEM 예약 작업의 UAC 끄기·켜기 시험
