@@ -81,9 +81,18 @@ pnpm tauri dev    # 앱 실행
 - **Windows PC에서 아직 확인하지 않은 것:**
   1. `pnpm check`
   2. `robin-fixture install --broken` → `cargo run -p robin-recovery --example force_fixture` → `robin-fixture remove`
+     (Wine에서는 통과함. 실제 Windows에서 한 번 더)
   3. `install --broken` 뒤 앱에서 Fixture Notes "강제 제거" → 목록에서 사라짐 → 잔여물 정리 화면의 "제거한 프로그램"에 보임 → 복구 기록에서 되돌리면 다시 목록에 보임
   4. 실행 중 안내: 설치 폴더의 프로그램을 실행할 수 없으니(가짜 exe), 확인하려면 테스트 앱에 실제로 도는 실행 파일을 두는 방법을 찾아야 한다
 - 확인이 끝나면 `main`에 합친다.
+
+### 클라우드에서 Wine으로 검사하기 (2026-10-17)
+
+- `scripts/wine-check.sh`: Windows용(x86_64-pc-windows-gnu)으로 빌드해 Wine에서 유닛 테스트 전체와 테스트 앱 예제 6개
+  (uninstall, scan, clean, force, toggle, storage_clean)를 돌린다. 2026-10-17 기준 모두 통과.
+- Wine에서 안 되는 것: 앱 화면(WebView2), UAC, 작업 스케줄러 목록·트리거 읽기(`E_NOTIMPL`) → 예약 작업 확인은 건너뛴다.
+- 테스트 앱이 바로 가기·예약 작업을 PowerShell 대신 COM으로 직접 만든다. Wine의 PowerShell은 아무것도 안 하고 성공을 돌려줘서
+  흔적이 조용히 빠지는 문제가 있었다. Windows PC에서 `robin-fixture install`/`install --machine`이 여전히 잘 되는지 확인할 것.
 
 ### 다음 단계 후보
 

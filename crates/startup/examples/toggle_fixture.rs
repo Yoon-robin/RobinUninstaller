@@ -26,7 +26,13 @@ fn main() {
             .find(|e| e.name == name && e.source == source)
     };
 
+    // Wine은 작업 스케줄러 목록·트리거 읽기를 구현하지 않아서, Wine 검사(scripts/wine-check.sh)에서는 예약 작업을 건너뛴다
+    let skip_tasks = std::env::var_os("ROBIN_SKIP_TASKS").is_some();
     for (name, source) in FIXTURE_ITEMS {
+        if skip_tasks && source == StartupSource::Task {
+            println!("건너뜀: {name} (ROBIN_SKIP_TASKS)");
+            continue;
+        }
         let entry = find(name, source)
             .unwrap_or_else(|| panic!("{name} 없음. 먼저 robin-fixture install 을 실행하세요"));
         assert!(entry.enabled, "{name}: 처음엔 켜져 있어야 함");

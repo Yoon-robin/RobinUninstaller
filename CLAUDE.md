@@ -42,6 +42,9 @@ cargo run -p robin-storage --example storage_scan            # 정리할 수 있
 cargo run -p robin-storage --example storage_clean_fixture   # 테스트 앱 캐시만 정리해 보기
 ```
 
+Windows PC를 쓸 수 없을 때(클라우드 세션 등)는 `scripts/wine-check.sh`로 유닛 테스트와 테스트 앱 예제를 Wine에서 돌린다.
+전용 Wine 환경이라 실제 PC에 영향이 없다. 화면·UAC·작업 스케줄러 목록은 Wine에서 확인되지 않으므로 Windows PC에서 따로 확인한다.
+
 앱 화면을 자동으로 확인할 때는 `WEBVIEW2_ADDITIONAL_BROWSER_ARGUMENTS="--remote-debugging-port=9223"`를 주고 `pnpm tauri dev`로 띄운 뒤,
 DevTools 프로토콜(`http://127.0.0.1:9223/json`)로 클릭·캡처한다. 마우스를 직접 움직이는 방식은 다른 창을 누를 수 있어 쓰지 않는다.
 

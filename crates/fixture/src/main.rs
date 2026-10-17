@@ -45,9 +45,14 @@ fn main() {
 }
 
 #[cfg(windows)]
+mod winapi;
+
+#[cfg(windows)]
 mod imp {
     use std::path::{Path, PathBuf};
     use std::process::{Command, exit};
+
+    use crate::winapi;
     use std::time::Duration;
 
     use winreg::RegKey;
@@ -76,47 +81,33 @@ mod imp {
             .join(SHORTCUT)
     }
 
-    /// 바로 가기는 COM(IShellLink)이 필요해서, 테스트 앱에서는 PowerShell의 WScript.Shell로 만든다.
     fn create_shortcut(link: &Path, target: &Path) {
-        let quote = |p: &Path| p.display().to_string().replace('\'', "''");
-        let script = format!(
-            "$s = (New-Object -ComObject WScript.Shell).CreateShortcut('{}'); $s.TargetPath = '{}'; $s.Arguments = '--tray'; $s.Save()",
-            quote(link),
-            quote(target)
-        );
-        assert!(powershell(&script), "시작 폴더 바로 가기 만들기");
-    }
-
-    fn powershell(script: &str) -> bool {
-        Command::new("powershell.exe")
-            .args(["-NoProfile", "-NonInteractive", "-Command", script])
-            .status()
-            .is_ok_and(|s| s.success())
+        winapi::create_shortcut(link, target, "--tray").expect("시작 폴더 바로 가기 만들기");
     }
 
     /// 현재 사용자가 로그인할 때만 실행되는 예약 작업 (관리자 권한 없이 만들 수 있다).
     /// notes.exe는 진짜 프로그램이 아니라서 혹시 실행돼도 아무 일도 일어나지 않는다.
     fn register_task(target: &Path) {
-        let script = format!(
-            "$u = \"$env:USERDOMAIN\\$env:USERNAME\"; \
-             $t = New-ScheduledTask \
-               -Action (New-ScheduledTaskAction -Execute '{}' -Argument '--update') \
-               -Trigger (New-ScheduledTaskTrigger -AtLogOn -User $u) \
-               -Principal (New-ScheduledTaskPrincipal -UserId $u -LogonType Interactive -RunLevel Limited) \
-               -Description 'RobinUninstaller test task'; \
-             $t.Author = '{PUBLISHER}'; \
-             Register-ScheduledTask -TaskName '{TASK_NAME}' -InputObject $t -Force | Out-Null",
-            target.display().to_string().replace('\'', "''")
-        );
-        assert!(powershell(&script), "예약 작업 만들기");
+        let user = match (std::env::var("USERDOMAIN"), std::env::var("USERNAME")) {
+            (Ok(d), Ok(u)) => format!("{d}\\{u}"),
+            (_, Ok(u)) => u,
+            _ => panic!("USERNAME"),
+        };
+        winapi::register_task(
+            TASK_NAME,
+            &winapi::Trigger::Logon { user },
+            target,
+            "--update",
+            PUBLISHER,
+            "RobinUninstaller test task",
+        )
+        .expect("예약 작업 만들기");
     }
 
     /// 관리자 예약 작업은 권한이 없으면 지워지지 않고 그대로 남는다 (조용히 건너뜀).
     fn unregister_task() {
         for name in [TASK_NAME, MACHINE_TASK_NAME] {
-            let _ = powershell(&format!(
-                "Unregister-ScheduledTask -TaskName '{name}' -Confirm:$false -ErrorAction SilentlyContinue"
-            ));
+            let _ = winapi::delete_task(name);
         }
     }
 
@@ -195,23 +186,15 @@ mod imp {
             &format!("\"{}\" --tray", dir.join("notes.exe").display()),
         )
         .unwrap();
-        let script = format!(
-            "$t = New-ScheduledTask \
-               -Action (New-ScheduledTaskAction -Execute '{}') \
-               -Trigger (New-ScheduledTaskTrigger -AtStartup) \
-               -Principal (New-ScheduledTaskPrincipal -UserId 'SYSTEM' -LogonType ServiceAccount) \
-               -Description 'RobinUninstaller test task (machine)'; \
-             $t.Author = '{PUBLISHER}'; \
-             Register-ScheduledTask -TaskName '{MACHINE_TASK_NAME}' -InputObject $t -Force | Out-Null",
-            dir.join("missing.exe")
-                .display()
-                .to_string()
-                .replace('\'', "''")
-        );
-        assert!(
-            powershell(&script),
-            "관리자 예약 작업 만들기 (관리자 권한 필요)"
-        );
+        winapi::register_task(
+            MACHINE_TASK_NAME,
+            &winapi::Trigger::BootAsSystem,
+            &dir.join("missing.exe"),
+            "",
+            PUBLISHER,
+            "RobinUninstaller test task (machine)",
+        )
+        .expect("관리자 예약 작업 만들기 (관리자 권한 필요)");
         println!("관리자 권한 흔적 만듦: {}", dir.display());
     }
 
