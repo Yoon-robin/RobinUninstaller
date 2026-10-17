@@ -4,6 +4,7 @@
 //! 사용자가 복구 기록에서 직접 "백업 삭제"를 고를 때만 실제로 사라진다.
 
 pub mod model;
+pub mod startup;
 pub mod store;
 
 #[cfg(windows)]

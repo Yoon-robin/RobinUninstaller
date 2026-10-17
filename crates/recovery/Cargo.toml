@@ -7,6 +7,7 @@ license.workspace = true
 
 [dependencies]
 robin-scanner.workspace = true
+robin-startup.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
@@ -18,4 +19,3 @@ base64 = "0.23"
 robin-core.workspace = true
 robin-discovery.workspace = true
 robin-execution.workspace = true
-robin-startup.workspace = true

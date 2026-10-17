@@ -28,6 +28,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { FilterChips } from "@/features/programs/segmented"
 import { StatCard } from "@/features/programs/stat-card"
+import { MissingCleanupDialog } from "./missing-cleanup-dialog"
 
 const QUERY_KEY = ["startup-items"]
 
@@ -82,6 +83,7 @@ export function StartupPage() {
   const items = useQuery({ queryKey: QUERY_KEY, queryFn: startupApi.list })
   const [filter, setFilter] = useState<Filter>("all")
   const [query, setQuery] = useState("")
+  const [cleanupOpen, setCleanupOpen] = useState(false)
   const searchRef = useRef<HTMLInputElement>(null)
   const loading = items.isLoading
 
@@ -198,6 +200,12 @@ export function StartupPage() {
                   </button>
                 )}
               </div>
+              {all.some((e) => e.targetMissing && e.source !== "task") && (
+                <Button variant="outline" className="h-9 rounded-lg" onClick={() => setCleanupOpen(true)}>
+                  <FileWarning className="text-chart-3" />
+                  파일 없는 항목 정리
+                </Button>
+              )}
               <IconTooltip label="새로고침">
                 <Button
                   variant="outline"
@@ -283,6 +291,8 @@ export function StartupPage() {
           )}
         </section>
       </FadeUp>
+
+      <MissingCleanupDialog entries={all} open={cleanupOpen} onClose={() => setCleanupOpen(false)} />
     </Stagger>
   )
 }

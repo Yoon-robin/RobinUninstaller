@@ -31,6 +31,7 @@ CASES=(
   "robin-scanner scan_fixture install"
   "robin-recovery clean_fixture install"
   "robin-recovery force_fixture install --broken"
+  "robin-recovery startup_cleanup_fixture install"
   "robin-startup toggle_fixture install"
   "robin-storage storage_clean_fixture install"
 )

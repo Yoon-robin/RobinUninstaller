@@ -94,6 +94,12 @@ pnpm tauri dev    # 앱 실행
 - 테스트 앱이 바로 가기·예약 작업을 PowerShell 대신 COM으로 직접 만든다. Wine의 PowerShell은 아무것도 안 하고 성공을 돌려줘서
   흔적이 조용히 빠지는 문제가 있었다. Windows PC에서 `robin-fixture install`/`install --machine`이 여전히 잘 되는지 확인할 것.
 
+### 파일 없는 시작 항목 정리 — 작성 (2026-10-17, 클라우드, 브랜치 `claude/force-uninstall`)
+
+- 시작프로그램 화면에 "파일 없는 항목 정리" 버튼과 확인 창을 추가했다. 백업 후 정리, 복구 기록에서 되돌리기.
+- Wine에서 `startup_cleanup_fixture` 통과, 화면은 가짜 응답으로 캡처 확인. **Windows에서 확인할 것:** 앱에서 테스트 앱의
+  `RobinGhostTool`·`Robin Ghost Tool` 정리 → 복구 기록에서 되돌리기. 실제 프로그램의 시작 항목은 정리하지 않는다.
+
 ### 다음 단계 후보
 
 - Phase 5 나머지: SYSTEM 예약 작업의 UAC 끄기·켜기 시험

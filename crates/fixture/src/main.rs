@@ -32,6 +32,9 @@
 //!   - `HKLM\...\Run` 값 `FixtureNotesMachine` (없는 파일을 가리킴 → "파일 없음" 표시 확인용)
 //!   - 예약 작업 `\Fixture Notes Machine Task` (부팅 때 SYSTEM으로 없는 파일 실행 → 실행돼도 아무 일 없음)
 //!
+//! 실행 파일이 없는 시작 항목(지워진 프로그램이 남긴 것 흉내, 테스트 앱과 이름이 달라 잔여물 스캔에는 걸리지 않는다):
+//!   - `HKCU\...\Run` 값 `RobinGhostTool`, 시작 폴더의 `Robin Ghost Tool.lnk` (둘 다 없는 `ghost.exe`를 가리킴)
+//!
 //! 시작프로그램 화면에서 끈 상태(`Explorer\StartupApproved` 값)도 `remove`가 함께 지운다.
 
 #[cfg(windows)]
@@ -69,16 +72,27 @@ mod imp {
     const PUBLISHER: &str = "Robin Test Labs";
     const PRODUCT: &str = "Fixture Notes";
     const TASK_NAME: &str = "Fixture Notes Updater";
+    const GHOST_RUN_VALUE: &str = "RobinGhostTool";
+    const GHOST_SHORTCUT: &str = "Robin Ghost Tool.lnk";
     const MACHINE_TASK_NAME: &str = "Fixture Notes Machine Task";
 
     fn env_dir(var: &str) -> PathBuf {
         PathBuf::from(std::env::var(var).unwrap_or_else(|_| panic!("{var}")))
     }
 
+    fn startup_folder() -> PathBuf {
+        env_dir("APPDATA").join(r"Microsoft\Windows\Start Menu\Programs\Startup")
+    }
+
     fn startup_shortcut() -> PathBuf {
-        env_dir("APPDATA")
-            .join(r"Microsoft\Windows\Start Menu\Programs\Startup")
-            .join(SHORTCUT)
+        startup_folder().join(SHORTCUT)
+    }
+
+    /// 실행 파일이 없는 시작 항목이 가리키는 (일부러 만들지 않는) 파일
+    fn ghost_exe() -> PathBuf {
+        env_dir("LOCALAPPDATA")
+            .join("Robin Ghost Tool")
+            .join("ghost.exe")
     }
 
     fn create_shortcut(link: &Path, target: &Path) {
@@ -226,6 +240,13 @@ mod imp {
         )
         .unwrap();
         create_shortcut(&startup_shortcut(), &dir.join("notes.exe"));
+        // 실행 파일이 없는 시작 항목 (ghost.exe는 만들지 않는다)
+        run.set_value(
+            GHOST_RUN_VALUE,
+            &format!("\"{}\" --background", ghost_exe().display()),
+        )
+        .unwrap();
+        create_shortcut(&startup_folder().join(GHOST_SHORTCUT), &ghost_exe());
         register_task(&dir.join("notes.exe"));
 
         let (key, _) = hkcu.create_subkey(UNINSTALL_KEY).expect("레지스트리 등록");
@@ -306,8 +327,14 @@ mod imp {
         let _ = hkcu.delete_subkey(format!(r"Software\{PUBLISHER}"));
         if let Ok(run) = hkcu.open_subkey_with_flags(RUN_KEY, KEY_SET_VALUE) {
             let _ = run.delete_value(RUN_VALUE);
+            let _ = run.delete_value(GHOST_RUN_VALUE);
         }
-        for (sub, name) in [("Run", RUN_VALUE), ("StartupFolder", SHORTCUT)] {
+        for (sub, name) in [
+            ("Run", RUN_VALUE),
+            ("StartupFolder", SHORTCUT),
+            ("Run", GHOST_RUN_VALUE),
+            ("StartupFolder", GHOST_SHORTCUT),
+        ] {
             if let Ok(k) =
                 hkcu.open_subkey_with_flags(format!(r"{APPROVED_KEY}\{sub}"), KEY_SET_VALUE)
             {
@@ -315,6 +342,7 @@ mod imp {
             }
         }
         let _ = std::fs::remove_file(startup_shortcut());
+        let _ = std::fs::remove_file(startup_folder().join(GHOST_SHORTCUT));
         unregister_task();
         let _ = std::fs::remove_dir_all(install_dir());
         for (path, _) in extra_files() {

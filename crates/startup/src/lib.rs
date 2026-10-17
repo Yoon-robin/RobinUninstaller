@@ -20,7 +20,9 @@ mod registry;
 mod tasks;
 
 pub use history::{Change, History};
-pub use model::{StartupEntry, StartupSource, is_valid_id};
+pub use model::{
+    CleanupRefusal, CleanupTarget, StartupEntry, StartupSource, cleanup_targets, is_valid_id,
+};
 
 #[derive(Debug)]
 pub enum ToggleError {

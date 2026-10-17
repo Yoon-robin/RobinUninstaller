@@ -230,6 +230,57 @@ pub fn resolve_target(
     .find(|p| exists(p))
 }
 
+/// 실행 파일이 없는 시작 항목을 정리할 때 백업·격리할 대상.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CleanupTarget {
+    /// 시작 폴더의 바로 가기(또는 파일)
+    File(String),
+    /// Run 값 또는 `StartupApproved` 값 (`key`는 `HKCU\...` 형식)
+    RegistryValue { key: String, name: String },
+}
+
+/// 정리하지 않는 이유
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CleanupRefusal {
+    /// 실행 파일이 있거나 알 수 없음 → 끄기만 한다
+    TargetPresent,
+    /// 예약 작업은 정리하지 않는다 (끄기만 한다)
+    Task,
+}
+
+/// 실행 파일이 없는 시작 항목에서 지울 것: Run 값이나 시작 폴더 파일, 그리고 짝인 `StartupApproved` 값(있으면).
+/// 실제로 지우는 일은 `crates/recovery`가 백업한 뒤에 한다. 순수 함수.
+pub fn cleanup_targets(
+    entry: &StartupEntry,
+    approved_location: &str,
+    has_approved: bool,
+) -> Result<Vec<CleanupTarget>, CleanupRefusal> {
+    if entry.source == StartupSource::Task {
+        return Err(CleanupRefusal::Task);
+    }
+    if !entry.target_missing {
+        return Err(CleanupRefusal::TargetPresent);
+    }
+    let mut targets = vec![match entry.source {
+        StartupSource::FolderUser | StartupSource::FolderCommon => CleanupTarget::File(format!(
+            r"{}\{}",
+            entry.location.trim_end_matches('\\'),
+            entry.approved_name
+        )),
+        _ => CleanupTarget::RegistryValue {
+            key: entry.location.clone(),
+            name: entry.approved_name.clone(),
+        },
+    }];
+    if has_approved {
+        targets.push(CleanupTarget::RegistryValue {
+            key: approved_location.to_string(),
+            name: entry.approved_name.clone(),
+        });
+    }
+    Ok(targets)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -311,5 +362,74 @@ mod tests {
             Some(r"C:\WINDOWS\System32\rundll32.exe")
         );
         assert_eq!(resolve_target("nothere.exe", env, exists), None);
+    }
+
+    fn entry(source: StartupSource, missing: bool) -> StartupEntry {
+        let (location, approved_name) = match source {
+            StartupSource::FolderUser => (
+                r"C:\Users\me\Startup\".to_string(),
+                "Old Tool.lnk".to_string(),
+            ),
+            _ => (
+                r"HKCU\Software\Microsoft\Windows\CurrentVersion\Run".to_string(),
+                "OldTool".to_string(),
+            ),
+        };
+        StartupEntry {
+            id: make_id(source, &approved_name),
+            name: "Old Tool".into(),
+            source,
+            location,
+            approved_name,
+            command: String::new(),
+            target_path: Some(r"C:\Gone\tool.exe".into()),
+            target_missing: missing,
+            publisher: None,
+            description: None,
+            author: None,
+            needs_admin: false,
+            enabled: true,
+            disabled_at: None,
+            changed_by_us: false,
+        }
+    }
+
+    #[test]
+    fn cleanup_targets_for_missing_entries() {
+        let approved =
+            r"HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run";
+        let run = entry(StartupSource::RunUser, true);
+        assert_eq!(
+            cleanup_targets(&run, approved, true).unwrap(),
+            vec![
+                CleanupTarget::RegistryValue {
+                    key: run.location.clone(),
+                    name: "OldTool".into()
+                },
+                CleanupTarget::RegistryValue {
+                    key: approved.into(),
+                    name: "OldTool".into()
+                },
+            ]
+        );
+        let link = entry(StartupSource::FolderUser, true);
+        assert_eq!(
+            cleanup_targets(&link, approved, false).unwrap(),
+            vec![CleanupTarget::File(
+                r"C:\Users\me\Startup\Old Tool.lnk".into()
+            )]
+        );
+    }
+
+    #[test]
+    fn cleanup_refuses_present_targets_and_tasks() {
+        assert_eq!(
+            cleanup_targets(&entry(StartupSource::RunUser, false), "", true),
+            Err(CleanupRefusal::TargetPresent)
+        );
+        assert_eq!(
+            cleanup_targets(&entry(StartupSource::Task, true), "", true),
+            Err(CleanupRefusal::Task)
+        );
     }
 }

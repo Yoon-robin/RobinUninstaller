@@ -36,6 +36,7 @@ cargo run -p robin-execution --example uninstall_fixture
 cargo run -p robin-scanner --example scan_fixture
 cargo run -p robin-recovery --example clean_fixture
 cargo run -p robin-recovery --example force_fixture   # install --broken 뒤 강제 제거 → 복원
+cargo run -p robin-recovery --example startup_cleanup_fixture   # 파일 없는 시작 항목 정리 → 복원
 cargo run -p robin-startup --example list             # 시작 항목 보기 (읽기 전용)
 cargo run -p robin-startup --example toggle_fixture   # 테스트 앱 시작 항목만 껐다 켜기
 cargo run -p robin-storage --example storage_scan            # 정리할 수 있는 항목 보기 (읽기 전용)

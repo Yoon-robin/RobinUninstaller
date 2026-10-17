@@ -178,6 +178,8 @@ export const startupApi = {
   icon: (id: string) => invoke<string | null>("get_startup_icon", { id }),
   setEnabled: (id: string, enabled: boolean) => invoke<StartupEntry>("set_startup_enabled", { id, enabled }),
   reveal: (id: string) => invoke<void>("reveal_startup_item", { id }),
+  /** 실행 파일이 없는 항목을 백업 후 정리한다. 관리자 항목은 `recoveryApi.cleanElevated`로 이어서. */
+  cleanMissing: (ids: string[]) => invoke<Operation>("clean_missing_startup", { ids }),
 }
 
 // crates/storage 의 Category / CleanResult / FolderEntry 와 맞춰야 한다.

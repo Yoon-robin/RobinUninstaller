@@ -202,7 +202,16 @@ MVP 품질 목표: 앱 목록 2초 이내(캐시 먼저 표시), 일반 스캔 1
 - **아직 안 한 것:**
   - SYSTEM 예약 작업의 UAC 경로 실제 시험 (`robin-fixture install --machine`이 만드는 `\Fixture Notes Machine Task`)
   - 서비스
-  - 파일이 없는 항목 정리(백업 후 Run 값·바로 가기 제거)
+
+### 파일 없는 시작 항목 정리 (2026-10-17)
+
+- 실행 파일이 없는 Run 값·시작 폴더 파일을 짝인 `StartupApproved` 값과 함께 `crates/recovery`의 백업·격리 흐름으로 정리한다.
+  복구 기록에 "시작프로그램 정리"로 남고, 되돌리면 꺼짐 상태까지 그대로 돌아온다.
+- 대상 계산은 `robin_startup::cleanup_targets`(순수 함수), 변환은 `robin_recovery::startup::leftovers_for`.
+  실행 파일이 있는 항목과 예약 작업은 거부한다(끄기만 가능). 프론트엔드는 ID만 넘기고, 엔진이 목록을 다시 읽어 확인한다.
+- HKLM·공용 폴더 항목은 `needsAdmin`으로 남고 기존 `--elevated-clean` 작업자로 이어서 처리한다.
+- 검증: 테스트 앱이 `RobinGhostTool` Run 값과 `Robin Ghost Tool.lnk`(없는 `ghost.exe`)를 만들고,
+  `cargo run -p robin-recovery --example startup_cleanup_fixture`가 정리 → 사라짐 → 복원(꺼짐 상태 포함)을 확인한다. Wine에서 통과.
 
 ## Phase 5 구현 메모 — 강제 제거
 

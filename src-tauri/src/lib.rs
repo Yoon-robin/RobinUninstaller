@@ -385,6 +385,35 @@ async fn list_startup_items(cache: State<'_, AppCache>) -> Result<Vec<StartupEnt
     Ok(items)
 }
 
+/// 실행 파일이 없는 시작 항목(Run 값·시작 폴더 파일)을 짝인 꺼짐 상태 값과 함께 백업·격리한 뒤 정리한다.
+/// 항목은 ID로만 받고, 엔진이 목록을 다시 읽어 실행 파일이 정말 없는지 확인한다. 예약 작업은 정리하지 않는다.
+/// 관리자 권한이 필요한 항목은 `needsAdmin`으로 남는다 → `clean_leftovers_elevated`.
+#[tauri::command]
+async fn clean_missing_startup(ids: Vec<String>) -> Result<Operation, String> {
+    tauri::async_runtime::spawn_blocking(move || {
+        let history = startup_history()?;
+        let entries = robin_startup::list(&history);
+        let items: Vec<Leftover> = ids
+            .iter()
+            .filter_map(|id| entries.iter().find(|e| &e.id == id))
+            .filter_map(|e| robin_recovery::startup::leftovers_for(e).ok())
+            .flatten()
+            .collect();
+        if items.is_empty() {
+            return Err("정리할 항목이 없어요. 목록을 새로고침해 주세요".to_string());
+        }
+        let store = store()?;
+        let mut op = robin_recovery::new_operation(robin_recovery::startup::OPERATION_NAME, &items);
+        store
+            .save(&op)
+            .map_err(|e| format!("작업 기록을 만들지 못했어요: {e}"))?;
+        robin_recovery::clean(&store, &mut op, &guard(&store), |_| {});
+        Ok(op)
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// 시작 항목이 실행하는 파일의 아이콘. 없으면 `None`.
 #[tauri::command]
 async fn get_startup_icon(
@@ -789,6 +818,7 @@ pub fn run() {
             list_startup_items,
             get_startup_icon,
             set_startup_enabled,
+            clean_missing_startup,
             reveal_startup_item,
             disk_usage,
             scan_storage,
