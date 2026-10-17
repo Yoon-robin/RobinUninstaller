@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { ArrowUp, File, Folder, FolderOpen, Loader2, Package, Radar, Square } from "lucide-react"
+import { ArrowUp, File, Folder, FolderOpen, Loader2, Package, Radar, RefreshCw, Square } from "lucide-react"
 import { toast } from "sonner"
 
 import { navigate, storageApi, type FolderAnalysis } from "@/lib/api"
@@ -74,6 +74,18 @@ export function FolderAnalysisCard() {
           <p data-selectable className="min-w-0 flex-1 truncate font-mono text-xs">
             {result.path}
           </p>
+          <IconTooltip label="이 폴더 다시 세기">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-7"
+              disabled={loading != null}
+              onClick={() => load(result.id, "이 폴더")}
+              aria-label="이 폴더 다시 세기"
+            >
+              <RefreshCw />
+            </Button>
+          </IconTooltip>
         </div>
       )}
 
@@ -108,7 +120,15 @@ export function FolderAnalysisCard() {
                       <div className="h-full rounded-full bg-chart-2" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
-                  <span className="w-20 shrink-0 text-right text-sm font-medium tabular-nums">
+                  <span
+                    className="w-20 shrink-0 text-right text-sm font-medium tabular-nums"
+                    title={
+                      item.approximate
+                        ? "Windows 폴더는 같은 파일이 여러 곳에 연결(하드 링크)돼 있어 실제 차지하는 공간보다 크게 보일 수 있어요"
+                        : undefined
+                    }
+                  >
+                    {item.approximate && "약 "}
                     {formatBytes(item.bytes)}
                   </span>
                   <span className="hidden w-24 shrink-0 text-right text-xs text-muted-foreground tabular-nums sm:block">

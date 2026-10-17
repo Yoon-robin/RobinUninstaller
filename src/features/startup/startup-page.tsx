@@ -478,6 +478,7 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
                   </dd>
                 </>
               )}
+              <dt className="sr-only">작업</dt>
               <dd className="col-span-2 mt-1 flex gap-2">
                 <Button
                   size="sm"

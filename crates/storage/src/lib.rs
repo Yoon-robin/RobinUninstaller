@@ -224,6 +224,18 @@ pub struct FolderEntry {
     pub bytes: u64,
     pub files: u64,
     pub inaccessible: u64,
+    /// Windows 폴더 안: 하드 링크(WinSxS 등)를 여러 번 세어 실제 차지하는 공간보다 크게 보일 수 있다.
+    /// 파일마다 열어 링크를 확인하면 분석이 매우 느려져서, 정확히 세는 대신 화면에 알린다.
+    pub approximate: bool,
+}
+
+/// `path`가 Windows 폴더이거나 그 안인지 (하드 링크가 많은 곳)
+fn in_windows_dir(path: &Path) -> bool {
+    std::env::var("SystemRoot").is_ok_and(|w| {
+        let p = path.to_string_lossy().to_lowercase();
+        let w = w.trim_end_matches('\\').to_lowercase();
+        !w.is_empty() && (p == w || p.starts_with(&format!("{w}\\")))
+    })
 }
 
 fn dir_size(path: &Path, cancel: &AtomicBool) -> Tally {
@@ -304,6 +316,7 @@ pub fn analyze(dir: &Path, cancel: &AtomicBool) -> Vec<FolderEntry> {
                 bytes: tally.bytes,
                 files: tally.files,
                 inaccessible: tally.inaccessible,
+                approximate: in_windows_dir(path),
             })
         })
         .collect();

@@ -405,9 +405,30 @@ async fn restore_backup_elevated(
 /// 백업을 완전히 지운다. 이후에는 복원할 수 없다 (사용자가 확인한 뒤에만 부른다).
 #[tauri::command]
 async fn delete_backup(op_id: String) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || store()?.delete(&op_id).map_err(|e| e.to_string()))
-        .await
-        .map_err(|e| e.to_string())?
+    tauri::async_runtime::spawn_blocking(move || {
+        let store = store()?;
+        match store.delete(&op_id) {
+            Ok(()) => Ok(()),
+            // 관리자 권한으로 격리한 폴더는 원래 권한을 그대로 갖고 있어 일반 권한으로 못 지울 수 있다
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
+                let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+                let args = format!(
+                    "{} {op_id} --store \"{}\"",
+                    worker::DELETE,
+                    store.root().display()
+                );
+                match robin_execution::run_elevated_and_wait(&exe.to_string_lossy(), &args) {
+                    Ok(Some(0)) | Ok(None) if !store.dir(&op_id).exists() => Ok(()),
+                    Ok(_) => Err("관리자 권한으로도 백업을 다 지우지 못했어요".into()),
+                    Err(None) => Err("관리자 권한 요청이 거절됐어요".into()),
+                    Err(Some(m)) => Err(m),
+                }
+            }
+            Err(e) => Err(e.to_string()),
+        }
+    })
+    .await
+    .map_err(|e| e.to_string())?
 }
 
 fn startup_history() -> Result<robin_startup::History, String> {

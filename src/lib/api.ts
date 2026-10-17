@@ -249,6 +249,8 @@ export interface FolderItem {
   bytes: number
   files: number
   inaccessible: number
+  /** Windows 폴더 안: 하드 링크 때문에 실제보다 크게 보일 수 있음 */
+  approximate: boolean
 }
 
 export interface FolderAnalysis {

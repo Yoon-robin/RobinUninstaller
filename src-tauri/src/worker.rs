@@ -6,6 +6,7 @@
 //! ```text
 //! robin-uninstaller.exe --elevated-clean   <작업 ID> --store <백업 저장소>
 //! robin-uninstaller.exe --elevated-restore <작업 ID> --store <백업 저장소> [--items 0,3]
+//! robin-uninstaller.exe --elevated-delete  <작업 ID> --store <백업 저장소>
 //! robin-uninstaller.exe --elevated-startup <on|off> <시작 항목 ID> --store <시작프로그램 기록 폴더>
 //! robin-uninstaller.exe --elevated-storage <0|1> <정리 규칙 ID,...> --store <저장공간 기록 폴더>
 //! ```
@@ -20,6 +21,7 @@ pub const CLEAN: &str = "--elevated-clean";
 pub const RESTORE: &str = "--elevated-restore";
 pub const STARTUP: &str = "--elevated-startup";
 pub const STORAGE: &str = "--elevated-storage";
+pub const DELETE: &str = "--elevated-delete";
 /// 복원할 항목 번호 목록 (`--elevated-restore` 뒤에 선택으로 붙는다)
 pub const ITEMS: &str = "--items";
 
@@ -32,6 +34,9 @@ pub fn main() -> Option<i32> {
     }
     if mode == STORAGE {
         return Some(run_storage(&args[1..]).unwrap_or(2));
+    }
+    if mode == DELETE {
+        return Some(run_delete(&args[1..]).unwrap_or(2));
     }
     if mode != CLEAN && mode != RESTORE {
         return None;
@@ -155,4 +160,15 @@ fn run(mode: &str, rest: &[String]) -> Option<i32> {
 fn same_user(store_root: &std::path::Path) -> bool {
     std::env::var("LOCALAPPDATA")
         .is_ok_and(|local| robin_scanner::protect::is_within(&store_root.to_string_lossy(), &local))
+}
+
+/// 백업 하나를 지운다 (관리자 권한으로 격리한 폴더는 원래 권한이 그대로라 일반 권한으로 못 지울 수 있다).
+/// 사용자가 화면에서 "영구 삭제"를 확인한 뒤에만 불린다. 작업 ID와 저장소 위치만 받는다.
+fn run_delete(rest: &[String]) -> Option<i32> {
+    let op_id = rest.first()?;
+    if !robin_recovery::store::is_valid_id(op_id) || rest.len() != 3 {
+        return None;
+    }
+    let store = Store::new(store_arg(&rest[1..], r"\robinuninstaller\backups")?);
+    Some(if store.delete(op_id).is_ok() { 0 } else { 1 })
 }

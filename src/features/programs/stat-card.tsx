@@ -3,7 +3,6 @@ import type { LucideIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { FadeUp } from "@/components/motion"
-import { Skeleton } from "@/components/ui/skeleton"
 
 const toneClasses = {
   "chart-1": "bg-chart-1/12 text-chart-1",
@@ -54,28 +53,30 @@ export function StatCard({
         )}
       >
         {/* 카드 오른쪽 위의 은은한 색 번짐 (움직이지 않음) */}
-        <div
+        <span
           aria-hidden
           className={cn(
             "pointer-events-none absolute -top-12 -right-12 size-32 rounded-full opacity-[0.07] blur-2xl",
             glowClasses[tone],
           )}
         />
-        <div className={cn("relative flex size-10 shrink-0 items-center justify-center rounded-xl", toneClasses[tone])}>
+        <span
+          className={cn("relative flex size-10 shrink-0 items-center justify-center rounded-xl", toneClasses[tone])}
+        >
           <Icon className="size-5" />
-        </div>
-        <div className="relative min-w-0">
-          <p className="text-sm text-muted-foreground">{label}</p>
+        </span>
+        <span className="relative min-w-0">
+          <span className="block text-sm text-muted-foreground">{label}</span>
           {value == null ? (
-            <Skeleton className="mt-1.5 h-7 w-20" />
+            <span className="mt-1.5 block h-7 w-20 animate-pulse rounded-md bg-muted" />
           ) : (
-            <p className="mt-0.5 text-2xl font-bold tracking-tight tabular-nums">
+            <span className="block mt-0.5 text-2xl font-bold tracking-tight tabular-nums">
               {value}
               {unit && <span className="ml-0.5 text-base font-medium text-muted-foreground">{unit}</span>}
-            </p>
+            </span>
           )}
-          {hint && <p className="mt-1 truncate text-xs text-muted-foreground">{hint}</p>}
-        </div>
+          {hint && <span className="block mt-1 truncate text-xs text-muted-foreground">{hint}</span>}
+        </span>
       </Tag>
     </FadeUp>
   )

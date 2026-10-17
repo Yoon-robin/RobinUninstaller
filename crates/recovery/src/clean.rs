@@ -54,9 +54,15 @@ fn elevated_allowed(sub: &str, is_value: bool) -> bool {
         one_below("software\\microsoft\\windows\\currentversion\\uninstall\\")
             || one_below("software\\microsoft\\windows\\currentversion\\app paths\\")
             || one_below("software\\classes\\installer\\products\\")
-            || one_below(
-                "software\\microsoft\\windows\\currentversion\\installer\\userdata\\s-1-5-18\\products\\",
-            )
+            || k.strip_prefix("software\\microsoft\\windows\\currentversion\\installer\\userdata\\")
+                .and_then(|rest| rest.split_once("\\products\\"))
+                .is_some_and(|(sid, product)| {
+                    // SYSTEM(S-1-5-18) 또는 사용자 SID 아래, 제품 키 하나만
+                    sid.starts_with("s-1-5-")
+                        && !sid.contains('\\')
+                        && !product.is_empty()
+                        && !product.contains('\\')
+                })
     }
 }
 
@@ -490,5 +496,44 @@ fn restore_item(item: &OperationItem, op_dir: &Path, partial: bool) -> Result<Ve
             }
         }
         None => Err("백업 정보가 없어요".into()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn elevated_allowlist() {
+        let key = |p: &str| elevated_allowed(p, false);
+        assert!(key(
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Acme"
+        ));
+        assert!(key(
+            r"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall\Acme"
+        ));
+        assert!(key(r"SOFTWARE\Classes\Installer\Products\00ABC"));
+        assert!(key(
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-21-1-2-3-1001\Products\00ABC"
+        ));
+        // Uninstall 키 자체, 더 깊은 곳, 다른 Microsoft 영역은 안 된다
+        assert!(!key(r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall"));
+        assert!(!key(
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Acme\Sub"
+        ));
+        assert!(!key(
+            r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options\x.exe"
+        ));
+        assert!(!key(
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\00ABC\InstallProperties"
+        ));
+        assert!(elevated_allowed(
+            r"SOFTWARE\Microsoft\Windows\CurrentVersion\Run",
+            true
+        ));
+        assert!(!elevated_allowed(
+            r"SOFTWARE\Microsoft\Windows NT\CurrentVersion\Winlogon",
+            true
+        ));
     }
 }

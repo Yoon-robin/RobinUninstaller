@@ -150,6 +150,8 @@ mod tests {
     }
 
     #[test]
+    // Windows 경로(드라이브 문자, 역슬래시) 동작을 확인하는 테스트라 Windows·Wine에서만 돌린다
+    #[cfg_attr(not(windows), ignore)]
     fn exe_keeps_original_args_and_expands_env() {
         let a = app(
             InstallTechnology::Exe,

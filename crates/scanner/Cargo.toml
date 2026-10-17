@@ -12,6 +12,12 @@ serde.workspace = true
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
+windows = { version = "0.62", features = [
+  "Win32_Foundation",
+  "Win32_Security",
+  "Win32_Security_Authorization",
+  "Win32_System_Threading",
+] }
 robin-startup.workspace = true
 robin-tracker.workspace = true
 

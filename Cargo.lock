@@ -2593,6 +2593,7 @@ dependencies = [
  "robin-startup",
  "robin-tracker",
  "serde",
+ "windows",
  "winreg 0.55.0",
 ]
 

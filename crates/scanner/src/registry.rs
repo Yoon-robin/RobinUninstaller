@@ -110,22 +110,26 @@ fn msi_products(ctx: &ScanContext, out: &mut Vec<Leftover>) {
     let Some(packed) = ctx.product_code.as_deref().and_then(msi_guid::pack) else {
         return;
     };
-    let places = [
+    // 모든 사용자 설치는 S-1-5-18(SYSTEM), 사용자별 설치는 그 사용자의 SID 아래에 등록된다.
+    // 다른 사용자의 사용자별 설치는 그 사람 것이므로 보지 않는다.
+    let mut sids = vec!["S-1-5-18".to_string()];
+    sids.extend(current_user_sid());
+    let mut places = vec![
         (
             HIVES[1],
             format!(r"SOFTWARE\Classes\Installer\Products\{packed}"),
-        ),
-        (
-            HIVES[1],
-            format!(
-                r"SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\S-1-5-18\Products\{packed}"
-            ),
         ),
         (
             HIVES[0],
             format!(r"Software\Microsoft\Installer\Products\{packed}"),
         ),
     ];
+    places.extend(sids.iter().map(|sid| {
+        (
+            HIVES[1],
+            format!(r"SOFTWARE\Microsoft\Windows\CurrentVersion\Installer\UserData\{sid}\Products\{packed}"),
+        )
+    }));
     for (hive, path) in places {
         if hive.open(&path).is_some() {
             let mut item = Leftover::new(
@@ -334,5 +338,46 @@ fn services(ctx: &ScanContext, dir: &str, out: &mut Vec<Leftover>) {
                 Some("Windows 서비스예요. 지우기 전에 서비스를 중지하고 제거해야 해요.".into());
             out.push(item);
         }
+    }
+}
+
+/// 지금 사용자의 SID 문자열 (`S-1-5-21-...`)
+fn current_user_sid() -> Option<String> {
+    use windows::Win32::Foundation::{CloseHandle, HANDLE, HLOCAL, LocalFree};
+    use windows::Win32::Security::Authorization::ConvertSidToStringSidW;
+    use windows::Win32::Security::{GetTokenInformation, TOKEN_QUERY, TOKEN_USER, TokenUser};
+    use windows::Win32::System::Threading::{GetCurrentProcess, OpenProcessToken};
+    use windows::core::PWSTR;
+
+    unsafe {
+        let mut token = HANDLE::default();
+        OpenProcessToken(GetCurrentProcess(), TOKEN_QUERY, &mut token).ok()?;
+        let mut len = 0u32;
+        let _ = GetTokenInformation(token, TokenUser, None, 0, &mut len);
+        let mut buf = vec![0u8; len as usize];
+        let ok = GetTokenInformation(
+            token,
+            TokenUser,
+            Some(buf.as_mut_ptr().cast()),
+            len,
+            &mut len,
+        );
+        let _ = CloseHandle(token);
+        ok.ok()?;
+        let user = &*(buf.as_ptr() as *const TOKEN_USER);
+        let mut text = PWSTR::null();
+        ConvertSidToStringSidW(user.User.Sid, &mut text).ok()?;
+        let sid = text.to_string().ok();
+        let _ = LocalFree(Some(HLOCAL(text.0.cast())));
+        sid
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn reads_current_user_sid() {
+        let sid = super::current_user_sid().expect("SID");
+        assert!(sid.starts_with("S-1-5-"), "{sid}");
     }
 }

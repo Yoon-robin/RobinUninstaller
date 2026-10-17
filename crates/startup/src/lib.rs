@@ -92,60 +92,95 @@ pub fn has_approved(source: StartupSource, name: &str) -> bool {
     registry::read_approved(source, name).is_some()
 }
 
+/// 모든 출처 (Run 키·시작 폴더, 그다음 예약 작업)
+#[cfg(windows)]
+const EVERY_SOURCE: [StartupSource; 6] = [
+    StartupSource::RunUser,
+    StartupSource::RunMachine,
+    StartupSource::RunMachine32,
+    StartupSource::FolderUser,
+    StartupSource::FolderCommon,
+    StartupSource::Task,
+];
+
+/// 출처 하나의 시작 항목. 읽기 전용.
+#[cfg(windows)]
+fn entries_for(
+    source: StartupSource,
+    changed: &std::collections::BTreeMap<String, Change>,
+) -> Vec<StartupEntry> {
+    let mut entries = Vec::new();
+    if source == StartupSource::Task {
+        for task in tasks::list() {
+            entries.push(build_task(task, changed));
+        }
+    } else if let Some(dir) = folder::folder(source) {
+        for path in folder::files(source) {
+            let file_name = path
+                .file_name()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_default();
+            let full = path.to_string_lossy().into_owned();
+            let is_link = path
+                .extension()
+                .is_some_and(|e| e.eq_ignore_ascii_case("lnk"));
+            let command = match is_link.then(|| folder::resolve_shortcut(&path)).flatten() {
+                Some((target, args)) if !target.is_empty() => {
+                    format!("\"{target}\" {args}").trim_end().to_string()
+                }
+                // 대상을 알 수 없는 바로 가기, 또는 스크립트·실행 파일 자체
+                _ => format!("\"{full}\""),
+            };
+            let name = path
+                .file_stem()
+                .map(|n| n.to_string_lossy().into_owned())
+                .unwrap_or_else(|| file_name.clone());
+            entries.push(build(
+                source,
+                name,
+                file_name,
+                dir.to_string_lossy().into_owned(),
+                command,
+                changed,
+            ));
+        }
+    } else {
+        for (name, command) in registry::run_values(source) {
+            entries.push(build(
+                source,
+                name.clone(),
+                name,
+                registry::run_location(source),
+                command,
+                changed,
+            ));
+        }
+    }
+    entries
+}
+
+/// ID로 항목 하나를 찾는다. 출처를 알면 그 출처만 읽고, 모르면 찾을 때까지 출처를 하나씩 읽는다
+/// (예약 작업·파일 버전 정보까지 전체 목록을 매번 읽지 않도록).
+#[cfg(windows)]
+fn find_entry(history: &History, id: &str, source: Option<StartupSource>) -> Option<StartupEntry> {
+    let changed = history.load();
+    let sources: Vec<StartupSource> = match source {
+        Some(s) => vec![s],
+        None => EVERY_SOURCE.to_vec(),
+    };
+    sources
+        .into_iter()
+        .find_map(|s| entries_for(s, &changed).into_iter().find(|e| e.id == id))
+}
+
 /// 시작 항목 전체 (이름순). 읽기 전용.
 #[cfg(windows)]
 pub fn list(history: &History) -> Vec<StartupEntry> {
     let changed = history.load();
-    let mut entries = Vec::new();
-
-    for source in model::ALL_SOURCES {
-        if let Some(dir) = folder::folder(source) {
-            for path in folder::files(source) {
-                let file_name = path
-                    .file_name()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_default();
-                let full = path.to_string_lossy().into_owned();
-                let is_link = path
-                    .extension()
-                    .is_some_and(|e| e.eq_ignore_ascii_case("lnk"));
-                let command = match is_link.then(|| folder::resolve_shortcut(&path)).flatten() {
-                    Some((target, args)) if !target.is_empty() => {
-                        format!("\"{target}\" {args}").trim_end().to_string()
-                    }
-                    // 대상을 알 수 없는 바로 가기, 또는 스크립트·실행 파일 자체
-                    _ => format!("\"{full}\""),
-                };
-                let name = path
-                    .file_stem()
-                    .map(|n| n.to_string_lossy().into_owned())
-                    .unwrap_or_else(|| file_name.clone());
-                entries.push(build(
-                    source,
-                    name,
-                    file_name,
-                    dir.to_string_lossy().into_owned(),
-                    command,
-                    &changed,
-                ));
-            }
-        } else {
-            for (name, command) in registry::run_values(source) {
-                entries.push(build(
-                    source,
-                    name.clone(),
-                    name,
-                    registry::run_location(source),
-                    command,
-                    &changed,
-                ));
-            }
-        }
-    }
-
-    for task in tasks::list() {
-        entries.push(build_task(task, &changed));
-    }
+    let mut entries: Vec<StartupEntry> = EVERY_SOURCE
+        .into_iter()
+        .flat_map(|source| entries_for(source, &changed))
+        .collect();
 
     entries.sort_by_key(|e| e.name.to_lowercase());
     entries
@@ -244,8 +279,10 @@ pub fn set_enabled(
     if !is_valid_id(id) {
         return Err(ToggleError::NotFound);
     }
-    let find = || list(history).into_iter().find(|e| e.id == id);
-    let entry = find().ok_or(ToggleError::NotFound)?;
+    let entry = find_entry(history, id, None).ok_or(ToggleError::NotFound)?;
+    // 바꾼 뒤에는 그 출처만 다시 읽는다
+    let source = entry.source;
+    let find = || find_entry(history, id, Some(source));
     let io_err = |e: std::io::Error| match e.kind() {
         std::io::ErrorKind::PermissionDenied => ToggleError::NeedsAdmin,
         _ => ToggleError::Failed(e.to_string()),

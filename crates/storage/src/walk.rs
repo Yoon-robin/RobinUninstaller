@@ -35,6 +35,26 @@ fn attributes(_: &std::fs::Metadata) -> u32 {
     0
 }
 
+/// 기준 폴더로 쓰기에 위험한 곳인지 (환경 변수가 잘못 설정돼 TEMP가 드라이브 루트나 사용자 폴더를 가리키는 경우 등).
+fn is_safe_root(root: &Path, env: &impl Fn(&str) -> Option<String>) -> bool {
+    let norm = |p: &str| p.trim().trim_end_matches('\\').to_lowercase();
+    let r = norm(&root.to_string_lossy());
+    // 드라이브 루트(`c:`)나 너무 짧은 경로
+    if r.len() <= 3 || !r.contains('\\') {
+        return false;
+    }
+    ![
+        "USERPROFILE",
+        "SystemRoot",
+        "ProgramFiles",
+        "ProgramFiles(x86)",
+        "PUBLIC",
+    ]
+    .iter()
+    .filter_map(|v| env(v))
+    .any(|p| norm(&p) == r)
+}
+
 /// 규칙의 경로 하나를 실제 경로들로 바꾼다. `*` 조각은 그 자리의 하위 폴더 전부.
 /// 존재하는 경로만, 그리고 기준 폴더 안에 있는 경로만 돌려준다.
 pub fn resolve(base: Base, rel: &str, env: &impl Fn(&str) -> Option<String>) -> Vec<PathBuf> {
@@ -42,6 +62,10 @@ pub fn resolve(base: Base, rel: &str, env: &impl Fn(&str) -> Option<String>) -> 
         return Vec::new();
     };
     let root = PathBuf::from(format!("{}\\", root.trim_end_matches('\\')));
+    // TEMP는 사용자가 바꿀 수 있는 값이라, 드라이브 루트·사용자 폴더 등을 가리키면 그 아래를 통째로 지우게 된다
+    if base == Base::Temp && !is_safe_root(&root, env) {
+        return Vec::new();
+    }
     let parts: Vec<&str> = rel.split('\\').filter(|p| !p.is_empty()).collect();
     // `..`은 starts_with 검사를 통과해 버리므로 아예 받지 않는다
     if parts
@@ -212,6 +236,8 @@ mod tests {
     }
 
     #[test]
+    // Windows 경로(드라이브 문자, 역슬래시) 동작을 확인하는 테스트라 Windows·Wine에서만 돌린다
+    #[cfg_attr(not(windows), ignore)]
     fn resolves_wildcards_inside_base_only() {
         let root =
             std::env::temp_dir().join(format!("robin-storage-resolve-{}", std::process::id()));
@@ -245,5 +271,22 @@ mod tests {
         let old = measure(&root, Duration::from_secs(24 * 3600));
         assert_eq!(old.files, 0);
         let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn refuses_dangerous_roots() {
+        let env = |v: &str| match v {
+            "USERPROFILE" => Some(r"C:\Users\me".to_string()),
+            "TEMP" => Some(r"C:\Users\me".to_string()),
+            "SystemRoot" => Some(r"C:\Windows".to_string()),
+            _ => None,
+        };
+        assert!(!is_safe_root(Path::new(r"C:\"), &env));
+        assert!(!is_safe_root(Path::new(r"C:\Users\me\"), &env));
+        assert!(!is_safe_root(Path::new(r"C:\Windows"), &env));
+        assert!(is_safe_root(
+            Path::new(r"C:\Users\me\AppData\Local\Temp\"),
+            &env
+        ));
     }
 }

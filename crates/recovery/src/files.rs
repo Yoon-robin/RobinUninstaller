@@ -10,7 +10,7 @@ use std::os::windows::ffi::OsStrExt;
 use std::os::windows::fs::{MetadataExt, OpenOptionsExt};
 use std::path::Path;
 
-use windows::Win32::Storage::FileSystem::{MOVE_FILE_FLAGS, MoveFileExW};
+use windows::Win32::Storage::FileSystem::{GetDiskFreeSpaceExW, MOVE_FILE_FLAGS, MoveFileExW};
 use windows::core::PCWSTR;
 
 const FILE_ATTRIBUTE_REPARSE_POINT: u32 = 0x400;
@@ -85,6 +85,14 @@ pub fn move_item(src: &Path, dest: &Path, direction: Direction) -> Result<(), Fs
             if direction == Direction::Clean {
                 // 지울 수 없는 파일이 있으면 아무것도 바꾸지 않고 멈춘다
                 ensure_deletable(src)?;
+            }
+            // 복사할 자리가 모자라면 시작하지 않는다 (중간에 디스크가 가득 차지 않게)
+            if let Some(free) = dest.parent().and_then(free_space)
+                && tree_size(src) > free
+            {
+                return Err(FsError::Other(
+                    "옮길 드라이브에 빈 공간이 모자라요".to_string(),
+                ));
             }
             if let Err(copy_err) = copy_tree(src, dest) {
                 // 원본은 아직 그대로라 미완성 복사본만 치운다
@@ -190,4 +198,30 @@ fn remove_tree(path: &Path) -> Result<(), FsError> {
         std::fs::remove_file(path)?;
     }
     Ok(())
+}
+
+/// 폴더(또는 파일)의 전체 크기. 링크는 따라가지 않는다.
+fn tree_size(path: &Path) -> u64 {
+    let Ok(meta) = std::fs::symlink_metadata(path) else {
+        return 0;
+    };
+    if meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+        0
+    } else if meta.is_dir() {
+        std::fs::read_dir(path)
+            .map(|entries| entries.flatten().map(|e| tree_size(&e.path())).sum())
+            .unwrap_or(0)
+    } else {
+        meta.len()
+    }
+}
+
+/// `dir`이 있는 드라이브의 빈 공간 (바이트)
+fn free_space(dir: &Path) -> Option<u64> {
+    // 아직 없는 폴더면 있는 상위 폴더로
+    let existing = dir.ancestors().find(|p| p.exists())?;
+    let w = wide(existing);
+    let mut free = 0u64;
+    unsafe { GetDiskFreeSpaceExW(PCWSTR(w.as_ptr()), Some(&mut free), None, None) }.ok()?;
+    Some(free)
 }
