@@ -144,6 +144,11 @@ pnpm tauri dev    # 앱 실행
 - **Windows에서 확인할 것 (읽기 전용):** `robin-fixture install` → `cargo run -p robin-scanner --example size_fixture` → `robin-fixture remove`.
   출력되는 실제 대상 목록에 이상한 위치(너무 넓은 폴더)가 없는지, 앱 화면에서 `*` 표시된 크기가 탐색기 속성의 크기와 비슷한지.
 
+### 목록 내보내기·웹 검색 — 작성 (2026-10-18, 클라우드, 브랜치 `claude/export-list`)
+
+- PLAN.md "목록 내보내기와 웹 검색". CSV 만들기·주소 만들기는 유닛 테스트 통과(Linux·Wine), 화면은 가짜 응답으로 캡처 확인.
+- **Windows에서 확인할 것:** 내보내기 버튼 → 저장 창이 뜨는지, 저장한 CSV를 Excel로 열었을 때 한글·열이 맞는지. 메뉴의 "웹에서 검색"이 기본 브라우저로 열리는지.
+
 ### 다음 단계 후보
 
 - Phase 5 나머지: SYSTEM 예약 작업의 UAC 끄기·켜기 시험

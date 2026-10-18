@@ -26,6 +26,8 @@ pub(crate) struct AppCache {
     icons: Mutex<HashMap<String, Option<String>>>,
     /// 마지막으로 읽은 Store·MSIX 앱 (아이콘 요청은 여기 있는 앱만 허용)
     store_apps: Mutex<HashMap<String, StoreApp>>,
+    /// 마지막으로 직접 잰 설치 폴더 크기 (앱 ID → KB, 목록 내보내기에 쓴다)
+    sizes: Mutex<HashMap<String, u64>>,
     /// 이번 실행 중에 제거한 프로그램 (제거된 뒤에도 잔여물을 찾을 수 있도록 정보를 남겨 둔다)
     removed: Mutex<Vec<InstalledApplication>>,
     /// 마지막 스캔 결과의 항목. 탐색기로 열기 같은 요청은 여기 있는 경로만 허용한다.
@@ -109,7 +111,7 @@ async fn measure_app_sizes(cache: State<'_, AppCache>) -> Result<HashMap<String,
         .lock()
         .map(|m| m.values().cloned().collect())
         .unwrap_or_default();
-    tauri::async_runtime::spawn_blocking(move || {
+    let sizes = tauri::async_runtime::spawn_blocking(move || {
         #[cfg(windows)]
         return robin_scanner::install_size::install_sizes(
             &apps,
@@ -122,7 +124,89 @@ async fn measure_app_sizes(cache: State<'_, AppCache>) -> Result<HashMap<String,
         }
     })
     .await
-    .map_err(|e| e.to_string())
+    .map_err(|e| e.to_string())?;
+    if let Ok(mut map) = cache.sizes.lock() {
+        *map = sizes.clone();
+    }
+    Ok(sizes)
+}
+
+/// 프로그램 목록(데스크톱 + Store 앱)을 CSV로 저장한다. 저장 위치는 사용자가 저장 창에서 고른다.
+/// 저장했으면 파일 이름, 취소했으면 `None`.
+#[tauri::command]
+async fn export_app_list(
+    app: tauri::AppHandle,
+    cache: State<'_, AppCache>,
+) -> Result<Option<String>, String> {
+    use tauri_plugin_dialog::DialogExt;
+
+    let mut apps: Vec<InstalledApplication> = cache
+        .apps
+        .lock()
+        .map(|m| m.values().cloned().collect())
+        .unwrap_or_default();
+    if apps.is_empty() {
+        return Err("프로그램 목록을 먼저 불러와 주세요".into());
+    }
+    apps.sort_by_key(|a| a.display_name.to_lowercase());
+    let mut store: Vec<StoreApp> = cache
+        .store_apps
+        .lock()
+        .map(|m| m.values().cloned().collect())
+        .unwrap_or_default();
+    store.sort_by_key(|a| a.display_name.to_lowercase());
+    let sizes = cache.sizes.lock().map(|m| m.clone()).unwrap_or_default();
+    let csv = robin_discovery::export::programs_csv(&apps, &sizes, &store);
+
+    let today = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|d| {
+            robin_discovery::package_info::ticks_to_date(
+                d.as_secs() as i64 * 10_000_000 + 116_444_736_000_000_000,
+            )
+        })
+        .unwrap_or_default();
+    tauri::async_runtime::spawn_blocking(move || {
+        let Some(picked) = app
+            .dialog()
+            .file()
+            .set_title("프로그램 목록 저장")
+            .set_file_name(format!("프로그램 목록 {today}.csv").trim())
+            .add_filter("CSV (Excel)", &["csv"])
+            .blocking_save_file()
+        else {
+            return Ok(None);
+        };
+        let path = picked.into_path().map_err(|e| e.to_string())?;
+        std::fs::write(&path, csv).map_err(|e| format!("저장하지 못했어요: {e}"))?;
+        Ok(path.file_name().map(|n| n.to_string_lossy().into_owned()))
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// 프로그램 이름으로 웹 검색을 연다 (기본 브라우저).
+#[tauri::command]
+fn search_app_web(id: String, cache: State<'_, AppCache>) -> Result<(), String> {
+    let (name, publisher) = match cache.get(&id) {
+        Some(a) => (a.display_name, a.publisher),
+        None => cache
+            .store_apps
+            .lock()
+            .ok()
+            .and_then(|m| {
+                m.get(&id)
+                    .map(|a| (a.display_name.clone(), a.publisher.clone()))
+            })
+            .ok_or("알 수 없는 프로그램이에요")?,
+    };
+    let url = robin_discovery::export::search_url(&name, publisher.as_deref());
+    std::process::Command::new("explorer.exe")
+        .arg(url)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 /// Microsoft Store·MSIX 앱 목록 (읽기 전용).
@@ -923,6 +1007,7 @@ fn supports_mica() -> bool {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_dialog::init())
         .manage(AppCache::default())
         .manage(tracking::TrackingState::default())
         .setup(|app| {
@@ -951,6 +1036,8 @@ pub fn run() {
             list_installed_apps,
             get_app_icon,
             measure_app_sizes,
+            export_app_list,
+            search_app_web,
             list_store_apps,
             get_store_app_icon,
             open_apps_settings,

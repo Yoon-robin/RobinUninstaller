@@ -68,6 +68,10 @@ export const api = {
   stopWaitingUninstall: () => invoke<void>("stop_waiting_uninstall"),
   /** 크기 기록이 없는 프로그램의 설치 폴더 크기 (앱 ID → KB) */
   measureAppSizes: () => invoke<Record<string, number>>("measure_app_sizes"),
+  /** 프로그램 목록(데스크톱 + Store 앱)을 CSV로 저장. 저장 창을 취소하면 null, 저장하면 파일 이름. */
+  exportAppList: () => invoke<string | null>("export_app_list"),
+  /** 프로그램 이름으로 웹 검색 (기본 브라우저) */
+  searchWeb: (id: string) => invoke<void>("search_app_web", { id }),
 }
 
 /** 실제로 실행될 명령 (화면 표시용). crates/execution 의 plan_for 와 같은 규칙. */

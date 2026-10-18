@@ -29,6 +29,7 @@ robin-startup.workspace = true
 robin-storage.workspace = true
 robin-tracker.workspace = true
 robin-settings.workspace = true
+tauri-plugin-dialog = "2"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"

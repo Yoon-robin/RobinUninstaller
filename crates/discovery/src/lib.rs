@@ -7,6 +7,7 @@
 use robin_core::{InstalledApplication, StoreApp};
 
 pub mod command;
+pub mod export;
 #[cfg(windows)]
 mod icon;
 mod icon_source;

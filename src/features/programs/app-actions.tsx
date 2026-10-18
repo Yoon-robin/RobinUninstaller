@@ -1,5 +1,5 @@
 import type { ReactNode } from "react"
-import { Copy, FolderOpen, Info, Sparkles, Trash2 } from "lucide-react"
+import { Copy, FolderOpen, Globe, Info, Sparkles, Trash2 } from "lucide-react"
 import { toast } from "sonner"
 
 import { api, canUninstall, type InstalledApplication } from "@/lib/api"
@@ -52,6 +52,12 @@ function actionsFor(
       label: "이름 복사",
       icon: Copy,
       run: () => navigator.clipboard.writeText(app.displayName).then(() => toast.success("이름을 복사했어요")),
+    },
+    {
+      key: "web",
+      label: "웹에서 검색",
+      icon: Globe,
+      run: () => api.searchWeb(app.id).catch((e) => toast.error(String(e))),
     },
     { key: "leftovers", label: "흔적 미리 보기", icon: Sparkles, run: () => onFindLeftovers(app) },
     {

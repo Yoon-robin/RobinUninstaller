@@ -3,6 +3,7 @@ import { useQuery } from "@tanstack/react-query"
 import {
   ArrowDownWideNarrow,
   Check,
+  FileDown,
   HardDrive,
   LayoutGrid,
   List,
@@ -16,6 +17,7 @@ import {
   X,
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
+import { toast } from "sonner"
 
 import { api, storeApi, canUninstall, type InstalledApplication } from "@/lib/api"
 import { formatSize } from "@/lib/format"
@@ -177,6 +179,14 @@ export function ProgramsPage() {
       else next.add(app.id)
       return next
     })
+  const exportList = async () => {
+    try {
+      const name = await api.exportAppList()
+      if (name) toast.success(`${name} 파일로 저장했어요`)
+    } catch (e) {
+      toast.error(String(e))
+    }
+  }
   const resetFilters = () => {
     setQuery("")
     setFilter("all")
@@ -330,6 +340,18 @@ export function ProgramsPage() {
                   {!picked && (
                     <IconSegmented options={viewOptions} value={view} onChange={setView} layoutId="view-toggle" />
                   )}
+                  <IconTooltip label={sizes.isFetching ? "크기를 다 잰 뒤에 내보낼 수 있어요" : "목록 내보내기 (CSV)"}>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="size-9 rounded-lg"
+                      disabled={loading || sizes.isFetching}
+                      onClick={exportList}
+                      aria-label="목록 내보내기"
+                    >
+                      <FileDown />
+                    </Button>
+                  </IconTooltip>
                   <IconTooltip label="새로고침">
                     <Button
                       variant="outline"
