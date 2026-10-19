@@ -49,6 +49,8 @@ pub(crate) struct AppCache {
     next_folder: AtomicU64,
     /// 진행 중인 폴더 분석의 취소 신호 (새 분석을 시작하면 이전 것을 멈춘다)
     analysis_cancel: Mutex<Option<Arc<AtomicBool>>>,
+    /// 진행 중인 큰 파일 찾기의 취소 신호
+    large_files_cancel: Mutex<Option<Arc<AtomicBool>>>,
     /// 마지막 저장공간 스캔 결과 (탐색기로 열기는 여기 있는 위치만 허용)
     storage: Mutex<Vec<robin_storage::Category>>,
 }
@@ -1006,6 +1008,71 @@ fn cancel_folder_analysis(cache: State<'_, AppCache>) {
     }
 }
 
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LargeFileItem {
+    id: String,
+    #[serde(flatten)]
+    file: robin_storage::LargeFile,
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct LargeFiles {
+    root: String,
+    min_bytes: u64,
+    items: Vec<LargeFileItem>,
+    cancelled: bool,
+}
+
+/// 시스템 드라이브에서 큰 파일을 찾는다 (읽기 전용). Windows 폴더는 건너뛴다.
+/// 화면은 경로 대신 ID만 받아 [`reveal_folder_item`]으로 탐색기에서 연다.
+#[tauri::command]
+async fn find_large_files(cache: State<'_, AppCache>) -> Result<LargeFiles, String> {
+    const MIN_BYTES: u64 = 200 * 1024 * 1024;
+    const LIMIT: usize = 40;
+    let root = PathBuf::from(system_drive());
+    let cancel = Arc::new(AtomicBool::new(false));
+    if let Ok(mut slot) = cache.large_files_cancel.lock()
+        && let Some(previous) = slot.replace(cancel.clone())
+    {
+        previous.store(true, Ordering::Relaxed);
+    }
+    let (files, cancelled) = {
+        let root = root.clone();
+        let cancel = cancel.clone();
+        tauri::async_runtime::spawn_blocking(move || {
+            let files = robin_storage::largest_files(&root, MIN_BYTES, LIMIT, &cancel);
+            (files, cancel.load(Ordering::Relaxed))
+        })
+        .await
+        .map_err(|e| e.to_string())?
+    };
+    let items = files
+        .into_iter()
+        .map(|file| LargeFileItem {
+            id: cache.folder_id(Path::new(&file.path)),
+            file,
+        })
+        .collect();
+    Ok(LargeFiles {
+        root: root.display().to_string(),
+        min_bytes: MIN_BYTES,
+        items,
+        cancelled,
+    })
+}
+
+/// 진행 중인 큰 파일 찾기를 멈춘다.
+#[tauri::command]
+fn cancel_large_files(cache: State<'_, AppCache>) {
+    if let Ok(slot) = cache.large_files_cancel.lock()
+        && let Some(cancel) = slot.as_ref()
+    {
+        cancel.store(true, Ordering::Relaxed);
+    }
+}
+
 /// 분석 결과의 항목을 탐색기로 연다.
 #[tauri::command]
 fn reveal_folder_item(id: String, cache: State<'_, AppCache>) -> Result<(), String> {
@@ -1145,6 +1212,8 @@ pub fn run() {
             analyze_folder,
             cancel_folder_analysis,
             reveal_folder_item,
+            find_large_files,
+            cancel_large_files,
             window_material,
             #[cfg(windows)]
             setup::app_mode,

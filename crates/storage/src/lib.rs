@@ -289,6 +289,72 @@ fn clean_one(
     result
 }
 
+/// 큰 파일 하나 (읽기 전용 결과)
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LargeFile {
+    pub name: String,
+    pub path: String,
+    pub bytes: u64,
+    /// 마지막으로 고친 때 (유닉스 초)
+    pub modified: Option<u64>,
+}
+
+/// `root` 아래에서 `min_bytes` 이상인 파일을 큰 것부터 `limit`개 찾는다. 읽기 전용, 아무것도 지우지 않는다.
+/// Windows 폴더(손댈 수 없는 시스템 파일)와 숨김 시스템 파일·링크는 건너뛴다. `cancel`이 켜지면 중간에 멈춘다.
+pub fn largest_files(
+    root: &Path,
+    min_bytes: u64,
+    limit: usize,
+    cancel: &AtomicBool,
+) -> Vec<LargeFile> {
+    let mut out = collect_large(root, min_bytes, cancel);
+    out.sort_by(|a, b| b.bytes.cmp(&a.bytes).then_with(|| a.path.cmp(&b.path)));
+    out.truncate(limit);
+    out
+}
+
+fn collect_large(dir: &Path, min_bytes: u64, cancel: &AtomicBool) -> Vec<LargeFile> {
+    if cancel.load(Ordering::Relaxed) || in_windows_dir(dir) {
+        return Vec::new();
+    }
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return Vec::new();
+    };
+    let mut found = Vec::new();
+    let mut dirs = Vec::new();
+    for e in entries.flatten() {
+        let Ok(m) = e.metadata() else { continue };
+        #[cfg(windows)]
+        let attrs = std::os::windows::fs::MetadataExt::file_attributes(&m);
+        #[cfg(not(windows))]
+        let attrs = 0;
+        if walk::is_untouchable(attrs) {
+            continue;
+        }
+        if m.is_dir() {
+            dirs.push(e.path());
+        } else if m.len() >= min_bytes {
+            found.push(LargeFile {
+                name: e.file_name().to_string_lossy().into_owned(),
+                path: e.path().to_string_lossy().into_owned(),
+                bytes: m.len(),
+                modified: m
+                    .modified()
+                    .ok()
+                    .and_then(|t| t.duration_since(std::time::UNIX_EPOCH).ok())
+                    .map(|d| d.as_secs()),
+            });
+        }
+    }
+    let sub: Vec<LargeFile> = dirs
+        .par_iter()
+        .flat_map_iter(|d| collect_large(d, min_bytes, cancel))
+        .collect();
+    found.extend(sub);
+    found
+}
+
 /// 폴더 분석 결과 한 줄
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -397,4 +463,38 @@ pub fn analyze(dir: &Path, cancel: &AtomicBool) -> Vec<FolderEntry> {
         .collect();
     out.sort_by_key(|c| std::cmp::Reverse(c.bytes));
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn largest_files_sorts_filters_and_limits() {
+        let root = std::env::temp_dir().join(format!("robin-large-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("a").join("b")).unwrap();
+        let write = |rel: &str, len: usize| std::fs::write(root.join(rel), vec![0u8; len]).unwrap();
+        write("small.txt", 10);
+        write(r"a\mid.bin", 3000);
+        write(r"a\b\big.iso", 9000);
+        write(r"a\b\bigger.mkv", 12000);
+        write("edge.zip", 2000);
+
+        let cancel = AtomicBool::new(false);
+        let found = largest_files(&root, 2000, 3, &cancel);
+        let names: Vec<_> = found.iter().map(|f| f.name.as_str()).collect();
+        assert_eq!(names, ["bigger.mkv", "big.iso", "mid.bin"]);
+        assert!(found.iter().all(|f| f.modified.is_some()));
+
+        // 기준보다 작은 파일은 나오지 않는다
+        let all = largest_files(&root, 2000, 100, &cancel);
+        assert_eq!(all.len(), 4);
+        assert!(all.iter().all(|f| f.bytes >= 2000));
+
+        // 멈추면 아무것도 찾지 않는다
+        cancel.store(true, Ordering::Relaxed);
+        assert!(largest_files(&root, 1, 100, &cancel).is_empty());
+        let _ = std::fs::remove_dir_all(&root);
+    }
 }

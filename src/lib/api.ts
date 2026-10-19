@@ -291,6 +291,22 @@ export interface FolderItem {
   approximate: boolean
 }
 
+export interface LargeFile {
+  id: string
+  name: string
+  path: string
+  bytes: number
+  /** 마지막으로 고친 때 (유닉스 초) */
+  modified: number | null
+}
+
+export interface LargeFiles {
+  root: string
+  minBytes: number
+  items: LargeFile[]
+  cancelled: boolean
+}
+
 export interface FolderAnalysis {
   id: string
   path: string
@@ -314,6 +330,9 @@ export const storageApi = {
   analyze: (id?: string) => invoke<FolderAnalysis>("analyze_folder", { id: id ?? null }),
   cancelAnalysis: () => invoke<void>("cancel_folder_analysis"),
   revealFolderItem: (id: string) => invoke<void>("reveal_folder_item", { id }),
+  /** 시스템 드라이브의 큰 파일 (읽기 전용) */
+  findLargeFiles: () => invoke<LargeFiles>("find_large_files"),
+  cancelLargeFiles: () => invoke<void>("cancel_large_files"),
 }
 
 /** 다른 화면으로 이동 요청 (App이 받아 처리). */

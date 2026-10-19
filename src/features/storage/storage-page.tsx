@@ -26,6 +26,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { FolderAnalysisCard } from "./folder-analysis"
+import { LargeFilesCard } from "./large-files"
 import { ErrorState } from "@/components/error-state"
 
 const SCAN_KEY = ["storage-scan"]
@@ -148,6 +149,10 @@ export function StoragePage() {
 
       <FadeUp>
         <FolderAnalysisCard />
+      </FadeUp>
+
+      <FadeUp>
+        <LargeFilesCard />
       </FadeUp>
 
       <CleanDialog
