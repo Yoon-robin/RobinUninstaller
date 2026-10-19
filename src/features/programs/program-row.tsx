@@ -11,7 +11,10 @@ import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui/dropdown-menu
 import { AppContextMenu, AppDropdownContent, type AppActionHandlers } from "./app-actions"
 import { AppIcon } from "./app-icon"
 
-export const LIST_GRID = "grid grid-cols-[minmax(0,1fr)_minmax(0,9rem)_6.5rem_5.75rem_5.5rem_2rem] items-center gap-4"
+/** 목록 열. 좁은 창에서는 설치일·형식을 숨겨 이름 칸이 찌그러지지 않게 한다 (숨긴 칸에는 `WIDE_ONLY`). */
+export const LIST_GRID =
+  "grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)_6rem_2rem] items-center gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,9rem)_6.5rem_5.75rem_5.5rem_2rem]"
+export const WIDE_ONLY = "hidden lg:flex"
 
 /** 제거된 항목이 목록에서 접히며 사라지는 모션. 검색·필터로 빠질 때는 쓰지 않는다. */
 export const removedExit = {
@@ -115,9 +118,11 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
             )}
           </div>
 
-          <span className="text-muted-foreground tabular-nums">{formatInstallDate(app.installDate)}</span>
+          <span className={cn(WIDE_ONLY, "text-muted-foreground tabular-nums")}>
+            {formatInstallDate(app.installDate)}
+          </span>
 
-          <div className="flex gap-1">
+          <div className={cn(WIDE_ONLY, "gap-1")}>
             <span className="rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
               {app.technology.toUpperCase()}
             </span>

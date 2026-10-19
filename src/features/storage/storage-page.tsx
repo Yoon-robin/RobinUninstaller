@@ -388,7 +388,8 @@ function CleanDialog({
   }, [open])
   const irreversible = items.filter((c) => c.risk === "irreversible")
   const needsAdmin = items.some((c) => c.admin)
-  const total = items.reduce((s, c) => s + c.bytes, 0)
+  // 되돌릴 수 없는 항목은 체크해야 지우므로, 합계도 실제로 지울 것만 센다
+  const total = items.filter((c) => c.risk !== "irreversible" || understood).reduce((s, c) => s + c.bytes, 0)
   // 되돌릴 수 없는 항목만 골랐다면 확인 체크 없이는 정리할 게 없다
   const onlyIrreversible = irreversible.length === items.length
 
@@ -447,8 +448,21 @@ function CleanDialog({
         </DialogDescription>
         <ul className="max-h-56 divide-y overflow-y-auto rounded-xl border text-sm">
           {items.map((c) => (
-            <li key={c.id} className="flex items-center gap-2 px-3 py-2">
-              <span className="min-w-0 flex-1 truncate">{c.name}</span>
+            <li
+              key={c.id}
+              className={cn(
+                "flex items-center gap-2 px-3 py-2",
+                c.risk === "irreversible" && !understood && "text-muted-foreground",
+              )}
+            >
+              <span
+                className={cn(
+                  "min-w-0 flex-1 truncate",
+                  c.risk === "irreversible" && !understood && "line-through decoration-muted-foreground/60",
+                )}
+              >
+                {c.name}
+              </span>
               <RiskBadge category={c} />
               <span className="w-16 shrink-0 text-right tabular-nums">{formatBytes(c.bytes)}</span>
             </li>

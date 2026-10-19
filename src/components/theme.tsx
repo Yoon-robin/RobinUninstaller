@@ -10,14 +10,25 @@ import { EASE_OUT_QUINT } from "@/components/motion"
 
 type Theme = "dark" | "light" | "system"
 type Resolved = "dark" | "light"
+/** 유리(반투명·흐림) 효과: 자동이면 Windows의 "투명 효과" 설정을 따른다 */
+export type Transparency = "auto" | "reduced"
 
 const STORAGE_KEY = "robin.theme"
+const TRANSPARENCY_KEY = "robin.transparency"
 
 const ThemeContext = createContext<{
   theme: Theme
   resolvedTheme: Resolved
   setTheme: (theme: Theme) => void
-}>({ theme: "dark", resolvedTheme: "dark", setTheme: () => {} })
+  transparency: Transparency
+  setTransparency: (value: Transparency) => void
+}>({
+  theme: "dark",
+  resolvedTheme: "dark",
+  setTheme: () => {},
+  transparency: "auto",
+  setTransparency: () => {},
+})
 
 export const useTheme = () => useContext(ThemeContext)
 
@@ -30,6 +41,14 @@ function loadTheme(): Theme {
   }
 }
 
+function loadTransparency(): Transparency {
+  try {
+    return localStorage.getItem(TRANSPARENCY_KEY) === "reduced" ? "reduced" : "auto"
+  } catch {
+    return "auto"
+  }
+}
+
 function systemTheme(): Resolved {
   return matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark"
 }
@@ -39,6 +58,20 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>(loadTheme)
   const [system, setSystem] = useState<Resolved>(systemTheme)
   const resolvedTheme = theme === "system" ? system : theme
+  const [transparency, setTransparencyState] = useState<Transparency>(loadTransparency)
+
+  // 설정에서 줄이기를 골랐거나, 자동일 때 Windows가 투명 효과를 끈 상태면 유리 효과를 끈다
+  useEffect(() => {
+    const mq = matchMedia("(prefers-reduced-transparency: reduce)")
+    const apply = () =>
+      document.documentElement.classList.toggle(
+        "reduce-transparency",
+        transparency === "reduced" || (transparency === "auto" && mq.matches),
+      )
+    apply()
+    mq.addEventListener("change", apply)
+    return () => mq.removeEventListener("change", apply)
+  }, [transparency])
 
   useEffect(() => {
     const mq = matchMedia("(prefers-color-scheme: light)")
@@ -66,8 +99,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
           // 저장이 막혀 있어도 이번 실행 동안은 테마가 바뀐다.
         }
       },
+      transparency,
+      setTransparency: (next: Transparency) => {
+        setTransparencyState(next)
+        try {
+          localStorage.setItem(TRANSPARENCY_KEY, next)
+        } catch {
+          // 저장이 막혀 있어도 이번 실행 동안은 바뀐다.
+        }
+      },
     }),
-    [theme, resolvedTheme],
+    [theme, resolvedTheme, transparency],
   )
 
   return (

@@ -425,3 +425,51 @@
     backdrop-filter: url(#liquid-glass) blur(4px) saturate(190%);
   }
 }
+
+/* 확인 창은 읽고 판단하는 곳이라 뒤가 거의 비치지 않게 한다 (메뉴·알림은 유리 그대로) */
+[data-slot="dialog-content"],
+[data-slot="alert-dialog-content"] {
+  background-color: color-mix(in oklch, var(--popover) 96%, transparent);
+}
+
+/* 투명 효과 줄이기: 설정에서 골랐거나 Windows가 투명 효과를 끈 경우 */
+.reduce-transparency {
+  --glass-tint: var(--popover);
+  --glass-tint-strong: var(--popover);
+}
+.reduce-transparency .glass,
+.reduce-transparency .glass-strong,
+.reduce-transparency .liquid,
+.reduce-transparency [data-variant="floating"] [data-sidebar="sidebar"],
+.reduce-transparency [data-slot="dialog-content"],
+.reduce-transparency [data-slot="alert-dialog-content"],
+.reduce-transparency [data-slot="sheet-content"],
+.reduce-transparency [data-slot="dropdown-menu-content"],
+.reduce-transparency [data-slot="dropdown-menu-sub-content"],
+.reduce-transparency [data-slot="context-menu-content"],
+.reduce-transparency [data-slot="context-menu-sub-content"],
+.reduce-transparency [data-sonner-toast] {
+  -webkit-backdrop-filter: none !important;
+  backdrop-filter: none !important;
+}
+.reduce-transparency [data-variant="floating"] [data-sidebar="sidebar"] {
+  background-color: var(--sidebar);
+}
+.reduce-transparency [data-slot="dialog-overlay"],
+.reduce-transparency [data-slot="alert-dialog-overlay"],
+.reduce-transparency [data-slot="sheet-overlay"] {
+  -webkit-backdrop-filter: none;
+  backdrop-filter: none;
+  background-color: oklch(0 0 0 / 45%);
+}
+/* Mica(창 뒤 배경이 비침)도 끄고 불투명한 바탕으로 */
+.reduce-transparency.mica:not(.dark) {
+  --background: oklch(0.975 0.002 260);
+  --sidebar: oklch(0.97 0.002 260);
+  --card: oklch(1 0 0);
+}
+.reduce-transparency.mica.dark {
+  --background: oklch(0.185 0.004 260);
+  --sidebar: oklch(0.2 0.004 260);
+  --card: oklch(0.225 0.004 260);
+}

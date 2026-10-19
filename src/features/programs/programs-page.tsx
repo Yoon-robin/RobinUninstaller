@@ -39,7 +39,7 @@ import {
   type SortKey,
 } from "./filters"
 import { ProgramGrid } from "./program-grid"
-import { LIST_GRID, ProgramRow } from "./program-row"
+import { LIST_GRID, ProgramRow, WIDE_ONLY } from "./program-row"
 import { FilterChips, IconSegmented, TextTabs } from "./segmented"
 import { StatCard } from "./stat-card"
 import { UninstallDialog } from "./uninstall-dialog"
@@ -379,8 +379,8 @@ export function ProgramsPage() {
                     <span>이름</span>
                     <span>게시자</span>
                     <span>크기</span>
-                    <span>설치일</span>
-                    <span>형식</span>
+                    <span className={WIDE_ONLY}>설치일</span>
+                    <span className={WIDE_ONLY}>형식</span>
                     <span />
                   </div>
                 )}
@@ -400,8 +400,8 @@ export function ProgramsPage() {
                       </div>
                       <Skeleton className="h-4 w-24" />
                       <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-4 w-20" />
-                      <Skeleton className="h-5 w-12 rounded-full" />
+                      <Skeleton className={cn(WIDE_ONLY, "h-4 w-20")} />
+                      <Skeleton className={cn(WIDE_ONLY, "h-5 w-12 rounded-full")} />
                       <span />
                     </div>
                   ))}

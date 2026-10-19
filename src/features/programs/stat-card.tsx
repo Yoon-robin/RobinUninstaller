@@ -45,7 +45,7 @@ export function StatCard({
         onClick={onClick}
         aria-pressed={onClick ? active : undefined}
         className={cn(
-          "relative flex h-full w-full items-start gap-4 overflow-hidden rounded-2xl border bg-card p-5 text-left shadow-sm",
+          "relative flex h-full w-full items-start gap-3 overflow-hidden rounded-2xl border bg-card p-4 text-left shadow-sm lg:gap-4 lg:p-5",
           "transition-[transform,border-color,box-shadow] duration-200 ease-(--ease-out-quint)",
           onClick &&
             "cursor-pointer hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:translate-y-0 active:scale-[0.99]",
@@ -61,12 +61,15 @@ export function StatCard({
           )}
         />
         <span
-          className={cn("relative flex size-10 shrink-0 items-center justify-center rounded-xl", toneClasses[tone])}
+          className={cn(
+            "relative flex size-8 shrink-0 items-center justify-center rounded-xl lg:size-10",
+            toneClasses[tone],
+          )}
         >
-          <Icon className="size-5" />
+          <Icon className="size-4 lg:size-5" />
         </span>
         <span className="relative min-w-0">
-          <span className="block text-sm text-muted-foreground">{label}</span>
+          <span className="block truncate text-sm text-muted-foreground">{label}</span>
           {value == null ? (
             <span className="mt-1.5 block h-7 w-20 animate-pulse rounded-md bg-muted" />
           ) : (
