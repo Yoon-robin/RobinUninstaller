@@ -72,6 +72,12 @@ mod imp {
             })
         };
         let listed = |needle: &str| report.items.iter().any(|i| i.location.contains(needle));
+        let review = |needle: &str| {
+            report
+                .items
+                .iter()
+                .any(|i| i.confidence == Confidence::Review && i.location.contains(needle))
+        };
         let strong_contains = |needle: &str| {
             report
                 .items
@@ -88,13 +94,14 @@ mod imp {
         };
 
         let checks = [
+            // 이름만 맞는 항목은 같은 게시자의 다른 제품일 수 있어 미리 선택하지 않는다 (목록에는 나온다)
             (
-                "설정 폴더 (게시자/제품) = 확실",
-                strong(r"Robin Test Labs\Fixture Notes"),
+                "설정 폴더 (게시자/제품) = 목록에 있음, 확실 아님",
+                review(r"Roaming\Robin Test Labs\Fixture Notes"),
             ),
             (
-                "레지스트리 키 = 확실",
-                strong(r"HKCU\SOFTWARE\Robin Test Labs\Fixture Notes"),
+                "레지스트리 키 = 목록에 있음, 확실 아님",
+                review(r"HKCU\SOFTWARE\Robin Test Labs\Fixture Notes"),
             ),
             ("Run 값 = 확실", strong("FixtureNotes")),
             (

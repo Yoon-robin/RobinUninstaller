@@ -61,6 +61,7 @@ pub async fn add_exclusion(item_id: String, cache: State<'_, AppCache>) -> Resul
         .last_scan
         .lock()
         .map_err(|e| e.to_string())?
+        .items
         .iter()
         .find(|i| i.id == item_id)
         .cloned()

@@ -61,25 +61,69 @@ fn main() {
             None,
         )],
     );
-    robin_recovery::clean(&store, &mut op, &guard, |_| {});
+    robin_recovery::clean(&store, &mut op, &guard, |_| {}).expect("작업 기록 저장");
     check(
         "파일 정리",
         op.items[0].status == ItemStatus::Removed && !file.exists(),
     );
     std::fs::write(&file, "new").unwrap();
-    robin_recovery::restore(&store, &mut op, &guard, None, |_| {});
+    robin_recovery::restore(&store, &mut op, &guard, None, |_| {}).expect("작업 기록 저장");
     check(
         "새로 생긴 파일을 덮어쓰지 않음",
         op.items[0].status == ItemStatus::Removed
             && std::fs::read_to_string(&file).unwrap() == "new",
     );
     std::fs::remove_file(&file).unwrap();
-    robin_recovery::restore(&store, &mut op, &guard, None, |_| {});
+    robin_recovery::restore(&store, &mut op, &guard, None, |_| {}).expect("작업 기록 저장");
     check(
         "자리가 비면 원본으로 복원",
         op.items[0].status == ItemStatus::Restored
             && std::fs::read_to_string(&file).unwrap() == "original",
     );
+
+    // 1-1) 일부만 정리된 폴더를 되돌릴 때 같은 크기·다른 내용의 파일이 있으면 덮어쓰지 않고 "충돌"로 남긴다
+    let folder = base.join("ConflictFolder");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::write(folder.join("a.txt"), "AAAA").unwrap();
+    std::fs::write(folder.join("b.txt"), "keep").unwrap();
+    let mut op = robin_recovery::new_operation(
+        "edge",
+        &[leftover(
+            LeftoverKind::Folder,
+            folder.display().to_string(),
+            None,
+        )],
+    );
+    robin_recovery::clean(&store, &mut op, &guard, |_| {}).expect("작업 기록 저장");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::write(folder.join("a.txt"), "ZZZZ").unwrap(); // 크기는 같고 내용만 다름
+    // 다른 드라이브로 옮기다 원본 일부가 남은 상태(Partial)처럼 만든다: 이때만 원래 자리에 합쳐 넣는다
+    op.items[0].status = ItemStatus::Partial;
+    robin_recovery::restore(&store, &mut op, &guard, None, |_| {}).expect("작업 기록 저장");
+    let backup_a = store
+        .dir(&op.id)
+        .join(match &op.items[0].backup {
+            Some(robin_recovery::Backup::Quarantine { path }) => path.clone(),
+            _ => String::new(),
+        })
+        .join("a.txt");
+    check(
+        "같은 크기·다른 내용은 충돌로 남김",
+        op.items[0].status == ItemStatus::Conflicted
+            && std::fs::read_to_string(folder.join("a.txt")).unwrap() == "ZZZZ"
+            && std::fs::read_to_string(folder.join("b.txt")).unwrap() == "keep"
+            && std::fs::read_to_string(&backup_a).ok().as_deref() == Some("AAAA"),
+    );
+    check(
+        "충돌이 남은 백업은 보관 기간이 지나도 자동 삭제 안 함",
+        robin_recovery::store::expired_ids(
+            std::slice::from_ref(&op),
+            1,
+            op.created_at + 10 * 86_400,
+        )
+        .is_empty(),
+    );
+    let _ = std::fs::remove_dir_all(&folder);
 
     // 2) 상위·하위 키를 함께 정리하고 복원 (하위 키가 먼저 정리되도록 앞에 둔다)
     let (k, _) = hkcu.create_subkey(format!(r"{KEY}\Parent\Child")).unwrap();
@@ -95,7 +139,7 @@ fn main() {
             leftover(LeftoverKind::RegistryKey, parent.clone(), None),
         ],
     );
-    robin_recovery::clean(&store, &mut op, &guard, |_| {});
+    robin_recovery::clean(&store, &mut op, &guard, |_| {}).expect("작업 기록 저장");
     check(
         "상위·하위 키 정리",
         op.items.iter().all(|i| i.status == ItemStatus::Removed)
@@ -105,7 +149,8 @@ fn main() {
         if let Some(e) = &i.error {
             println!("  복원 {}: {e}", i.location);
         }
-    });
+    })
+    .expect("작업 기록 저장");
     let level: Option<u32> = hkcu
         .open_subkey(format!(r"{KEY}\Parent\Child"))
         .and_then(|k| k.get_value("Level"))
@@ -130,19 +175,19 @@ fn main() {
         "edge",
         &[leftover(LeftoverKind::RegistryKey, retry.clone(), None)],
     );
-    robin_recovery::clean(&store, &mut op, &guard, |_| {});
+    robin_recovery::clean(&store, &mut op, &guard, |_| {}).expect("작업 기록 저장");
     // 지난번에 일부만 지워진 상황을 흉내: 키를 일부만 되살리고 "실패"로 되돌린다
     hkcu.create_subkey(format!(r"{KEY}\Retry\B")).unwrap();
     op.items[0].status = ItemStatus::Failed;
     store.save(&op).unwrap();
-    robin_recovery::clean(&store, &mut op, &guard, |_| {});
+    robin_recovery::clean(&store, &mut op, &guard, |_| {}).expect("작업 기록 저장");
     let backup_file = store.dir(&op.id).join(r"registry\0.json");
     let saved: registry::RegistryBackup =
         serde_json::from_slice(&std::fs::read(&backup_file).unwrap()).unwrap();
     let has_a = matches!(&saved, registry::RegistryBackup::Key { dump, .. }
         if dump.subkeys.iter().any(|s| s.name == "A"));
     check("다시 정리해도 처음 백업(A 포함)을 유지", has_a);
-    robin_recovery::restore(&store, &mut op, &guard, None, |_| {});
+    robin_recovery::restore(&store, &mut op, &guard, None, |_| {}).expect("작업 기록 저장");
     check(
         "처음 상태(A의 값 포함)로 복원",
         hkcu.open_subkey(format!(r"{KEY}\Retry\A"))
@@ -165,7 +210,7 @@ fn main() {
         path: r"files\0\..\..\escape".into(),
     });
     store.save(&op).unwrap();
-    robin_recovery::clean(&store, &mut op, &guard, |_| {});
+    robin_recovery::clean(&store, &mut op, &guard, |_| {}).expect("작업 기록 저장");
     check(
         "이상한 백업 경로는 거부",
         op.items[0].status == ItemStatus::Blocked && file.exists(),
@@ -178,9 +223,9 @@ fn main() {
             None,
         )],
     );
-    robin_recovery::clean(&store, &mut op, &guard, |_| {});
+    robin_recovery::clean(&store, &mut op, &guard, |_| {}).expect("작업 기록 저장");
     op.items[0].location = r"C:\Windows\System32\edge.txt".into();
-    robin_recovery::restore(&store, &mut op, &guard, None, |_| {});
+    robin_recovery::restore(&store, &mut op, &guard, None, |_| {}).expect("작업 기록 저장");
     check(
         "기록의 위치를 Windows 폴더로 바꾸면 복원 거부",
         op.items[0].status == ItemStatus::Removed
@@ -222,12 +267,13 @@ fn main() {
             if let Some(e) = &i.error {
                 println!("  정리 {}: {e}", i.location);
             }
-        });
+        })
+        .expect("작업 기록 저장");
         check(
             "다른 드라이브 폴더 정리",
             op.items[0].status == ItemStatus::Removed && !src.exists(),
         );
-        robin_recovery::restore(&store, &mut op, &guard, None, |_| {});
+        robin_recovery::restore(&store, &mut op, &guard, None, |_| {}).expect("작업 기록 저장");
         check(
             "다른 드라이브로 복원",
             op.items[0].status == ItemStatus::Restored

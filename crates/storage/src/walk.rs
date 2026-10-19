@@ -35,24 +35,23 @@ fn attributes(_: &std::fs::Metadata) -> u32 {
     0
 }
 
-/// 기준 폴더로 쓰기에 위험한 곳인지 (환경 변수가 잘못 설정돼 TEMP가 드라이브 루트나 사용자 폴더를 가리키는 경우 등).
-fn is_safe_root(root: &Path, env: &impl Fn(&str) -> Option<String>) -> bool {
+/// TEMP가 가리키는 폴더를 정리 기준으로 써도 되는지.
+///
+/// TEMP는 사용자나 다른 프로그램이 바꿀 수 있는 값이다. 문서·바탕 화면처럼 엉뚱한 곳을 가리키면
+/// 그 아래의 오래된 파일을 "임시 파일"로 보고 지우게 되므로, 금지 목록이 아니라 **허용 목록**으로 판단한다.
+/// Windows가 쓰는 임시 폴더(`%LOCALAPPDATA%\Temp`와 그 하위(원격 세션의 `Temp\2` 등), `%SystemRoot%\Temp`)만 허용한다.
+fn is_safe_temp_root(root: &Path, env: &impl Fn(&str) -> Option<String>) -> bool {
     let norm = |p: &str| p.trim().trim_end_matches('\\').to_lowercase();
     let r = norm(&root.to_string_lossy());
-    // 드라이브 루트(`c:`)나 너무 짧은 경로
-    if r.len() <= 3 || !r.contains('\\') {
+    // `..`·`.` 조각이나 드라이브 상대 경로는 비교를 속일 수 있어 받지 않는다
+    if r.split('\\').any(|seg| seg == ".." || seg == ".") || r.len() <= 3 {
         return false;
     }
-    ![
-        "USERPROFILE",
-        "SystemRoot",
-        "ProgramFiles",
-        "ProgramFiles(x86)",
-        "PUBLIC",
-    ]
-    .iter()
-    .filter_map(|v| env(v))
-    .any(|p| norm(&p) == r)
+    [("LOCALAPPDATA", "temp"), ("SystemRoot", "temp")]
+        .iter()
+        .filter_map(|(var, sub)| env(var).map(|base| format!("{}\\{sub}", norm(&base))))
+        .filter(|allowed| allowed.len() > 8)
+        .any(|allowed| r == allowed || r.starts_with(&format!("{allowed}\\")))
 }
 
 /// 규칙의 경로 하나를 실제 경로들로 바꾼다. `*` 조각은 그 자리의 하위 폴더 전부.
@@ -62,8 +61,8 @@ pub fn resolve(base: Base, rel: &str, env: &impl Fn(&str) -> Option<String>) -> 
         return Vec::new();
     };
     let root = PathBuf::from(format!("{}\\", root.trim_end_matches('\\')));
-    // TEMP는 사용자가 바꿀 수 있는 값이라, 드라이브 루트·사용자 폴더 등을 가리키면 그 아래를 통째로 지우게 된다
-    if base == Base::Temp && !is_safe_root(&root, env) {
+    // TEMP는 사용자가 바꿀 수 있는 값이라, Windows 임시 폴더가 아니면 이 규칙을 건너뛴다
+    if base == Base::Temp && !is_safe_temp_root(&root, env) {
         return Vec::new();
     }
     let parts: Vec<&str> = rel.split('\\').filter(|p| !p.is_empty()).collect();
@@ -274,19 +273,68 @@ mod tests {
     }
 
     #[test]
-    fn refuses_dangerous_roots() {
+    fn temp_root_must_be_a_windows_temp_folder() {
         let env = |v: &str| match v {
             "USERPROFILE" => Some(r"C:\Users\me".to_string()),
-            "TEMP" => Some(r"C:\Users\me".to_string()),
+            "LOCALAPPDATA" => Some(r"C:\Users\me\AppData\Local".to_string()),
             "SystemRoot" => Some(r"C:\Windows".to_string()),
             _ => None,
         };
-        assert!(!is_safe_root(Path::new(r"C:\"), &env));
-        assert!(!is_safe_root(Path::new(r"C:\Users\me\"), &env));
-        assert!(!is_safe_root(Path::new(r"C:\Windows"), &env));
-        assert!(is_safe_root(
+        // 허용: Windows가 쓰는 임시 폴더
+        assert!(is_safe_temp_root(
             Path::new(r"C:\Users\me\AppData\Local\Temp\"),
             &env
         ));
+        assert!(is_safe_temp_root(
+            Path::new(r"c:\users\ME\appdata\local\temp\2"),
+            &env
+        ));
+        assert!(is_safe_temp_root(Path::new(r"C:\Windows\Temp"), &env));
+        // 거부: 사용자 파일이 있을 수 있는 곳, 루트, 비슷한 이름, 경로 조작
+        assert!(!is_safe_temp_root(Path::new(r"C:\"), &env));
+        assert!(!is_safe_temp_root(Path::new(r"C:\Users\me\"), &env));
+        assert!(!is_safe_temp_root(
+            Path::new(r"C:\Users\me\Documents"),
+            &env
+        ));
+        assert!(!is_safe_temp_root(
+            Path::new(r"C:\Users\me\Desktop\Temp"),
+            &env
+        ));
+        assert!(!is_safe_temp_root(
+            Path::new(r"C:\Users\me\OneDrive\Temp"),
+            &env
+        ));
+        assert!(!is_safe_temp_root(Path::new(r"C:\Windows"), &env));
+        assert!(!is_safe_temp_root(
+            Path::new(r"C:\Users\me\AppData\Local\Temporary"),
+            &env
+        ));
+        assert!(!is_safe_temp_root(
+            Path::new(r"C:\Users\me\AppData\Local\Temp\..\..\..\Documents"),
+            &env
+        ));
+        // 기준 변수가 없으면 아무것도 허용하지 않는다
+        assert!(!is_safe_temp_root(
+            Path::new(r"C:\Users\me\AppData\Local\Temp"),
+            &|_: &str| None
+        ));
+    }
+
+    #[test]
+    fn temp_rule_resolves_nothing_when_temp_points_to_documents() {
+        let docs = std::env::temp_dir().join(format!("robin-docs-{}", std::process::id()));
+        std::fs::create_dir_all(&docs).unwrap();
+        std::fs::write(docs.join("report.docx"), b"x").unwrap();
+        let docs_s = docs.to_string_lossy().into_owned();
+        let env = move |v: &str| match v {
+            "TEMP" => Some(docs_s.clone()),
+            "LOCALAPPDATA" => Some(r"C:\Users\me\AppData\Local".to_string()),
+            "SystemRoot" => Some(r"C:\Windows".to_string()),
+            _ => None,
+        };
+        assert!(resolve(Base::Temp, "", &env).is_empty());
+        assert!(resolve(Base::Temp, "*", &env).is_empty());
+        let _ = std::fs::remove_dir_all(docs);
     }
 }

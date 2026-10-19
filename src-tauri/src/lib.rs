@@ -20,6 +20,14 @@ use tauri::ipc::Channel;
 use tauri::window::{Effect, EffectsBuilder};
 use tauri::{Manager, State};
 
+/// 스캔 한 번의 결과. 정리 요청은 같은 프로그램의 스캔 결과에 있는 항목만 받는다
+/// (다른 프로그램을 스캔한 뒤 이전 화면의 정리 요청이 들어와도 섞이지 않게).
+#[derive(Default)]
+pub(crate) struct ScanSession {
+    app_id: String,
+    items: Vec<Leftover>,
+}
+
 #[derive(Default)]
 pub(crate) struct AppCache {
     apps: Mutex<HashMap<String, InstalledApplication>>,
@@ -30,8 +38,8 @@ pub(crate) struct AppCache {
     sizes: Mutex<HashMap<String, u64>>,
     /// 이번 실행 중에 제거한 프로그램 (제거된 뒤에도 잔여물을 찾을 수 있도록 정보를 남겨 둔다)
     removed: Mutex<Vec<InstalledApplication>>,
-    /// 마지막 스캔 결과의 항목. 탐색기로 열기 같은 요청은 여기 있는 경로만 허용한다.
-    pub(crate) last_scan: Mutex<Vec<Leftover>>,
+    /// 마지막 스캔(어느 프로그램을 스캔했는지 + 결과 항목). 정리·탐색기로 열기는 여기 있는 항목만 허용한다.
+    pub(crate) last_scan: Mutex<ScanSession>,
     /// 마지막으로 읽은 시작 항목. 아이콘·탐색기 요청은 여기 있는 항목만 허용한다.
     startup: Mutex<Vec<StartupEntry>>,
     /// 폴더 분석에서 화면에 보낸 항목 ID → 경로. 화면은 경로 대신 이 ID만 넘긴다.
@@ -336,7 +344,10 @@ async fn scan_leftovers(id: String, cache: State<'_, AppCache>) -> Result<ScanRe
     .map_err(|e| e.to_string())?;
 
     if let Ok(mut last) = cache.last_scan.lock() {
-        *last = report.items.clone();
+        *last = ScanSession {
+            app_id: id,
+            items: report.items.clone(),
+        };
     }
     Ok(report)
 }
@@ -348,7 +359,7 @@ fn reveal_leftover(item_id: String, cache: State<'_, AppCache>) -> Result<(), St
         .last_scan
         .lock()
         .ok()
-        .and_then(|items| items.iter().find(|i| i.id == item_id).cloned())
+        .and_then(|scan| scan.items.iter().find(|i| i.id == item_id).cloned())
         .ok_or("스캔 결과에 없는 항목이에요")?;
     if !matches!(item.kind, LeftoverKind::Folder | LeftoverKind::File) {
         return Err("파일이나 폴더만 열 수 있어요".into());
@@ -400,24 +411,37 @@ fn guard(store: &Store) -> Guard {
 /// 권한이 부족한 항목은 `needsAdmin`으로 남는다 → `clean_leftovers_elevated`.
 #[tauri::command]
 async fn clean_leftovers(
+    app_id: String,
     app_name: String,
     item_ids: Vec<String>,
     force_app_id: Option<String>,
     cache: State<'_, AppCache>,
 ) -> Result<Operation, String> {
-    let items: Vec<Leftover> = cache
-        .last_scan
-        .lock()
-        .map_err(|e| e.to_string())?
-        .iter()
-        .filter(|i| item_ids.contains(&i.id))
-        .cloned()
-        .collect();
+    let items: Vec<Leftover> = {
+        let scan = cache.last_scan.lock().map_err(|e| e.to_string())?;
+        if scan.app_id != app_id {
+            return Err(
+                "다른 프로그램의 스캔 결과예요. 남은 흔적을 다시 찾은 뒤 시도해 주세요".into(),
+            );
+        }
+        scan.items
+            .iter()
+            .filter(|i| item_ids.contains(&i.id))
+            .cloned()
+            .collect()
+    };
     if items.is_empty() {
         return Err("정리할 항목이 없어요. 다시 찾은 뒤 시도해 주세요".into());
     }
-    // 강제 제거는 화면에서 이미 확인했어도 여기서 다시 확인한다 (보안 프로그램·실행 중인 프로그램)
-    if let Some(app) = force_app_id.as_deref().and_then(|id| cache.get(id)) {
+    // 강제 제거는 화면에서 이미 확인했어도 여기서 다시 확인한다 (보안 프로그램·실행 중인 프로그램).
+    // 대상을 찾지 못하면 확인을 건너뛰지 않고 멈춘다.
+    if let Some(force_id) = force_app_id.as_deref() {
+        if force_id != app_id {
+            return Err("강제 제거 대상이 스캔한 프로그램과 달라요".into());
+        }
+        let app = cache
+            .get(force_id)
+            .ok_or("강제 제거할 프로그램을 찾지 못했어요. 목록을 새로고침해 주세요")?;
         let check =
             tauri::async_runtime::spawn_blocking(move || robin_execution::force::check(&app))
                 .await
@@ -436,7 +460,7 @@ async fn clean_leftovers(
         store
             .save(&op)
             .map_err(|e| format!("작업 기록을 만들지 못했어요: {e}"))?;
-        robin_recovery::clean(&store, &mut op, &guard(&store), |_| {});
+        robin_recovery::clean(&store, &mut op, &guard(&store), |_| {})?;
         Ok::<_, String>(op)
     })
     .await
@@ -489,6 +513,13 @@ fn run_worker(mode: &str, op_id: &str, extra: &str) -> Result<Operation, String>
         store.root().display()
     );
     match robin_execution::run_elevated_and_wait(&exe.to_string_lossy(), &args) {
+        // 일부 항목만 실패: 기록에 항목별 이유가 있으니 그대로 보여 준다
+        Ok(Some(code)) if code == worker::EXIT_SOME_FAILED as u32 => {
+            store.load(op_id).map_err(|e| e.to_string())
+        }
+        Ok(Some(code)) if code == worker::EXIT_SAVE_FAILED as u32 => Err(
+            "관리자 권한 작업 중 기록을 저장하지 못해 멈췄어요. 복구 기록을 확인해 주세요".into(),
+        ),
         // 작업자가 기록을 읽지 못하거나 인자를 거부하면 0이 아닌 코드로 끝난다
         Ok(Some(code)) if code != 0 => Err(format!(
             "관리자 권한 작업이 끝나지 못했어요 (코드 {code}). 복구 기록을 확인해 주세요"
@@ -526,7 +557,7 @@ async fn restore_backup(op_id: String, item_ids: Option<Vec<String>>) -> Result<
     tauri::async_runtime::spawn_blocking(move || {
         let store = store()?;
         let mut op = store.load(&op_id).map_err(|e| e.to_string())?;
-        robin_recovery::restore(&store, &mut op, &guard(&store), item_ids.as_deref(), |_| {});
+        robin_recovery::restore(&store, &mut op, &guard(&store), item_ids.as_deref(), |_| {})?;
         Ok(op)
     })
     .await
@@ -634,7 +665,7 @@ async fn clean_missing_startup(ids: Vec<String>) -> Result<Operation, String> {
         store
             .save(&op)
             .map_err(|e| format!("작업 기록을 만들지 못했어요: {e}"))?;
-        robin_recovery::clean(&store, &mut op, &guard(&store), |_| {});
+        robin_recovery::clean(&store, &mut op, &guard(&store), |_| {})?;
         Ok(op)
     })
     .await

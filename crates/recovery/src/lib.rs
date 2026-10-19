@@ -20,6 +20,15 @@ pub use store::Store;
 #[cfg(windows)]
 pub use clean::{Guard, clean, clean_only, restore};
 
+/// 경로나 그 상위 폴더 중 정션·심볼릭 링크가 있는지 (관리자 작업자의 저장소 확인용).
+#[cfg(windows)]
+pub fn path_has_link(path: &std::path::Path) -> bool {
+    std::fs::symlink_metadata(path).is_ok_and(|m| {
+        use std::os::windows::fs::MetadataExt;
+        m.file_attributes() & 0x400 != 0
+    }) || files::reparse_in_parents(path)
+}
+
 /// 새 작업을 만든다 (아직 아무것도 지우지 않음).
 pub fn new_operation(app_name: &str, items: &[robin_scanner::Leftover]) -> Operation {
     let now = std::time::SystemTime::now()

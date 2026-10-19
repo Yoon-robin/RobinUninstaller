@@ -32,6 +32,7 @@ const statusLabels: Record<ItemStatus, { label: string; tone: string }> = {
   failed: { label: "실패", tone: "text-destructive" },
   restored: { label: "복원됨", tone: "text-chart-5" },
   partial: { label: "일부만 정리됨", tone: "text-chart-3" },
+  conflicted: { label: "충돌 있음 · 백업에만 남음", tone: "text-chart-3" },
 }
 
 const kindIcons: Record<LeftoverKind, typeof Folder> = {
@@ -99,6 +100,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
 
   const kept = op.items.filter((i) => isRestorable(i.status)).length
   const restored = op.items.filter((i) => i.status === "restored").length
+  const conflicted = op.items.filter((i) => i.status === "conflicted").length
   const keptBytes = op.items.filter((i) => isRestorable(i.status)).reduce((s, i) => s + (i.sizeBytes ?? 0), 0)
   // 관리자 권한이 없어 되돌리지 못한 항목만 관리자 권한으로 다시 시도한다
   const adminRestoreIds = op.items
@@ -143,6 +145,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
             <p className="text-xs text-muted-foreground">
               {formatDate(op.createdAt)} · 보관 중 {kept}개{keptBytes > 0 && ` (${formatBytes(keptBytes)})`}
               {restored > 0 && ` · 복원 ${restored}개`}
+              {conflicted > 0 && <span className="text-chart-3">{` · 충돌 ${conflicted}개`}</span>}
             </p>
           </div>
         </button>
@@ -234,6 +237,7 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
     if (op) setShown(op)
   }, [op])
   const kept = shown ? shown.items.filter((i) => isRestorable(i.status)).length : 0
+  const conflicted = shown ? shown.items.filter((i) => i.status === "conflicted").length : 0
 
   const confirm = async () => {
     if (!op) return
@@ -257,6 +261,12 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
         <DialogDescription className="leading-relaxed">
           {shown?.appName}의 정리 기록과 보관 중인 항목 {kept}개가 영구히 지워져요.{" "}
           <b className="text-foreground">이후에는 되돌릴 수 없어요.</b>
+          {conflicted > 0 && (
+            <span className="mt-2 block rounded-lg bg-chart-3/10 px-3 py-2 text-chart-3">
+              복원할 때 충돌이 난 항목 {conflicted}개는 일부 파일이 이 백업에만 남아 있어요. 삭제하면 그 파일도
+              사라져요. 항목을 펼쳐 경로를 먼저 확인하세요.
+            </span>
+          )}
         </DialogDescription>
         <div className="mt-2 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={busy}>

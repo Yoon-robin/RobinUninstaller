@@ -46,7 +46,7 @@ export function Hero() {
           className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1 pr-3 pl-1 text-sm text-muted-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-foreground"
         >
           <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">미리보기</span>
-          새 이름 RobinX · 바꾼 건 모두 되돌릴 수 있어요
+          새 이름 RobinX · 남은 흔적은 백업한 뒤 정리해요
           <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
         </motion.a>
 
@@ -64,8 +64,8 @@ export function Hero() {
           className="mx-auto mt-6 max-w-2xl text-lg text-pretty text-muted-foreground sm:text-xl"
         >
           프로그램 제거와 남은 흔적 정리부터 저장공간·시작프로그램 관리까지 한곳에서. 무엇을 왜 바꾸는지{" "}
-          <strong className="font-semibold text-foreground">근거와 함께</strong> 보여 주고, 바꾼 건 모두 기록해 언제든
-          되돌릴 수 있어요.
+          <strong className="font-semibold text-foreground">근거와 함께</strong> 보여 주고, 정리한 흔적은 백업해 두어
+          복구 기록에서 되돌릴 수 있어요.
         </motion.p>
 
         <motion.div {...rise(0.28)} className="mt-9 flex flex-wrap items-center justify-center gap-3">

@@ -135,9 +135,15 @@ export function Features() {
           <b className="text-foreground">검토 필요</b>로 나눠요. 확실한 것만 미리 골라 두고, 내 문서가 섞인 폴더는 따로
           알려 줘요.
         </Card>
-        <Card className="md:col-span-2" icon={Archive} tone="violet" title="백업하고, 언제든 되돌리기" delay={0.08}>
-          파일은 격리 폴더로 옮기고 레지스트리는 내보내 둔 뒤 정리해요. 복구 기록에서 항목별로, 혹은 한 번에 원래 자리로
-          되돌릴 수 있어요.
+        <Card
+          className="md:col-span-2"
+          icon={Archive}
+          tone="violet"
+          title="백업하고, 복구 기록에서 되돌리기"
+          delay={0.08}
+        >
+          남은 흔적은 파일을 격리 폴더로 옮기고 레지스트리를 내보내 둔 뒤 정리해요. 복구 기록에서 항목별로, 혹은 한 번에
+          원래 자리로 되돌릴 수 있어요. 원래 자리에 다른 파일이 생겼으면 덮어쓰지 않고 알려 줘요.
         </Card>
 
         <Card className="md:col-span-2" icon={Hammer} tone="rose" title="언인스톨러가 없어도 강제 제거">

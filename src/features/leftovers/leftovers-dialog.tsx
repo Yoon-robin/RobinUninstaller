@@ -130,6 +130,7 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
                 <Results
                   key={`result-${scan.dataUpdatedAt}`}
                   report={scan.data}
+                  appId={target.id}
                   appName={target.name}
                   forceAppId={force ? target.id : undefined}
                   onClose={onClose}
@@ -267,12 +268,14 @@ type Stage = { step: "review" } | { step: "confirm" } | { step: "cleaning" } | {
 
 function Results({
   report,
+  appId,
   appName,
   forceAppId,
   onClose,
   onLockChange,
 }: {
   report: ScanReport
+  appId: string
   appName: string
   forceAppId?: string
   onClose: () => void
@@ -286,7 +289,7 @@ function Results({
   }, [stage.step, onLockChange])
   const strong = report.items.filter((i) => i.confidence === "strong")
   const review = report.items.filter((i) => i.confidence === "review")
-  // 확실한 항목만 미리 선택한다.
+  // 근거가 강한 항목(등록 정보가 직접 가리키는 위치 등)만 미리 선택한다.
   const [selected, setSelected] = useState<Set<string>>(() => new Set(strong.map((i) => i.id)))
   useEffect(() => setSelected(new Set(strong.map((i) => i.id))), [report])
 
@@ -300,7 +303,7 @@ function Results({
     setStage({ step: "cleaning" })
     setCleanError(null)
     try {
-      const op = await recoveryApi.clean(appName, [...selected], forceAppId)
+      const op = await recoveryApi.clean(appId, appName, [...selected], forceAppId)
       setStage({ step: "done", op })
     } catch (e) {
       setCleanError(String(e))
@@ -359,7 +362,7 @@ function Results({
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-5 py-2.5 text-xs">
-            <SummaryChip tone="primary" label="확실" value={strong.length} />
+            <SummaryChip tone="primary" label="근거 강함" value={strong.length} />
             <SummaryChip tone="warn" label="검토 필요" value={review.length} />
             <span className="text-muted-foreground">· {report.durationMs}ms</span>
             {report.protectedSkipped > 0 && (
@@ -374,7 +377,7 @@ function Results({
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <Group
-              title="확실한 흔적"
+              title="근거가 강한 흔적"
               hint="강한 근거가 있어 미리 선택했어요"
               items={strong}
               offset={0}

@@ -24,6 +24,32 @@ impl Store {
         ))
     }
 
+    /// 관리자 작업자가 받은 저장소 경로가 이 앱의 저장소 모양인지:
+    /// `<사용자 폴더 루트>\<계정>\AppData\Local\RobinX\<sub>` 정확히 그대로(대소문자 무시), `.`/`..` 없음.
+    /// 문자열 끝만 보는 검사는 `D:\아무데나\RobinX\backups` 같은 곳도 통과시킨다.
+    pub fn is_app_store_path(path: &Path, users_root: &str, sub: &str) -> bool {
+        let norm = |s: &str| s.trim().trim_end_matches('\\').to_lowercase();
+        let (p, users) = (norm(&path.to_string_lossy()), norm(users_root));
+        if users.len() < 4 {
+            return false;
+        }
+        let Some(rest) = p.strip_prefix(&format!("{users}\\")) else {
+            return false;
+        };
+        let parts: Vec<&str> = rest.split('\\').collect();
+        let app = robin_core::APP_DIR.to_lowercase();
+        matches!(
+            parts.as_slice(),
+            [account, "appdata", "local", a, s]
+                if !account.is_empty()
+                    && *account != "."
+                    && *account != ".."
+                    && !account.contains(':')
+                    && *a == app
+                    && *s == sub.to_lowercase()
+        )
+    }
+
     pub fn root(&self) -> &Path {
         &self.root
     }
@@ -124,10 +150,16 @@ impl Store {
 }
 
 /// 보관 기간이 지난 작업. 순수 함수.
+/// 복원하다 충돌이 난 항목이 있으면(그 파일은 백업에만 있다) 기간이 지나도 자동으로 지우지 않는다.
 pub fn expired_ids(ops: &[Operation], days: u32, now: u64) -> Vec<String> {
     let limit = u64::from(days) * 24 * 60 * 60;
     ops.iter()
         .filter(|op| now.saturating_sub(op.created_at) > limit)
+        .filter(|op| {
+            !op.items
+                .iter()
+                .any(|i| i.status == crate::model::ItemStatus::Conflicted)
+        })
         .map(|op| op.id.clone())
         .collect()
 }
@@ -143,6 +175,28 @@ pub fn is_valid_id(id: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn store_path_must_be_the_app_folder_under_a_user_profile() {
+        use super::Store;
+        use std::path::Path;
+        let ok = |p: &str| Store::is_app_store_path(Path::new(p), r"C:\Users", "backups");
+        assert!(ok(r"C:\Users\me\AppData\Local\RobinX\backups"));
+        assert!(ok(r"c:\users\Me\appdata\local\robinx\BACKUPS\"));
+        assert!(!ok(r"D:\evil\RobinX\backups"));
+        assert!(!ok(r"C:\Users\me\Documents\AppData\Local\RobinX\backups"));
+        assert!(!ok(
+            r"C:\Users\me\AppData\Local\RobinX\backups\..\..\..\Desktop"
+        ));
+        assert!(!ok(r"C:\Users\..\AppData\Local\RobinX\backups"));
+        assert!(!ok(r"C:\Users\me\AppData\Local\RobinX\startup"));
+        assert!(!ok(r"C:\Users\me\AppData\Local\RobinUninstaller\backups"));
+        assert!(!Store::is_app_store_path(
+            Path::new(r"C:\me\AppData\Local\RobinX\backups"),
+            "C:",
+            "backups"
+        ));
+    }
+
     use super::*;
 
     #[test]

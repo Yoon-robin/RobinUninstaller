@@ -158,7 +158,8 @@ mod imp {
                 i.location,
                 i.error.clone().unwrap_or_default()
             )
-        });
+        })
+        .expect("작업 기록 저장");
 
         let mut ok = true;
         let mut check = |name: &str, pass: bool| {
@@ -198,7 +199,8 @@ mod imp {
                 i.location,
                 i.error.clone().unwrap_or_default()
             )
-        });
+        })
+        .expect("작업 기록 저장");
         let after: Vec<String> = strong.iter().map(snapshot).collect();
         check(
             "복원 후 모두 Restored",
@@ -212,7 +214,7 @@ mod imp {
 
         // 복원한 것을 다시 복원하려 하면 아무 일도 없어야 함 (상태가 Restored)
         let mut again = store.load(&op.id).unwrap();
-        robin_recovery::restore(&store, &mut again, &guard, None, |_| {});
+        robin_recovery::restore(&store, &mut again, &guard, None, |_| {}).expect("작업 기록 저장");
         check(
             "두 번 복원해도 안전",
             again

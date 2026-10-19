@@ -43,12 +43,24 @@ impl From<std::io::Error> for FsError {
 }
 
 /// 정션·심볼릭 링크는 다른 위치를 가리키므로 다루지 않는다.
+/// 대상 자신뿐 아니라 **상위 폴더**가 링크여도 거부한다: 검사한 경로와 실제로 옮겨지는 위치가 달라질 수 있다.
 pub fn check(path: &Path) -> Result<(), FsError> {
     let meta = std::fs::symlink_metadata(path)?;
-    if meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+    if meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 || reparse_in_parents(path) {
         return Err(FsError::ReparsePoint);
     }
     Ok(())
+}
+
+/// 상위 폴더(드라이브 루트 제외) 중 하나라도 정션·심볼릭 링크인지. 없는 폴더는 건너뛴다.
+pub fn reparse_in_parents(path: &Path) -> bool {
+    path.ancestors()
+        .skip(1)
+        .filter(|p| p.parent().is_some())
+        .any(|p| {
+            std::fs::symlink_metadata(p)
+                .is_ok_and(|m| m.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0)
+        })
 }
 
 fn wide(path: &Path) -> Vec<u16> {
@@ -180,14 +192,41 @@ fn merge(src: &Path, dest: &Path, kept: &mut Vec<String>) -> Result<(), FsError>
             merge(&entry.path(), &dest.join(entry.file_name()), kept)?;
         }
     } else if dest.exists() {
-        let same = std::fs::metadata(dest).is_ok_and(|d| d.len() == meta.len());
-        if !same {
+        // 크기가 같아도 내용이 다를 수 있다: 바이트까지 같아야 "이미 돌아와 있음"으로 본다
+        if !same_contents(src, dest) {
             kept.push(dest.to_string_lossy().into_owned());
         }
     } else {
         std::fs::copy(src, dest)?;
     }
     Ok(())
+}
+
+/// 두 파일의 내용이 바이트 단위로 같은지. 읽지 못하면 다르다고 본다(덮어쓰지 않는 쪽).
+fn same_contents(a: &Path, b: &Path) -> bool {
+    use std::io::Read;
+    let (Ok(ma), Ok(mb)) = (std::fs::metadata(a), std::fs::metadata(b)) else {
+        return false;
+    };
+    if !mb.is_file() || ma.len() != mb.len() {
+        return false;
+    }
+    let (Ok(mut fa), Ok(mut fb)) = (std::fs::File::open(a), std::fs::File::open(b)) else {
+        return false;
+    };
+    let (mut ba, mut bb) = (vec![0u8; 64 * 1024], vec![0u8; 64 * 1024]);
+    loop {
+        let n = match fa.read(&mut ba) {
+            Ok(n) => n,
+            Err(_) => return false,
+        };
+        if n == 0 {
+            return true;
+        }
+        if fb.read_exact(&mut bb[..n]).is_err() || ba[..n] != bb[..n] {
+            return false;
+        }
+    }
 }
 
 fn remove_tree(path: &Path) -> Result<(), FsError> {

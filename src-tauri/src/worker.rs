@@ -12,6 +12,8 @@
 //! ```
 //!
 //! 시작 항목(Run 키·시작 폴더·예약 작업)도 마찬가지로 ID만 받고, 목록을 다시 읽어 그 ID의 항목을 찾는다.
+//!
+//! 종료 코드: 0 = 다 끝남, 1 = 일부 항목을 처리하지 못함(이유는 기록에), 2 = 인자 거부, 3 = 기록 저장 실패.
 
 use std::path::PathBuf;
 
@@ -24,6 +26,11 @@ pub const STORAGE: &str = "--elevated-storage";
 pub const DELETE: &str = "--elevated-delete";
 /// 복원할 항목 번호 목록 (`--elevated-restore` 뒤에 선택으로 붙는다)
 pub const ITEMS: &str = "--items";
+
+/// 일부 항목을 처리하지 못함. 기록은 저장됐으므로 앱은 기록을 읽어 항목별 이유를 보여 준다.
+pub const EXIT_SOME_FAILED: i32 = 1;
+/// 작업 기록을 저장하지 못해 멈춤.
+pub const EXIT_SAVE_FAILED: i32 = 3;
 
 /// 작업자 모드가 아니면 None. 맞으면 작업을 마친 뒤 종료 코드.
 pub fn main() -> Option<i32> {
@@ -44,15 +51,16 @@ pub fn main() -> Option<i32> {
     Some(run(mode, &args[1..]).unwrap_or(2))
 }
 
-/// 저장소 경로 인자(`--store <경로>`)가 RobinX 폴더 아래 정해진 곳인지 확인한다.
-fn store_arg(rest: &[String], expected_suffix: &str) -> Option<PathBuf> {
+/// 저장소 경로 인자(`--store <경로>`)가 정말 이 앱의 저장소인지 확인한다.
+/// - 모양: `<사용자 폴더 루트>\<계정>\AppData\Local\RobinX\<sub>` 그대로 (다른 계정으로 UAC를 허용해도 같은 루트)
+/// - 경로 어디에도 정션·심볼릭 링크가 없어야 한다 (모양은 맞지만 다른 곳으로 이어지는 경우를 막는다)
+fn store_arg(rest: &[String], sub: &str) -> Option<PathBuf> {
     let root = match rest.first().map(String::as_str) {
         Some("--store") => PathBuf::from(rest.get(1)?),
         _ => return None,
     };
-    root.to_string_lossy()
-        .to_lowercase()
-        .ends_with(expected_suffix)
+    let users_root = robin_scanner::protect::KnownFolders::from_env().users_root;
+    (Store::is_app_store_path(&root, &users_root, sub) && !robin_recovery::path_has_link(&root))
         .then_some(root)
 }
 
@@ -67,7 +75,7 @@ fn run_startup(rest: &[String]) -> Option<i32> {
         return None;
     }
     // 기록 위치는 항상 ...\RobinX\startup 이어야 한다
-    let history = robin_startup::History::new(store_arg(&rest[2..], r"\robinx\startup")?);
+    let history = robin_startup::History::new(store_arg(&rest[2..], "startup")?);
     Some(match robin_startup::set_enabled(&history, id, enabled) {
         Ok(_) => 0,
         Err(_) => 1,
@@ -95,7 +103,7 @@ fn run_storage(rest: &[String]) -> Option<i32> {
     {
         return None;
     }
-    let dir = store_arg(&rest[2..], r"\robinx\storage")?;
+    let dir = store_arg(&rest[2..], "storage")?;
     let results = robin_storage::clean(&ids, allow_irreversible);
     std::fs::create_dir_all(&dir).ok()?;
     std::fs::write(dir.join(STORAGE_RESULT), serde_json::to_vec(&results).ok()?).ok()?;
@@ -108,7 +116,7 @@ fn run(mode: &str, rest: &[String]) -> Option<i32> {
         return None;
     }
     // 저장소 위치는 항상 ...\RobinX\backups 여야 한다
-    let store_root = store_arg(&rest[1..], r"\robinx\backups")?;
+    let store_root = store_arg(&rest[1..], "backups")?;
     // 선택: --items 0,3,5 (복원할 항목 번호)
     let indices: Option<Vec<usize>> = match rest.get(3).map(String::as_str) {
         None => None,
@@ -143,16 +151,32 @@ fn run(mode: &str, rest: &[String]) -> Option<i32> {
             .filter(|(_, item)| matches!(item.status, ItemStatus::NeedsAdmin | ItemStatus::Partial))
             .map(|(i, _)| i)
             .collect();
-        robin_recovery::clean_only(&store, &mut op, &guard, &targets, |_| {});
+        if robin_recovery::clean_only(&store, &mut op, &guard, &targets, |_| {}).is_err() {
+            return Some(EXIT_SAVE_FAILED);
+        }
+        let unfinished = targets.iter().any(|&i| {
+            !matches!(
+                op.items[i].status,
+                ItemStatus::Removed | ItemStatus::AlreadyGone
+            )
+        });
+        Some(if unfinished { EXIT_SOME_FAILED } else { 0 })
     } else {
         let ids: Option<Vec<String>> = indices.map(|idx| {
             idx.iter()
                 .filter_map(|&i| op.items.get(i).map(|item| item.id.clone()))
                 .collect()
         });
-        robin_recovery::restore(&store, &mut op, &guard, ids.as_deref(), |_| {});
+        if robin_recovery::restore(&store, &mut op, &guard, ids.as_deref(), |_| {}).is_err() {
+            return Some(EXIT_SAVE_FAILED);
+        }
+        let failed = op.items.iter().any(|i| {
+            i.error
+                .as_deref()
+                .is_some_and(|e| e.starts_with("복원 실패"))
+        });
+        Some(if failed { EXIT_SOME_FAILED } else { 0 })
     }
-    Some(0)
 }
 
 /// 작업자가 정리를 요청한 사용자와 같은 계정인지. 다른 관리자 계정으로 UAC를 허용하면 작업자의
@@ -169,6 +193,6 @@ fn run_delete(rest: &[String]) -> Option<i32> {
     if !robin_recovery::store::is_valid_id(op_id) || rest.len() != 3 {
         return None;
     }
-    let store = Store::new(store_arg(&rest[1..], r"\robinx\backups")?);
+    let store = Store::new(store_arg(&rest[1..], "backups")?);
     Some(if store.delete(op_id).is_ok() { 0 } else { 1 })
 }

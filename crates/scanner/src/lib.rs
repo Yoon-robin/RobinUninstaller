@@ -86,16 +86,20 @@ pub fn finalize(
         }
     }
 
-    let parents: Vec<String> = merged
+    // 상위 폴더 후보가 있으면 그 안의 후보는 상위에 합친다. 단, 상위가 더 약하면(예: 이름만 맞는 게시자 폴더 안의
+    // 등록된 설치 폴더) 하위를 따로 남겨, 근거가 강한 항목이 "검토"에 묻히지 않게 한다.
+    let parents: Vec<(String, Confidence)> = merged
         .iter()
         .filter(|i| i.kind == LeftoverKind::Folder && i.confidence != Confidence::Low)
-        .map(|i| normalize_path(&i.location))
+        .map(|i| (normalize_path(&i.location), i.confidence))
         .collect();
     merged.retain(|i| {
         !is_fs(i.kind)
-            || !parents
-                .iter()
-                .any(|p| *p != normalize_path(&i.location) && is_within(&i.location, p))
+            || !parents.iter().any(|(p, conf)| {
+                *p != normalize_path(&i.location)
+                    && is_within(&i.location, p)
+                    && *conf >= i.confidence
+            })
     });
     merged.retain(|i| i.confidence != Confidence::Low);
     merged.sort_by(|a, b| {
@@ -277,6 +281,41 @@ mod tests {
                 .iter()
                 .all(|i| i.confidence != Confidence::Strong)
         );
+    }
+
+    #[test]
+    fn weaker_parent_keeps_stronger_child_separate() {
+        let report = finalize(
+            "x".into(),
+            vec![
+                item(
+                    LeftoverKind::Folder,
+                    r"C:\Data\Vendor",
+                    vec![Evidence::PublisherAndProduct],
+                ),
+                item(
+                    LeftoverKind::Folder,
+                    r"C:\Data\Vendor\Acme",
+                    vec![Evidence::InstallLocation],
+                ),
+                item(
+                    LeftoverKind::Folder,
+                    r"C:\Data\Vendor\Logs",
+                    vec![Evidence::ExactName],
+                ),
+            ],
+            0,
+            0,
+        );
+        // 이름만 맞는 상위(검토) 안의 설치 폴더(강함)는 따로 남고, 같은 수준(검토)의 하위는 상위에 합쳐진다
+        let strong: Vec<_> = report
+            .items
+            .iter()
+            .filter(|i| i.confidence == Confidence::Strong)
+            .collect();
+        assert_eq!(strong.len(), 1);
+        assert!(strong[0].location.ends_with("Acme"));
+        assert!(!report.items.iter().any(|i| i.location.ends_with("Logs")));
     }
 
     #[test]

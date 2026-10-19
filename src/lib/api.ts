@@ -157,6 +157,8 @@ export type ItemStatus =
   | "restored"
   /** 일부만 정리됨: 백업은 온전하고 원래 자리에 일부가 남음 (다시 정리하거나 되돌릴 수 있다) */
   | "partial"
+  /** 되돌렸지만 내용이 다른 파일이 있어 일부는 덮어쓰지 않음. 그 파일은 백업에만 있다 */
+  | "conflicted"
 
 export interface OperationItem {
   id: string
@@ -177,8 +179,9 @@ export interface Operation {
 
 export const recoveryApi = {
   /** `forceAppId`: 강제 제거 중이면 대상 프로그램 ID (등록 정보가 사라지면 "제거한 프로그램"으로 옮긴다). */
-  clean: (appName: string, itemIds: string[], forceAppId?: string) =>
-    invoke<Operation>("clean_leftovers", { appName, itemIds, forceAppId: forceAppId ?? null }),
+  /** `appId`: 스캔한 프로그램. 엔진은 같은 프로그램의 마지막 스캔 결과에 있는 항목만 정리한다. */
+  clean: (appId: string, appName: string, itemIds: string[], forceAppId?: string) =>
+    invoke<Operation>("clean_leftovers", { appId, appName, itemIds, forceAppId: forceAppId ?? null }),
   cleanElevated: (opId: string, forceAppId?: string) =>
     invoke<Operation>("clean_leftovers_elevated", { opId, forceAppId: forceAppId ?? null }),
   list: () => invoke<Operation[]>("list_backups"),

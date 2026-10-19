@@ -143,14 +143,23 @@ fn retryable(status: ItemStatus) -> bool {
 }
 
 /// 처리할 수 있는 모든 항목을 정리한다 (이미 Removed/Restored 등인 항목은 건너뜀). `on_item`은 진행 상황 알림.
+///
+/// 항목 하나를 처리할 때마다 기록을 저장한다. **기록을 저장하지 못하면 거기서 멈추고** 오류를 돌려준다:
+/// 기록 없이 계속 지우면 무엇을 바꿨는지 알 수 없게 된다.
 pub fn clean(
     store: &Store,
     op: &mut Operation,
     guard: &Guard,
     on_item: impl FnMut(&OperationItem),
-) {
+) -> Result<(), String> {
     let all: Vec<usize> = (0..op.items.len()).collect();
-    clean_only(store, op, guard, &all, on_item);
+    clean_only(store, op, guard, &all, on_item)
+}
+
+fn save_or_stop(store: &Store, op: &Operation) -> Result<(), String> {
+    store
+        .save(op)
+        .map_err(|e| format!("작업 기록을 저장하지 못해 멈췄어요. 복구 기록을 확인해 주세요: {e}"))
 }
 
 /// `indices`의 항목만 정리한다 (관리자 작업자는 관리자 권한이 필요했던 항목만 넘긴다).
@@ -160,7 +169,7 @@ pub fn clean_only(
     guard: &Guard,
     indices: &[usize],
     mut on_item: impl FnMut(&OperationItem),
-) {
+) -> Result<(), String> {
     // 레지스트리 값 → 키 → 파일 → 폴더 순서
     let mut order: Vec<usize> = indices
         .iter()
@@ -204,9 +213,10 @@ pub fn clean_only(
             }
         }
         let snapshot = op.items[i].clone();
-        let _ = store.save(op);
+        save_or_stop(store, op)?;
         on_item(&snapshot);
     }
+    Ok(())
 }
 
 type ItemError = (ItemStatus, Option<String>);
@@ -414,11 +424,12 @@ pub fn restore(
     guard: &Guard,
     ids: Option<&[String]>,
     mut on_item: impl FnMut(&OperationItem),
-) {
+) -> Result<(), String> {
     let op_dir = store.dir(&op.id);
     for i in restore_order(op) {
         let item = &op.items[i];
-        let restorable = matches!(item.status, ItemStatus::Removed | ItemStatus::Partial);
+        let restorable = matches!(item.status, ItemStatus::Removed | ItemStatus::Partial)
+            || moved_but_not_recorded(item, &op_dir);
         if !restorable || ids.is_some_and(|ids| !ids.contains(&item.id)) {
             continue;
         }
@@ -437,9 +448,9 @@ pub fn restore(
                 item.error = None;
             }
             Ok(kept) => {
-                item.status = ItemStatus::Restored;
+                item.status = ItemStatus::Conflicted;
                 item.error = Some(format!(
-                    "되돌렸지만 이미 다른 내용이 있는 {}개는 덮어쓰지 않았어요: {}",
+                    "되돌렸지만 원래 자리에 내용이 다른 파일 {}개가 있어 덮어쓰지 않았어요. 백업에만 남아 있어요: {}",
                     kept.len(),
                     kept.join(", ")
                 ));
@@ -447,9 +458,17 @@ pub fn restore(
             Err(m) => item.error = Some(format!("복원 실패: {m}")),
         }
         let snapshot = item.clone();
-        let _ = store.save(op);
+        save_or_stop(store, op)?;
         on_item(&snapshot);
     }
+    Ok(())
+}
+
+/// 백업으로 옮긴 직후 기록 저장이 실패해 상태가 "대기"로 남은 항목. 백업 위치는 옮기기 전에 먼저 기록하므로,
+/// 격리 폴더에 데이터가 있으면 실제로 옮겨진 것이다 (레지스트리는 지우기 전에 백업을 쓰므로 여기서 다루지 않는다).
+fn moved_but_not_recorded(item: &OperationItem, op_dir: &Path) -> bool {
+    item.status == ItemStatus::Pending
+        && matches!(&item.backup, Some(Backup::Quarantine { path }) if op_dir.join(path).exists())
 }
 
 /// 항목 하나를 되돌린다. 덮어쓰지 않고 남긴 것의 목록을 돌려준다.

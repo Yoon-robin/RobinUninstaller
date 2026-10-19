@@ -127,10 +127,10 @@ export function FinalCta() {
           />
           <img src={LOGO} alt="" className="relative mx-auto size-16 rounded-2xl shadow-xl shadow-primary/30" />
           <h2 className="relative mt-6 text-3xl font-bold tracking-tight text-balance sm:text-4xl">
-            이제 마음 놓고 지우세요
+            지우기 전에, 근거부터 확인하세요
           </h2>
           <p className="relative mx-auto mt-4 max-w-xl text-pretty text-muted-foreground sm:text-lg">
-            남은 흔적까지 챙기고, 실수는 되돌릴 수 있게. RobinX의 개발 과정을 GitHub에서 함께 지켜봐 주세요.
+            왜 지우는지 보여 주고, 정리한 흔적은 백업해 두어요. RobinX의 개발 과정을 GitHub에서 함께 지켜봐 주세요.
           </p>
           <div className="relative mt-8 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg" className="h-12 rounded-xl px-6 text-base shadow-lg shadow-primary/25">

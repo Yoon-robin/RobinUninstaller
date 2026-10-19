@@ -81,7 +81,8 @@ mod imp {
                 i.location,
                 i.error.clone().unwrap_or_default()
             )
-        });
+        })
+        .expect("작업 기록 저장");
         check(
             "확실 항목 모두 정리됨",
             op.items.iter().all(|i| i.status == ItemStatus::Removed),
@@ -89,7 +90,8 @@ mod imp {
         check("프로그램 목록에서 사라짐", find_fixture().is_none());
 
         let mut reloaded = store.load(&op.id).expect("매니페스트");
-        robin_recovery::restore(&store, &mut reloaded, &guard, None, |_| {});
+        robin_recovery::restore(&store, &mut reloaded, &guard, None, |_| {})
+            .expect("작업 기록 저장");
         check(
             "모두 복원됨",
             reloaded

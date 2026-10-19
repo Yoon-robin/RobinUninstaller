@@ -61,7 +61,11 @@ const screens = [
   { key: "programs", label: "프로그램", caption: "설치된 프로그램을 크기·설치일·형식과 함께 보여 줘요." },
   { key: "programs-grid", label: "카드 보기", caption: "아이콘 위주로 훑어보고 싶을 땐 카드 보기로." },
   { key: "leftovers", label: "남은 흔적", caption: "확실한 흔적은 미리 고르고, 애매한 건 검토하도록 나눠요." },
-  { key: "restore", label: "복구 기록", caption: "정리한 작업마다 기록이 남아 언제든 되돌릴 수 있어요." },
+  {
+    key: "restore",
+    label: "복구 기록",
+    caption: "정리한 흔적은 작업마다 백업이 남아, 보관하는 동안 되돌릴 수 있어요.",
+  },
   { key: "startup", label: "시작프로그램", caption: "켜고 끄기만 할 뿐 등록 정보는 지우지 않아요." },
   { key: "storage", label: "저장공간", caption: "다시 만들어지는 캐시만 골라 공간을 확보해요." },
 ]

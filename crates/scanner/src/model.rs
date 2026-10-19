@@ -63,6 +63,26 @@ impl Evidence {
             Evidence::InUserFolder => -60,
         }
     }
+
+    /// 이 프로그램 것임을 **직접** 보여 주는 근거 (등록 정보가 가리키는 위치·키).
+    /// 이름이 같다거나 설치하는 동안 생겼다는 것만으로는 다른 프로그램 것일 수 있다.
+    pub fn is_ownership(&self) -> bool {
+        matches!(
+            self,
+            Evidence::InstallLocation
+                | Evidence::PointsIntoInstallLocation
+                | Evidence::UninstallEntry
+                | Evidence::MsiProductCode
+        )
+    }
+
+    /// 이름이 맞는다는 근거 (설치 추적과 함께 있으면 서로 독립적인 두 근거가 된다)
+    fn is_name_match(&self) -> bool {
+        matches!(
+            self,
+            Evidence::PublisherAndProduct | Evidence::PublisherAndPartialName | Evidence::ExactName
+        )
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Serialize, Deserialize)]
@@ -98,13 +118,21 @@ pub fn score(evidence: &[Evidence]) -> i32 {
     (best + rest).min(100) + penalties
 }
 
-/// 다른 프로그램과 공유 중이면 점수와 상관없이 "확실"로 올리지 않는다.
+/// 분류. "강함"(미리 선택)은 점수만으로 주지 않는다:
+/// - 소유 근거(등록된 설치 폴더·제품 코드 등)가 있거나,
+/// - 설치 추적 기록과 이름 일치처럼 **서로 독립적인 두 근거**가 함께 있어야 한다.
+///
+/// 이름만 맞거나(같은 게시자의 다른 제품일 수 있음) 설치하는 동안 생겼다는 것만으로는(그 사이 다른 프로그램이
+/// 만든 것일 수 있음) 사용자가 확인하도록 "검토"로 둔다. 다른 프로그램과 공유 중이면 점수와 상관없이 올리지 않는다.
 pub fn classify(evidence: &[Evidence]) -> Confidence {
     let s = score(evidence);
     let shared = evidence
         .iter()
         .any(|e| matches!(e, Evidence::SharedWithOtherApp { .. }));
-    if s >= STRONG_THRESHOLD && !shared {
+    let owned = evidence.iter().any(Evidence::is_ownership);
+    let corroborated = evidence.contains(&Evidence::TrackedInstall)
+        && evidence.iter().any(Evidence::is_name_match);
+    if s >= STRONG_THRESHOLD && !shared && (owned || corroborated) {
         Confidence::Strong
     } else if s >= REVIEW_THRESHOLD {
         Confidence::Review
@@ -210,11 +238,27 @@ mod tests {
     use super::*;
 
     #[test]
-    fn strong_needs_a_strong_signal() {
+    fn strong_needs_ownership_or_two_independent_signals() {
         assert_eq!(classify(&[Evidence::InstallLocation]), Confidence::Strong);
+        assert_eq!(classify(&[Evidence::UninstallEntry]), Confidence::Strong);
+        // 이름만 맞으면 같은 게시자의 다른 제품일 수 있다
         assert_eq!(
             classify(&[Evidence::PublisherAndProduct]),
+            Confidence::Review
+        );
+        // 설치 전후 비교만으로는 그 사이 다른 프로그램이 만든 것일 수 있다
+        assert_eq!(classify(&[Evidence::TrackedInstall]), Confidence::Review);
+        // 둘이 함께면 서로 독립적인 근거
+        assert_eq!(
+            classify(&[Evidence::TrackedInstall, Evidence::PublisherAndProduct]),
             Confidence::Strong
+        );
+        assert_eq!(
+            classify(&[
+                Evidence::PublisherAndProduct,
+                Evidence::EmptyPublisherFolder
+            ]),
+            Confidence::Review
         );
         assert_eq!(classify(&[Evidence::ExactName]), Confidence::Review);
         // 약한 근거를 여러 개 모아도 확실이 되지 않는다
