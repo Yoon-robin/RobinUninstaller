@@ -119,7 +119,9 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
           <div className="text-xs leading-relaxed">
             <p className="font-medium">안전하게 정리해요</p>
-            <p className="text-muted-foreground">남은 흔적은 백업한 뒤 정리해서 복구 기록에서 되돌릴 수 있어요.</p>
+            <p className="text-muted-foreground">
+              남은 흔적은 백업한 뒤 정리해요. 백업을 보관하는 동안 복구 기록에서 되돌릴 수 있어요.
+            </p>
           </div>
         </div>
       </SidebarFooter>

@@ -90,7 +90,7 @@ export function TrackingPage() {
         <h1 className="text-2xl font-bold tracking-tight">설치 추적</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           설치하기 전과 후를 비교해 새로 생긴 파일·폴더·레지스트리를 기록해 둬요. 나중에 그 프로그램을 제거하면 이
-          기록을 가장 강한 근거로 써서 남은 흔적을 빠짐없이 찾아요. 추적은 읽기만 하고 아무것도 바꾸지 않아요.
+          기록을 가장 강한 근거로 써서 남은 흔적을 더 정확히 찾아요. 추적은 읽기만 하고 아무것도 바꾸지 않아요.
         </p>
       </FadeUp>
 
