@@ -1,5 +1,7 @@
 # RobinUninstaller 웹사이트
 
+주소: https://yoon-robin.github.io/RobinUninstaller/
+
 소개용 랜딩 페이지. React + Vite + Tailwind CSS v4 + shadcn/ui + Motion. 앱과 같은 청록 다크 테마와 Pretendard 글꼴을 쓴다.
 앱과는 따로 설치하는 별도 프로젝트다 (`website/` 안에서 명령 실행).
 
@@ -7,8 +9,9 @@
 pnpm install
 pnpm dev                                   # 개발 서버
 pnpm build                                 # dist/ 에 정적 파일
-BASE_PATH=/RobinUninstaller/ pnpm build    # GitHub Pages(프로젝트 페이지)용
 ```
+
+배포: 저장소 루트에서 `bash website/scripts/deploy.sh` → 빌드해서 `gh-pages` 브랜치에 올린다 (GitHub Actions 안 씀).
 
 ## 앱 화면 (public/shots)
 
