@@ -88,7 +88,7 @@ export function Tools() {
     <section id="tools" className="mt-20 bg-night py-20 text-night-foreground sm:mt-28 sm:py-24 lg:mt-32 lg:py-28">
       <div className="frame">
         <Reveal>
-          <h2 className="section-title max-w-[16ch]">정리에 필요한 도구가 한곳에</h2>
+          <h2 className="section-title max-w-[16ch]">RobinX로 할 수 있는 일</h2>
         </Reveal>
 
         <div className="mt-14 grid gap-12 lg:grid-cols-12 lg:gap-8">

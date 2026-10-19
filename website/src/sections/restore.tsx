@@ -34,7 +34,7 @@ export function Restore() {
         </Reveal>
         <Reveal delay={0.08}>
           <p className="mt-8 max-w-[36ch] text-lead leading-snug">
-            지우는 프로그램이라 이 목록이 가장 중요해요. 조건부는 백업이 남아 있을 때만 된다는 뜻이에요.
+            조건부는 백업이 남아 있고 원래 자리에 같은 이름이 새로 생기지 않았을 때만 되돌린다는 뜻이에요.
           </p>
         </Reveal>
         <ul className="mt-12 flex flex-col">

@@ -33,7 +33,7 @@ export function Status() {
           </Reveal>
           <Reveal delay={0.08} className="lg:col-span-6 lg:pt-3">
             <p className="max-w-[40ch] text-lead leading-snug">
-              확인하지 않은 것을 됐다고 말하지 않아요. 시험은 실제 프로그램이 아니라 가짜 테스트 앱으로만 해요.
+              지금까지는 직접 만든 가짜 테스트 앱으로만 시험했어요. 실제 프로그램으로 하는 검증은 아직 진행 중이에요.
             </p>
           </Reveal>
         </div>
