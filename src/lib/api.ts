@@ -229,6 +229,8 @@ export const isMachineStartup = (e: StartupEntry) => e.needsAdmin
 
 export const startupApi = {
   list: () => invoke<StartupEntry[]>("list_startup_items"),
+  /** 관리자 권한(UAC)으로만 보이는 예약 작업. 읽기만 한다. */
+  hiddenTasks: () => invoke<StartupEntry[]>("list_hidden_startup_tasks"),
   icon: (id: string) => invoke<string | null>("get_startup_icon", { id }),
   setEnabled: (id: string, enabled: boolean) => invoke<StartupEntry>("set_startup_enabled", { id, enabled }),
   reveal: (id: string) => invoke<void>("reveal_startup_item", { id }),

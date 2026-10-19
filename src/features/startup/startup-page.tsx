@@ -29,6 +29,7 @@ import { Switch } from "@/components/ui/switch"
 import { FilterChips } from "@/features/programs/segmented"
 import { StatCard } from "@/features/programs/stat-card"
 import { MissingCleanupDialog } from "./missing-cleanup-dialog"
+import { HiddenTasksCard } from "./hidden-tasks"
 import { ErrorState } from "@/components/error-state"
 
 const QUERY_KEY = ["startup-items"]
@@ -296,6 +297,10 @@ export function StartupPage() {
             </ul>
           )}
         </section>
+      </FadeUp>
+
+      <FadeUp>
+        <HiddenTasksCard />
       </FadeUp>
 
       <MissingCleanupDialog entries={all} open={cleanupOpen} onClose={() => setCleanupOpen(false)} />

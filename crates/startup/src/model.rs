@@ -7,10 +7,10 @@
 //!
 //! 작업 스케줄러의 작업(로그인·부팅 트리거)은 `StartupApproved`가 아니라 작업 자체의 `Enabled` 값만 바꾼다.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 /// 시작 항목이 등록된 곳.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum StartupSource {
     /// `HKCU\...\Run`
@@ -75,7 +75,7 @@ impl StartupSource {
 }
 
 /// 시작 항목 하나.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct StartupEntry {
     /// 등록 위치와 이름으로 만든 16자리 16진수 ID

@@ -753,6 +753,38 @@ async fn set_startup_enabled(
     Ok(entry)
 }
 
+/// 일반 사용자에게 안 보이는 예약 작업(SYSTEM 등)을 관리자 권한(UAC)으로 읽어 온다. 읽기만 한다.
+/// 이미 목록에 있는 작업은 빼고, 관리자 권한으로만 보이는 것만 돌려준다.
+#[tauri::command]
+async fn list_hidden_startup_tasks() -> Result<Vec<StartupEntry>, String> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let history = startup_history()?;
+        let result_file = history.root().join(worker::TASKS_RESULT);
+        let _ = std::fs::remove_file(&result_file);
+        let exe = std::env::current_exe().map_err(|e| e.to_string())?;
+        let args = format!("{} --store \"{}\"", worker::TASKS, history.root().display());
+        match robin_execution::run_elevated_and_wait(&exe.to_string_lossy(), &args) {
+            Ok(_) => {}
+            Err(None) => return Err("관리자 권한 요청이 거절됐어요".into()),
+            Err(Some(m)) => return Err(m),
+        }
+        let text = std::fs::read_to_string(&result_file)
+            .map_err(|_| "관리자 권한으로 작업 목록을 읽지 못했어요".to_string())?;
+        let _ = std::fs::remove_file(&result_file);
+        let all: Vec<StartupEntry> = serde_json::from_str(&text).map_err(|e| e.to_string())?;
+        let visible: std::collections::HashSet<String> = robin_startup::list_tasks(&history)
+            .into_iter()
+            .map(|e| e.id)
+            .collect();
+        Ok(all
+            .into_iter()
+            .filter(|e| !visible.contains(&e.id))
+            .collect())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
 /// 시작 항목을 탐색기에서 보여 준다: 시작 폴더 항목은 그 파일, Run 항목과 예약 작업은 실행 파일.
 #[tauri::command]
 fn reveal_startup_item(id: String, cache: State<'_, AppCache>) -> Result<(), String> {
@@ -1253,6 +1285,7 @@ pub fn run() {
             restore_backup_elevated,
             delete_backup,
             list_startup_items,
+            list_hidden_startup_tasks,
             get_startup_icon,
             set_startup_enabled,
             clean_missing_startup,

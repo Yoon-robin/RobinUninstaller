@@ -173,6 +173,15 @@ fn find_entry(history: &History, id: &str, source: Option<StartupSource>) -> Opt
         .find_map(|s| entries_for(s, &changed).into_iter().find(|e| e.id == id))
 }
 
+/// 로그인·부팅 때 실행되는 예약 작업만 (이름순). 읽기 전용.
+/// 관리자 권한으로 부르면 일반 사용자에게 안 보이는 작업(SYSTEM 등)까지 나온다.
+#[cfg(windows)]
+pub fn list_tasks(history: &History) -> Vec<StartupEntry> {
+    let mut entries = entries_for(StartupSource::Task, &history.load());
+    entries.sort_by_key(|e| e.name.to_lowercase());
+    entries
+}
+
 /// 시작 항목 전체 (이름순). 읽기 전용.
 #[cfg(windows)]
 pub fn list(history: &History) -> Vec<StartupEntry> {

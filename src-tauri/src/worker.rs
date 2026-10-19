@@ -9,6 +9,7 @@
 //! robinx.exe --elevated-delete  <작업 ID> --store <백업 저장소>
 //! robinx.exe --elevated-startup <on|off> <시작 항목 ID> --store <시작프로그램 기록 폴더>
 //! robinx.exe --elevated-storage <0|1> <정리 규칙 ID,...> --store <저장공간 기록 폴더>
+//! robinx.exe --elevated-tasks --store <시작프로그램 기록 폴더>   (읽기만: 예약 작업 목록을 파일로 쓴다)
 //! ```
 //!
 //! 시작 항목(Run 키·시작 폴더·예약 작업)도 마찬가지로 ID만 받고, 목록을 다시 읽어 그 ID의 항목을 찾는다.
@@ -24,6 +25,7 @@ pub const RESTORE: &str = "--elevated-restore";
 pub const STARTUP: &str = "--elevated-startup";
 pub const STORAGE: &str = "--elevated-storage";
 pub const DELETE: &str = "--elevated-delete";
+pub const TASKS: &str = "--elevated-tasks";
 /// 복원할 항목 번호 목록 (`--elevated-restore` 뒤에 선택으로 붙는다)
 pub const ITEMS: &str = "--items";
 
@@ -44,6 +46,9 @@ pub fn main() -> Option<i32> {
     }
     if mode == DELETE {
         return Some(run_delete(&args[1..]).unwrap_or(2));
+    }
+    if mode == TASKS {
+        return Some(run_tasks(&args[1..]).unwrap_or(2));
     }
     if mode != CLEAN && mode != RESTORE {
         return None;
@@ -80,6 +85,19 @@ fn run_startup(rest: &[String]) -> Option<i32> {
         Ok(_) => 0,
         Err(_) => 1,
     })
+}
+
+/// 관리자 권한으로 읽은 예약 작업 목록 파일 이름. 기록 폴더(`...\RobinX\startup`) 안에 쓴다.
+pub const TASKS_RESULT: &str = "elevated-tasks.json";
+
+/// `--elevated-tasks --store <...\RobinX\startup>`: 예약 작업 목록을 읽기만 해서 파일로 쓴다. 아무것도 바꾸지 않는다.
+fn run_tasks(rest: &[String]) -> Option<i32> {
+    let dir = store_arg(rest, "startup")?;
+    let history = robin_startup::History::new(dir.clone());
+    let tasks = robin_startup::list_tasks(&history);
+    std::fs::create_dir_all(&dir).ok()?;
+    std::fs::write(dir.join(TASKS_RESULT), serde_json::to_vec(&tasks).ok()?).ok()?;
+    Some(0)
 }
 
 /// 저장공간 정리 결과 파일 이름. 기록 폴더(`...\RobinX\storage`) 안에 쓴다.
