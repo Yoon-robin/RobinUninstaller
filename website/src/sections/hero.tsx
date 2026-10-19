@@ -38,7 +38,7 @@ export function Hero() {
               className="inline-flex h-12 items-center gap-2.5 rounded-full bg-primary px-6 text-body font-semibold text-primary-foreground transition-[transform,background-color] hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97]"
             >
               <Download className="size-[1.1rem]" />
-              내려받기 (미리보기 v0.1.0)
+              내려받기 (미리보기)
             </a>
             <a
               href={REPO_URL}
