@@ -3,6 +3,7 @@ import type { LucideIcon } from "lucide-react"
 import {
   Archive,
   Boxes,
+  Gauge,
   HardDrive,
   Hammer,
   Layers,
@@ -93,16 +94,17 @@ function Card({
 }
 
 /** 카드 아래쪽에 스크린샷 일부를 비스듬히 보여 준다. */
-function ShotPeek({ name, x = 0.21, y = 0 }: { name: string; x?: number; y?: number }) {
+/** `width`: 카드 폭 대비 그림 폭. 좁은 카드는 크게(155%), 한 줄 전체 카드는 작게 보여 준다. */
+function ShotPeek({ name, x = 0.21, y = 0, width = "155%" }: { name: string; x?: number; y?: number; width?: string }) {
   return (
     <div className="relative -mx-6 mt-6 -mb-6 h-56 overflow-hidden sm:-mx-7 sm:-mb-7 sm:h-64">
       <img
         src={shot(name)}
         alt=""
         loading="lazy"
-        className="absolute top-4 left-6 w-[155%] max-w-none rounded-tl-xl border-t border-l border-white/10 shadow-2xl shadow-black/60 transition-transform duration-500 ease-out group-hover:-translate-y-2 sm:left-7"
+        className="absolute top-4 left-6 max-w-none rounded-tl-xl border-t border-l border-white/10 shadow-2xl shadow-black/60 transition-transform duration-500 ease-out group-hover:-translate-y-2 sm:left-7"
         // 사이드바를 건너뛰고 화면의 핵심 부분부터 보이게 옮긴다 (그림 자신의 크기 기준 비율)
-        style={{ transform: `translate(${-x * 100}%, ${-y * 100}%)` }}
+        style={{ width, transform: `translate(${-x * 100}%, ${-y * 100}%)` }}
       />
       <div aria-hidden className="absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-card/90 to-transparent" />
     </div>
@@ -178,6 +180,18 @@ export function Features() {
         >
           임시 파일·캐시처럼 지워도 다시 만들어지는 것만 골라요. 되돌릴 수 없는 항목은 따로 경고하고 미리 고르지 않아요.
           문서·사진·다운로드 파일은 정리 대상으로 고르지 않아요. 캐시 정리는 되돌릴 수 없어요.
+        </Card>
+
+        <Card
+          className="md:col-span-6"
+          icon={Gauge}
+          tone="green"
+          title="되돌릴 수 있는 최적화"
+          visual={<ShotPeek name="tweaks" width="95%" x={0.2} y={0.27} />}
+        >
+          맞춤 광고, 시작 메뉴 추천, 파일 확장자 숨김처럼 Windows 설정 앱에 있는 설정만 내 계정 범위에서 바꿔요. 바꾸기
+          전 값을 기록해 두어 끄면 원래대로 돌아가고, 무엇을 어떻게 바꾸는지 그대로 보여 줘요. 보안 설정은 건드리지
+          않아요.
         </Card>
 
         <Card className="md:col-span-6" icon={Boxes} tone="amber" title="데스크톱 프로그램과 Store 앱을 한곳에서">

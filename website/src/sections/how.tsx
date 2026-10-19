@@ -69,6 +69,7 @@ const screens = [
   },
   { key: "startup", label: "시작프로그램", caption: "켜고 끄기만 할 뿐 등록 정보는 지우지 않아요." },
   { key: "storage", label: "저장공간", caption: "다시 만들어지는 캐시만 골라 공간을 확보해요." },
+  { key: "tweaks", label: "최적화", caption: "공식 설정만 바꾸고, 끄면 기록해 둔 원래 값으로 돌아가요." },
 ]
 
 export function Gallery() {
