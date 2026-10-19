@@ -19,12 +19,12 @@ export ROBIN_CROSS_DRIVE_DIR="Z:${CROSS_DIR//\//\\}"
 TARGET=x86_64-pc-windows-gnu
 D="target/$TARGET/debug"
 
-cargo build -q --target "$TARGET" --workspace --exclude robin-uninstaller --examples --bins || exit 1
+cargo build -q --target "$TARGET" --workspace --exclude robinx --examples --bins || exit 1
 
 # 유닛 테스트도 Windows용으로 빌드해 Wine에서 돌린다 (Windows 경로를 쓰는 테스트는 리눅스에서는 실패한다)
 echo "유닛 테스트 (Wine)"
 CARGO_TARGET_X86_64_PC_WINDOWS_GNU_RUNNER=wine \
-  cargo test -q --target "$TARGET" --workspace --exclude robin-uninstaller --lib --bins 2>&1 \
+  cargo test -q --target "$TARGET" --workspace --exclude robinx --lib --bins 2>&1 \
   | grep -E "test result|FAILED|panicked" || exit 1
 
 fixture() { wine "$D/robin-fixture.exe" "$@" >/dev/null 2>&1; }

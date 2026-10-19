@@ -30,7 +30,7 @@ export function How() {
       <SectionHeading
         eyebrow="사용 방법"
         title="세 단계면 끝나요"
-        description="어려운 설정 없이, 평소처럼 제거만 누르면 나머지는 RobinUninstaller가 이어서 챙겨요."
+        description="어려운 설정 없이, 평소처럼 제거만 누르면 나머지는 RobinX가 이어서 챙겨요."
       />
       <div className="relative mt-16 grid gap-6 md:grid-cols-3">
         {/* 단계를 잇는 선 */}

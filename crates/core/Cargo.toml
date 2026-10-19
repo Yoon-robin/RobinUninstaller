@@ -1,6 +1,6 @@
 [package]
 name = "robin-core"
-description = "RobinUninstaller 공통 모델과 정책"
+description = "RobinX 공통 모델과 정책"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

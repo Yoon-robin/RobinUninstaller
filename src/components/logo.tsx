@@ -1,6 +1,6 @@
 import { cn } from "@/lib/utils"
 
-/** RobinUninstaller 로고: 로빈 알 색(청록) 바탕에 휴지통. src-tauri/app-icon.svg 와 같은 모양. */
+/** RobinX 로고: 로빈 알 색(청록) 바탕에 휴지통. src-tauri/app-icon.svg 와 같은 모양. */
 export function Logo({ className }: { className?: string }) {
   return (
     <svg viewBox="0 0 64 64" className={cn("size-8", className)} aria-hidden>

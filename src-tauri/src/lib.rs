@@ -801,7 +801,7 @@ async fn clean_storage_elevated(
             return Err("알 수 없는 항목이에요".to_string());
         }
         let dir = PathBuf::from(std::env::var("LOCALAPPDATA").map_err(|e| e.to_string())?)
-            .join("RobinUninstaller")
+            .join(robin_core::APP_DIR)
             .join("storage");
         let result_file = dir.join(worker::STORAGE_RESULT);
         let _ = std::fs::remove_file(&result_file);

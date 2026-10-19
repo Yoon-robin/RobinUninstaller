@@ -4,11 +4,11 @@
 //! 앱 화면에서 넘어온 값은 믿지 않는다: 작업 기록을 디스크에서 다시 읽고, 보호 규칙 검사를 처음부터 다시 한다.
 //!
 //! ```text
-//! robin-uninstaller.exe --elevated-clean   <작업 ID> --store <백업 저장소>
-//! robin-uninstaller.exe --elevated-restore <작업 ID> --store <백업 저장소> [--items 0,3]
-//! robin-uninstaller.exe --elevated-delete  <작업 ID> --store <백업 저장소>
-//! robin-uninstaller.exe --elevated-startup <on|off> <시작 항목 ID> --store <시작프로그램 기록 폴더>
-//! robin-uninstaller.exe --elevated-storage <0|1> <정리 규칙 ID,...> --store <저장공간 기록 폴더>
+//! robinx.exe --elevated-clean   <작업 ID> --store <백업 저장소>
+//! robinx.exe --elevated-restore <작업 ID> --store <백업 저장소> [--items 0,3]
+//! robinx.exe --elevated-delete  <작업 ID> --store <백업 저장소>
+//! robinx.exe --elevated-startup <on|off> <시작 항목 ID> --store <시작프로그램 기록 폴더>
+//! robinx.exe --elevated-storage <0|1> <정리 규칙 ID,...> --store <저장공간 기록 폴더>
 //! ```
 //!
 //! 시작 항목(Run 키·시작 폴더·예약 작업)도 마찬가지로 ID만 받고, 목록을 다시 읽어 그 ID의 항목을 찾는다.
@@ -44,7 +44,7 @@ pub fn main() -> Option<i32> {
     Some(run(mode, &args[1..]).unwrap_or(2))
 }
 
-/// 저장소 경로 인자(`--store <경로>`)가 RobinUninstaller 폴더 아래 정해진 곳인지 확인한다.
+/// 저장소 경로 인자(`--store <경로>`)가 RobinX 폴더 아래 정해진 곳인지 확인한다.
 fn store_arg(rest: &[String], expected_suffix: &str) -> Option<PathBuf> {
     let root = match rest.first().map(String::as_str) {
         Some("--store") => PathBuf::from(rest.get(1)?),
@@ -66,18 +66,18 @@ fn run_startup(rest: &[String]) -> Option<i32> {
     if !robin_startup::is_valid_id(id) {
         return None;
     }
-    // 기록 위치는 항상 ...\RobinUninstaller\startup 이어야 한다
-    let history = robin_startup::History::new(store_arg(&rest[2..], r"\robinuninstaller\startup")?);
+    // 기록 위치는 항상 ...\RobinX\startup 이어야 한다
+    let history = robin_startup::History::new(store_arg(&rest[2..], r"\robinx\startup")?);
     Some(match robin_startup::set_enabled(&history, id, enabled) {
         Ok(_) => 0,
         Err(_) => 1,
     })
 }
 
-/// 저장공간 정리 결과 파일 이름. 기록 폴더(`...\RobinUninstaller\storage`) 안에 쓴다.
+/// 저장공간 정리 결과 파일 이름. 기록 폴더(`...\RobinX\storage`) 안에 쓴다.
 pub const STORAGE_RESULT: &str = "elevated-result.json";
 
-/// `--elevated-storage <irreversible:0|1> <규칙ID,규칙ID> --store <...\RobinUninstaller\storage>`
+/// `--elevated-storage <irreversible:0|1> <규칙ID,규칙ID> --store <...\RobinX\storage>`
 /// 규칙 ID만 받고, 경로와 조건은 엔진이 처음부터 다시 계산한다.
 fn run_storage(rest: &[String]) -> Option<i32> {
     let allow_irreversible = match rest.first()?.as_str() {
@@ -95,7 +95,7 @@ fn run_storage(rest: &[String]) -> Option<i32> {
     {
         return None;
     }
-    let dir = store_arg(&rest[2..], r"\robinuninstaller\storage")?;
+    let dir = store_arg(&rest[2..], r"\robinx\storage")?;
     let results = robin_storage::clean(&ids, allow_irreversible);
     std::fs::create_dir_all(&dir).ok()?;
     std::fs::write(dir.join(STORAGE_RESULT), serde_json::to_vec(&results).ok()?).ok()?;
@@ -107,8 +107,8 @@ fn run(mode: &str, rest: &[String]) -> Option<i32> {
     if !robin_recovery::store::is_valid_id(op_id) {
         return None;
     }
-    // 저장소 위치는 항상 ...\RobinUninstaller\backups 여야 한다
-    let store_root = store_arg(&rest[1..], r"\robinuninstaller\backups")?;
+    // 저장소 위치는 항상 ...\RobinX\backups 여야 한다
+    let store_root = store_arg(&rest[1..], r"\robinx\backups")?;
     // 선택: --items 0,3,5 (복원할 항목 번호)
     let indices: Option<Vec<usize>> = match rest.get(3).map(String::as_str) {
         None => None,
@@ -169,6 +169,6 @@ fn run_delete(rest: &[String]) -> Option<i32> {
     if !robin_recovery::store::is_valid_id(op_id) || rest.len() != 3 {
         return None;
     }
-    let store = Store::new(store_arg(&rest[1..], r"\robinuninstaller\backups")?);
+    let store = Store::new(store_arg(&rest[1..], r"\robinx\backups")?);
     Some(if store.delete(op_id).is_ok() { 0 } else { 1 })
 }

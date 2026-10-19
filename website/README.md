@@ -1,4 +1,4 @@
-# RobinUninstaller 웹사이트
+# RobinX 웹사이트
 
 주소: https://yoon-robin.github.io/RobinUninstaller/
 

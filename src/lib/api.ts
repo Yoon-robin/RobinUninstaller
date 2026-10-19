@@ -216,7 +216,7 @@ export interface StartupEntry {
   enabled: boolean
   /** 끈 시각 (유닉스 초) */
   disabledAt: number | null
-  /** RobinUninstaller가 끈 항목이라 원래 값으로 되돌릴 수 있음 */
+  /** RobinX가 끈 항목이라 원래 값으로 되돌릴 수 있음 */
   changedByUs: boolean
 }
 

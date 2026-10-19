@@ -61,7 +61,7 @@ export default function App() {
                     data-tauri-drag-region
                     className="pointer-events-none flex items-center gap-1.5 text-sm text-muted-foreground"
                   >
-                    <span>RobinUninstaller</span>
+                    <span>RobinX</span>
                     <ChevronRight className="size-3.5" />
                     <AnimatePresence mode="popLayout" initial={false}>
                       <motion.span

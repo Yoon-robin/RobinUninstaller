@@ -71,7 +71,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
         <div data-tauri-drag-region className="flex items-center gap-2.5 px-1">
           <Logo className="size-8 shrink-0" />
           <div className="grid leading-tight group-data-[collapsible=icon]:hidden">
-            <span className="font-semibold tracking-tight">RobinUninstaller</span>
+            <span className="font-semibold tracking-tight">RobinX</span>
             <span className="text-xs text-muted-foreground">v0.1.0 · 미리보기</span>
           </div>
         </div>

@@ -6,6 +6,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+robin-core.workspace = true
 robin-discovery.workspace = true
 serde.workspace = true
 serde_json.workspace = true
@@ -14,5 +15,4 @@ serde_json.workspace = true
 winreg = "0.55"
 
 [dev-dependencies]
-robin-core.workspace = true
 robin-scanner.workspace = true

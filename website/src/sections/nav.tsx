@@ -41,7 +41,7 @@ export function Nav() {
       >
         <a href="#top" className="flex items-center gap-2.5 font-semibold tracking-tight">
           <img src={LOGO} alt="" className="size-7 rounded-lg" />
-          RobinUninstaller
+          RobinX
         </a>
         <div className="ml-4 hidden items-center gap-1 md:flex">
           {links.map((l) => (

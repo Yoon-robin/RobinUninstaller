@@ -105,7 +105,7 @@ pub struct StartupEntry {
     pub enabled: bool,
     /// 끈 시각 (유닉스 초). 기록돼 있을 때만.
     pub disabled_at: Option<u64>,
-    /// RobinUninstaller가 끈 항목이라 원래 값으로 되돌릴 수 있음
+    /// RobinX가 끈 항목이라 원래 값으로 되돌릴 수 있음
     pub changed_by_us: bool,
 }
 

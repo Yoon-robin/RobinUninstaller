@@ -1,10 +1,10 @@
-//! RobinUninstaller가 끈 항목의 원래 `StartupApproved` 값(작업이면 원래 `Enabled` 값) 기록.
+//! RobinX가 끈 항목의 원래 `StartupApproved` 값(작업이면 원래 `Enabled` 값) 기록.
 //!
 //! 다시 켤 때 이 값을 그대로 되돌려 놓는다 (원래 값이 없었다면 값을 지운다).
 //! 작업 관리자 등 다른 곳에서 끈 항목은 기록이 없으므로 작업 관리자와 같은 "켜짐" 값을 쓴다.
 //!
 //! ```text
-//! %LOCALAPPDATA%\RobinUninstaller\startup\changes.json
+//! %LOCALAPPDATA%\RobinX\startup\changes.json
 //! ```
 
 use std::collections::BTreeMap;
@@ -35,12 +35,12 @@ impl History {
         History { root: root.into() }
     }
 
-    /// 기본 위치: `%LOCALAPPDATA%\RobinUninstaller\startup`
+    /// 기본 위치: `%LOCALAPPDATA%\RobinX\startup`
     pub fn default_location() -> Option<Self> {
         let local = std::env::var_os("LOCALAPPDATA")?;
         Some(History::new(
             PathBuf::from(local)
-                .join("RobinUninstaller")
+                .join(robin_core::APP_DIR)
                 .join("startup"),
         ))
     }

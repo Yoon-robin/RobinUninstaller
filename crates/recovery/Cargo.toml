@@ -6,6 +6,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+robin-core.workspace = true
 robin-scanner.workspace = true
 robin-startup.workspace = true
 serde.workspace = true
@@ -17,6 +18,5 @@ base64 = "0.23"
 windows = { version = "0.62", features = ["Win32_Foundation", "Win32_Storage_FileSystem"] }
 
 [dev-dependencies]
-robin-core.workspace = true
 robin-discovery.workspace = true
 robin-execution.workspace = true

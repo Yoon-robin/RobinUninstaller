@@ -100,7 +100,7 @@ export function Hero() {
               style={{ opacity: glow }}
               className="absolute -inset-x-10 -top-10 -bottom-4 -z-10 rounded-[3rem] bg-[radial-gradient(closest-side,oklch(0.82_0.12_190/0.35),transparent)] blur-3xl"
             />
-            <WindowFrame src={shot("programs")} alt="RobinUninstaller 프로그램 목록 화면" eager />
+            <WindowFrame src={shot("programs")} alt="RobinX 프로그램 목록 화면" eager />
 
             <FloatingChip
               className="top-[18%] -left-4 hidden sm:flex lg:-left-12"

@@ -2627,6 +2627,7 @@ dependencies = [
 name = "robin-settings"
 version = "0.1.0"
 dependencies = [
+ "robin-core",
  "serde",
  "serde_json",
 ]
@@ -2635,6 +2636,7 @@ dependencies = [
 name = "robin-startup"
 version = "0.1.0"
 dependencies = [
+ "robin-core",
  "robin-discovery",
  "serde",
  "serde_json",
@@ -2665,7 +2667,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "robin-uninstaller"
+name = "robinx"
 version = "0.1.0"
 dependencies = [
  "robin-core",

@@ -1,4 +1,4 @@
-//! 사용자 설정: `%LOCALAPPDATA%\RobinUninstaller\settings.json`.
+//! 사용자 설정: `%LOCALAPPDATA%\RobinX\settings.json`.
 //!
 //! - 백업 보관 기간: 기본은 "계속 보관"(None). 사용자가 직접 기간을 고른 경우에만 오래된 백업을 지운다.
 //!   백업을 지우면 되돌릴 수 없으므로 화면에서 경고하고 고르게 한다.
@@ -124,7 +124,7 @@ impl SettingsStore {
         let local = std::env::var_os("LOCALAPPDATA")?;
         Some(SettingsStore::new(
             PathBuf::from(local)
-                .join("RobinUninstaller")
+                .join(robin_core::APP_DIR)
                 .join("settings.json"),
         ))
     }

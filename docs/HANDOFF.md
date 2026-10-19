@@ -27,7 +27,7 @@ pnpm tauri dev    # 앱 실행
 ## 2. 리포지토리에 없는 것
 
 - `Revo Uninstaller Pro.zip`, `docs/private/revo-analysis.md`: 상용 프로그램과 그 분석 메모라 공개 리포지토리에 올리지 않았다. 필요하면 원래 PC에서 직접 옮긴다. 분석 결과 중 설계에 반영할 내용은 PLAN.md의 Phase 3·4 메모에 이미 녹아 있다.
-- 백업 저장소(`%LOCALAPPDATA%\RobinUninstaller\backups`): PC마다 따로 생긴다.
+- 백업 저장소(`%LOCALAPPDATA%\RobinX\backups`): PC마다 따로 생긴다.
 
 ## 3. 지금 상태 (2026-10-19) — 새 세션은 여기부터
 
@@ -89,7 +89,7 @@ cargo clippy --workspace --all-targets --target x86_64-pc-windows-msvc -- -D war
 pnpm exec tsc --noEmit -p . && pnpm exec prettier --check src
 ```
 
-- 리눅스용 `cargo test`는 `--exclude robin-uninstaller`로 돌린다 (Tauri 앱은 GTK가 필요하다).
+- 리눅스용 `cargo test`는 `--exclude robinx`로 돌린다 (Tauri 앱은 GTK가 필요하다).
 - 화면은 `scripts/ui-mock/README.md`대로 가짜 응답으로 캡처해서 확인한다.
 - Wine에서 안 되는 것: 앱 화면(WebView2), UAC, 작업 스케줄러 목록, Store 패키지(빈 목록), 저장 창.
 
@@ -119,7 +119,7 @@ pnpm exec tsc --noEmit -p . && pnpm exec prettier --check src
 ### Phase 5 시작프로그램 관리 — 완료 (2026-10-17)
 
 - Run 키(HKCU, HKLM 64·32비트)와 시작 폴더(사용자·공용) 목록, 게시자·설명·아이콘, "파일 없음" 표시.
-- 끄기·다시 켜기는 작업 관리자와 같은 `StartupApproved` 값만 바꾼다. RobinUninstaller가 끈 항목은 원래 값을 기록해 두었다가 그대로 되돌린다.
+- 끄기·다시 켜기는 작업 관리자와 같은 `StartupApproved` 값만 바꾼다. RobinX가 끈 항목은 원래 값을 기록해 두었다가 그대로 되돌린다.
 - 테스트 앱 항목으로 엔진 예제와 앱 화면 모두에서 끄기 → 원상복구(값 없음)를 확인했다. 테스트 흔적은 정리했다.
 - 관리자 권한 항목도 실제로 시험했다(2026-10-17): `robin-fixture install --machine`으로 만든 `FixtureNotesMachine`(HKLM Run)을 일반 권한 앱에서 끄기·다시 켜기 → 두 번 모두 UAC 후 성공, 원래 상태(값 없음)로 돌아옴. 테스트 흔적은 관리자 권한으로 정리했다.
 - 로그인·부팅 때 실행되는 예약 작업(`\Microsoft\` 아래 제외)도 같은 목록에 나오고 "예약 작업" 필터가 있다. 끄기는 작업의 "사용" 여부만 바꾸고 원래 값을 기록해 되돌린다.

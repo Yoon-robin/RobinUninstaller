@@ -1,9 +1,33 @@
-# RobinUninstaller 개발 계획
+# RobinX 개발 계획
 
 > 출처: ChatGPT(GPT-6) 상담 결과를 정리하고 검토 의견을 덧붙임 (2026-10-16)
 > 대상: Windows 10/11 x64
 
 ## 제품 방향
+
+> **2026-10-19 이름 변경과 방향 확장:** RobinUninstaller → **RobinX**. 언인스톨러에서 출발해 저장공간 관리, 최적화까지 하는 **Windows 올인원 관리 도구**로 키운다.
+> 데이터 폴더는 `%LOCALAPPDATA%\RobinX`, 실행 파일은 `robinx.exe`, 앱 식별자는 `com.yoonrobin.robinx`. 예전 폴더(`RobinUninstaller`)도 자기 데이터로 보고 건드리지 않는다.
+
+### 올인원 방향의 원칙
+
+- **되돌릴 수 있는 것만 바꾼다.** 시작프로그램처럼, 바꾸기 전에 원래 값을 먼저 기록하고 한 번에 되돌릴 수 있게 한다.
+- **효과를 잴 수 있는 것만 한다.** 레지스트리 클리너, 메모리 부스터, 의미 없는 "PC 점수"처럼 효과가 없거나 위험한 기능은 만들지 않는다.
+- **보안은 끄지 않는다.** Defender, UAC, Windows 업데이트, 방화벽을 끄는 "최적화"는 하지 않는다.
+- **내 파일은 보여 주기만 한다.** 큰 파일·중복 파일은 찾아서 보여 주고 탐색기로 열어 줄 뿐, 자동으로 지우지 않는다.
+
+### 앞으로 넣을 후보 (우선순위 순, 확정 아님)
+
+| 영역 | 기능 | 메모 |
+|---|---|---|
+| 대시보드 | 디스크·시작 항목·정리 가능 공간을 한눈에 | 읽기 전용, 첫 화면 |
+| 업데이트 | 설치된 프로그램의 새 버전 확인 (winget) | 설치는 사용자 확인 후 |
+| 저장공간 | 큰 파일·중복 파일 찾기 | 보여 주기만 |
+| 시작 속도 | 부팅 시간 기록, 서비스 목록(읽기) | 서비스 끄기는 되돌리기 기록과 함께, 시스템 서비스 제외 |
+| 정리 | 탐색기 오른쪽 클릭 메뉴, 브라우저 확장 정리 | 원래 값 기록 |
+| 개인정보 | 광고 ID·추천 표시 같은 Windows 설정 모아 보기 | 공식 설정 값만, 되돌리기 |
+| 예약 | 정해 둔 시간에 캐시 정리 | 다시 만들어지는 항목만 |
+
+### 처음 방향 (언인스톨러)
 
 - Revo Uninstaller처럼 **제거 → 잔여물 분석 → 골라서 정리 → 복구** 흐름을 먼저 완성한다.
 - 핵심 경쟁력은 기능 개수가 아니라 **"이 파일/레지스트리가 정말 이 프로그램 것인가"를 정확히 판단하고, 왜 그렇게 판단했는지 보여주는 것**이다.
@@ -47,7 +71,7 @@ MVP 흐름: 프로그램 선택 → 정보 수집 → 기본 언인스톨러 실
 ## 3. 아키텍처
 
 ```
-RobinUninstaller/
+RobinX/
 ├── src/                        # React + shadcn/ui 프론트엔드
 │   ├── components/ui/          # shadcn 컴포넌트
 │   ├── features/               # programs, scan, restore, startup ...
@@ -158,23 +182,23 @@ MVP 품질 목표: 앱 목록 2초 이내(캐시 먼저 표시), 일반 스캔 1
   - 약한 근거를 여러 개 모아도 "확실"이 되지 않는다.
   - 다른 설치 프로그램과 공유하면 "확실"이 될 수 없다.
   - 사용자 문서(docx, psd, blend 등)가 들어 있으면 감점한다.
-- **보호 규칙:** 드라이브 루트, Windows 폴더, 기본 폴더 자체, 공유 폴더(Common Files, Microsoft Shared, WindowsApps 등)와 그 하위, Microsoft·Classes·Policies 레지스트리 영역(이름 기반 탐색), 상위 키는 점수와 상관없이 제외한다. RobinUninstaller 자신의 데이터도 제외한다.
+- **보호 규칙:** 드라이브 루트, Windows 폴더, 기본 폴더 자체, 공유 폴더(Common Files, Microsoft Shared, WindowsApps 등)와 그 하위, Microsoft·Classes·Policies 레지스트리 영역(이름 기반 탐색), 상위 키는 점수와 상관없이 제외한다. RobinX 자신의 데이터도 제외한다.
 - **분류:** 확실(80+, 기본 선택) / 검토(30~79) / 낮음(숨김).
 - **검증:** `crates/fixture`의 "Fixture Notes"가 흔적 4종과 미끼 3종을 만들고, `cargo run -p robin-scanner --example scan_fixture`가 8가지 기대 결과를 확인한다.
 
 ## Phase 4 구현 메모
 
 - `crates/recovery`는 영구 삭제를 하지 않는다.
-  - 파일·폴더는 `%LOCALAPPDATA%\RobinUninstaller\backups\<작업 ID>\files`로 옮긴다. 같은 드라이브면 원자적 이동이고, 다른 드라이브면 복사 후 원본을 지운다.
+  - 파일·폴더는 `%LOCALAPPDATA%\RobinX\backups\<작업 ID>\files`로 옮긴다. 같은 드라이브면 원자적 이동이고, 다른 드라이브면 복사 후 원본을 지운다.
   - 레지스트리는 값 형식과 원본 바이트를 JSON(base64)으로 저장한 **뒤에만** 지운다.
 - **지우기 직전 재검사:**
-  - 보호 규칙을 다시 적용하고, 백업 저장소와 RobinUninstaller 자신은 건드리지 않는다.
+  - 보호 규칙을 다시 적용하고, 백업 저장소와 RobinX 자신은 건드리지 않는다.
   - Windows 서비스 키는 아직 정리하지 않는다.
   - 정션·심볼릭 링크는 다루지 않는다.
   - 프론트엔드는 마지막 스캔 결과의 항목 ID만 넘길 수 있다.
 - **매니페스트:** 항목마다 처리 직후 저장한다(임시 파일 → 바꿔치기). 상태는 removed / needsAdmin / alreadyGone / blocked / failed / restored.
 - **복원:** 원래 자리에 같은 이름이 새로 생겼으면 덮어쓰지 않고 실패로 알린다.
-- **관리자 권한:** 일반 권한으로 못 지운 항목만 앱 바이너리의 작업자 모드(`--elevated-clean|--elevated-restore <작업 ID> --store <...\RobinUninstaller\backups>`)를 UAC로 띄워 처리한다. 작업자는 기록을 디스크에서 다시 읽고 모든 검사를 처음부터 다시 한다.
+- **관리자 권한:** 일반 권한으로 못 지운 항목만 앱 바이너리의 작업자 모드(`--elevated-clean|--elevated-restore <작업 ID> --store <...\RobinX\backups>`)를 UAC로 띄워 처리한다. 작업자는 기록을 디스크에서 다시 읽고 모든 검사를 처음부터 다시 한다.
 - **검증:** `cargo run -p robin-recovery --example clean_fixture`로 정리 → 사라짐 확인 → 복원 → 원본과 바이트 단위 비교, 위험 항목(System32, HKLM\SOFTWARE\Microsoft) 차단을 확인한다.
 - **아직 안 한 것:**
   - 시스템 복원 지점
@@ -188,7 +212,7 @@ MVP 품질 목표: 앱 목록 2초 이내(캐시 먼저 표시), 일반 스캔 1
 - **끄기 방식:** 작업 관리자와 같은 `Explorer\StartupApproved\{Run|Run32|StartupFolder}` 바이너리 값을 쓴다.
   - Run 값이나 바로 가기 파일은 그대로 두므로 지우는 것이 아니다.
   - 첫 바이트가 홀수(03)면 꺼짐, 짝수(02·04·06)거나 값이 없으면 켜짐. 4~11바이트는 끈 시각(FILETIME).
-- **원상복구:** RobinUninstaller가 끌 때 원래 값(없었으면 "없음")을 `%LOCALAPPDATA%\RobinUninstaller\startup\changes.json`에 **먼저** 기록한다.
+- **원상복구:** RobinX가 끌 때 원래 값(없었으면 "없음")을 `%LOCALAPPDATA%\RobinX\startup\changes.json`에 **먼저** 기록한다.
   - 다시 켜면 그 값을 그대로 돌려놓거나, 원래 값이 없었으면 값을 지운다.
   - 다른 곳(작업 관리자 등)에서 끈 항목은 기록이 없으므로 작업 관리자와 같은 "켜짐" 값(02)을 쓴다.
 - **예약 작업:** 작업 스케줄러 COM API(`ITaskService`)로 모든 폴더를 돌며 로그온(`TASK_TRIGGER_LOGON`)·부팅(`TASK_TRIGGER_BOOT`) 트리거가 있는 작업만 읽는다.
@@ -197,7 +221,7 @@ MVP 품질 목표: 앱 목록 2초 이내(캐시 먼저 표시), 일반 스캔 1
   - 끄기·켜기는 작업의 `Enabled` 값만 바꾼다. 원래 값을 같은 `changes.json`에 `previousEnabled`로 **먼저** 기록하고, 켤 때 그 값으로 되돌린 뒤 기록을 지운다. 작업 스케줄러는 끈 시각을 남기지 않아서 우리가 끈 경우에만 기록 시각을 보여 준다.
   - 관리자 표시: 실행 계정(`Principal.UserId`)이 현재 사용자가 아니거나(SYSTEM 등) "가장 높은 권한으로 실행"이면 표시한다. 실제로는 `E_ACCESSDENIED`가 나면 같은 작업자 모드(UAC)로 넘긴다.
 - **ID:** 등록 위치 + 이름(소문자)의 FNV-1a 해시 16자리. 예약 작업은 `task` + 작업 경로. 프론트엔드와 관리자 작업자는 이 ID만 주고받고, 엔진이 목록을 다시 읽어 항목을 찾는다.
-- **관리자 권한:** HKLM·공용 시작 폴더 항목은 일반 권한으로 쓰기가 거부되면 작업자 모드(`--elevated-startup <on|off> <ID> --store <...\RobinUninstaller\startup>`)를 UAC로 띄운다.
+- **관리자 권한:** HKLM·공용 시작 폴더 항목은 일반 권한으로 쓰기가 거부되면 작업자 모드(`--elevated-startup <on|off> <ID> --store <...\RobinX\startup>`)를 UAC로 띄운다.
 - **표시 정보:** 실행 명령에서 실행 파일을 찾고(경로 없는 `rundll32.exe` 등은 Windows 폴더에서), 바로 가기는 IShellLink로 대상을 읽는다. 게시자·설명은 파일 버전 정보에서 읽는다. 파일이 없으면 "파일 없음"으로 표시한다.
 - **검증:** `cargo run -p robin-startup --example toggle_fixture`로 테스트 앱의 Run 값, 시작 폴더 바로 가기, 예약 작업 `\Fixture Notes Updater`를 껐다 켜서 원래 상태(값 없음 / 작업 "사용")로 돌아오는지 확인한다. 앱 화면에서도 같은 흐름을 확인했다(2026-10-17, 예약 작업 포함).
 - **관리자 권한 검증(2026-10-17):** 일반 권한으로 띄운 앱에서 `FixtureNotesMachine`(HKLM Run)을 끄기 → UAC → HKLM `StartupApproved\Run`에 03 값, 원래 값(없음)은 사용자 기록에 남음 → 다시 켜기 → UAC → 값이 지워져 원래 상태, 기록도 비워짐.
@@ -237,7 +261,7 @@ MVP 품질 목표: 앱 목록 2초 이내(캐시 먼저 표시), 일반 스캔 1
   - 되돌릴 수 없는 것(덤프, 휴지통): 확인 창에서 따로 체크해야 지운다. 체크하지 않으면 그 항목만 빼고 정리한다.
   - 사용자 파일: 규칙에 넣지 않는다. 사용자 폴더(바탕 화면·문서·다운로드 등)를 가리키는 규칙이 있으면 테스트가 실패한다. 큰 폴더 찾기는 크기를 보여 주고 탐색기로 열어 주기만 한다.
 - **안전장치:** 경로 조각에 `..`·`.`·`:`가 있으면 거부, 기준 폴더 밖으로 나가지 않음, 정션·심볼릭 링크와 클라우드 파일(오프라인·필요할 때 받기)은 따라가지도 지우지도 않음, 규칙이 가리키는 폴더 자체는 남기고 비게 된 하위 폴더만 지움, 사용 중인 파일은 건너뜀, 관련 프로그램(브라우저·Discord·node·cargo·java 등)이 실행 중이면 그 항목 전체를 건너뜀.
-- **관리자 권한:** 관리자 항목은 작업자 모드(`--elevated-storage <0|1> <규칙ID,...> --store <...\RobinUninstaller\storage>`)를 UAC로 띄운다. 작업자는 규칙 ID만 받고 결과를 `elevated-result.json`으로 남긴다.
+- **관리자 권한:** 관리자 항목은 작업자 모드(`--elevated-storage <0|1> <규칙ID,...> --store <...\RobinX\storage>`)를 UAC로 띄운다. 작업자는 규칙 ID만 받고 결과를 `elevated-result.json`으로 남긴다.
 - **분석:** rayon으로 하위 폴더를 병렬로 센다. C: 전체(파일 약 140만 개)가 약 3.5초. 화면은 경로 대신 분석 항목 ID만 넘긴다.
 - **검증:** `cargo run -p robin-storage --example storage_clean_fixture` (디버그 빌드 전용 "테스트 앱 캐시" 항목만 정리, 휴지통은 허락 없이 건드리지 않는지 확인). 앱 화면에서도 테스트 항목만 골라 정리했다.
 - **다음 후보:** 정리 기록, Windows Update·전송 최적화 캐시(서비스 중지 필요), DISM 컴포넌트 정리(`/AnalyzeComponentStore`가 권장할 때만), 개발 산출물(마커 파일 기준), 중복 파일, 트리맵.
@@ -245,7 +269,7 @@ MVP 품질 목표: 앱 목록 2초 이내(캐시 먼저 표시), 일반 스캔 1
 ## Phase 6 구현 메모 — 설치 추적 1차 (스냅샷 비교, 2026-10-17)
 
 - `crates/tracker`가 담당한다. **읽기 전용**이고, 실제 정리는 지금처럼 잔여물 스캔 → 백업·격리를 거친다.
-- **흐름:** "추적 시작"(설치 전 스냅샷을 `%LOCALAPPDATA%\RobinUninstaller\traces\pending.json`에 저장) → 사용자가 설치
+- **흐름:** "추적 시작"(설치 전 스냅샷을 `%LOCALAPPDATA%\RobinX\traces\pending.json`에 저장) → 사용자가 설치
   → "설치 끝남"(설치 후 스냅샷 → 비교) → 사용자가 관계없는 항목을 빼고, 새로 등록된 프로그램과 연결해 `<ID>.json`으로 저장.
 - **스냅샷 범위:** Program Files(64/32)·ProgramData·AppData(Roaming/Local/Local\Programs) 4단계, 시작 메뉴 3단계, 바탕 화면 1단계,
   `Software`(HKCU, HKLM 64/32) 3단계(Microsoft·Classes·Policies 제외), `Software\Classes` 1단계, Uninstall·App Paths 하위 키,
@@ -289,7 +313,7 @@ MVP 품질 목표: 앱 목록 2초 이내(캐시 먼저 표시), 일반 스캔 1
 
 ## 설정 화면 (2026-10-17)
 
-- `crates/settings`: `%LOCALAPPDATA%\RobinUninstaller\settings.json` (임시 파일 → 바꿔치기). 읽지 못하면 기본값.
+- `crates/settings`: `%LOCALAPPDATA%\RobinX\settings.json` (임시 파일 → 바꿔치기). 읽지 못하면 기본값.
 - **백업 보관 기간:** 기본은 "계속 보관". 30·90·180일 중 하나를 고르면(확인 창에서 "되돌릴 수 없음" 경고) 앱을 켤 때 기간이 지난
   백업을 지운다. 설정 화면에 사용량(개수·크기)과 "지금 정리"(확인 후)가 있다. 권한 때문에 못 지운 백업은 복구 기록에서 하나씩 지운다.
 - **잔여물 스캔 제외 목록:** 잔여물 결과의 "다음부터 제외"(항목 ID만 넘김)로 더하고, 설정에서 뺀다. 폴더·키는 그 아래 전부, 값은 그 값만.

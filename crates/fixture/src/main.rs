@@ -113,7 +113,7 @@ mod imp {
             target,
             "--update",
             PUBLISHER,
-            "RobinUninstaller test task",
+            "RobinX test task",
         )
         .expect("예약 작업 만들기");
     }
@@ -206,7 +206,7 @@ mod imp {
             &dir.join("missing.exe"),
             "",
             PUBLISHER,
-            "RobinUninstaller test task (machine)",
+            "RobinX test task (machine)",
         )
         .expect("관리자 예약 작업 만들기 (관리자 권한 필요)");
         println!("관리자 권한 흔적 만듦: {}", dir.display());

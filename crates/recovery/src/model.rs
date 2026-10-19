@@ -1,7 +1,7 @@
 //! 정리 작업 기록(매니페스트). 작업마다 백업 폴더 하나와 `manifest.json` 하나가 생긴다.
 //!
 //! ```text
-//! %LOCALAPPDATA%\RobinUninstaller\backups\<작업 ID>\
+//! %LOCALAPPDATA%\RobinX\backups\<작업 ID>\
 //!   manifest.json
 //!   files\<번호>\<원래 이름>      격리한 파일·폴더
 //!   registry\<번호>.json          레지스트리 키·값 백업

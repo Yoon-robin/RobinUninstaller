@@ -85,9 +85,8 @@ fn is_system_area(sub: &str) -> bool {
 impl Guard {
     /// 지우거나 되돌리기 직전 다시 확인. 스캔 때와 상황이 달라졌을 수 있고, 기록이 바뀌었을 수도 있다.
     fn blocked_reason(&self, item: &OperationItem) -> Option<String> {
-        let lower = item.location.to_lowercase();
-        if lower.contains("robinuninstaller") && !lower.contains("robin test labs") {
-            return Some("RobinUninstaller 자신의 데이터예요".into());
+        if robin_core::is_own_data(&item.location) {
+            return Some("RobinX 자신의 데이터예요".into());
         }
         match item.kind {
             LeftoverKind::Folder | LeftoverKind::File => {

@@ -1,4 +1,4 @@
-//! 추적 기록 저장소: `%LOCALAPPDATA%\RobinUninstaller\traces`.
+//! 추적 기록 저장소: `%LOCALAPPDATA%\RobinX\traces`.
 //!
 //! - `pending.json`: 추적을 시작할 때 찍은 스냅샷 (앱을 껐다 켜도 이어서 끝낼 수 있게)
 //! - `<ID>.json`: 저장한 추적 기록
@@ -36,7 +36,9 @@ impl TraceStore {
     pub fn default_location() -> Option<Self> {
         let local = std::env::var_os("LOCALAPPDATA")?;
         Some(TraceStore::new(
-            PathBuf::from(local).join("RobinUninstaller").join("traces"),
+            PathBuf::from(local)
+                .join(robin_core::APP_DIR)
+                .join("traces"),
         ))
     }
 

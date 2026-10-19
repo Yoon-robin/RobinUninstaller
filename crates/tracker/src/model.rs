@@ -107,7 +107,8 @@ const NOISE: &[&str] = &[
     r"\bravesoftware\brave-browser\user data\",
     r"\vivaldi\user data\",
     r"\mozilla\firefox\profiles\",
-    r"\robinuninstaller\",
+    r"\robinx\",
+    r"\robinuninstaller\", // 예전 이름
     r"\microsoft\windows\wer\",
     r"\software\microsoft\",
     r"\software\wow6432node\microsoft\",

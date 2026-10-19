@@ -14,12 +14,12 @@ impl Store {
         Store { root: root.into() }
     }
 
-    /// 기본 위치: `%LOCALAPPDATA%\RobinUninstaller\backups`
+    /// 기본 위치: `%LOCALAPPDATA%\RobinX\backups`
     pub fn default_location() -> Option<Self> {
         let local = std::env::var_os("LOCALAPPDATA")?;
         Some(Store::new(
             PathBuf::from(local)
-                .join("RobinUninstaller")
+                .join(robin_core::APP_DIR)
                 .join("backups"),
         ))
     }

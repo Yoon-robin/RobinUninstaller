@@ -471,7 +471,7 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
                   <dd>
                     {entry.disabledAt ? `${formatDate(entry.disabledAt)}에 끔` : "꺼져 있어요"}
                     {entry.changedByUs
-                      ? " · RobinUninstaller가 끔 (다시 켜면 원래 값으로 되돌려요)"
+                      ? " · RobinX가 끔 (다시 켜면 원래 값으로 되돌려요)"
                       : isTask
                         ? " · 작업 스케줄러 등 다른 곳에서 끔"
                         : " · 작업 관리자 등 다른 곳에서 끔"}

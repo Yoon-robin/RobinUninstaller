@@ -1,8 +1,25 @@
-//! RobinUninstaller 공통 모델.
+//! RobinX 공통 모델.
 //!
 //! UI(Tauri)와 엔진 크레이트가 함께 쓰는 타입만 둔다. 시스템을 건드리는 코드는 여기에 넣지 않는다.
 
 use serde::Serialize;
+
+/// 앱 데이터 폴더 이름: `%LOCALAPPDATA%\RobinX`.
+pub const APP_DIR: &str = "RobinX";
+
+/// 예전 이름(RobinUninstaller). 개발 PC에 남은 옛 데이터도 자기 것으로 보고 건드리지 않는다.
+const OLD_APP_DIRS: &[&str] = &["RobinUninstaller"];
+
+/// 파일·레지스트리 경로가 이 앱 자신의 폴더·키 아래인지.
+/// 이름이 비슷한 다른 폴더와 헷갈리지 않게 경로 조각 단위로 비교한다.
+pub fn is_own_data(location: &str) -> bool {
+    location.split(['\\', '/']).any(|segment| {
+        segment.eq_ignore_ascii_case(APP_DIR)
+            || OLD_APP_DIRS
+                .iter()
+                .any(|old| segment.eq_ignore_ascii_case(old))
+    })
+}
 
 /// 프로그램이 등록된 레지스트리 위치.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -124,5 +141,20 @@ mod tests {
             make_app_id(InstallScope::Machine64, "Foo"),
             make_app_id(InstallScope::Machine32, "Foo")
         );
+    }
+
+    #[test]
+    fn own_data_is_matched_by_whole_path_segment() {
+        assert!(is_own_data(r"C:\Users\a\AppData\Local\RobinX\backups\1"));
+        assert!(is_own_data(r"C:\Users\a\AppData\Local\robinx"));
+        assert!(is_own_data(r"HKCU\Software\RobinX"));
+        assert!(is_own_data(
+            r"C:\Users\a\AppData\Local\RobinUninstaller\traces"
+        ));
+        assert!(!is_own_data(r"C:\Program Files\RobinXtreme\app.exe"));
+        assert!(!is_own_data(
+            r"C:\Users\a\AppData\Local\Robin Test Labs\Fixture Notes"
+        ));
+        assert!(!is_own_data(r"HKCU\Software\RobinFixtureApp"));
     }
 }

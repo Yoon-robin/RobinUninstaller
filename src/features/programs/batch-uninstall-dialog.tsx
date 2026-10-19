@@ -168,7 +168,7 @@ export function BatchUninstallDialog({
             )}
             <li className="flex gap-2">
               <Check className="size-4 shrink-0 text-primary" />
-              RobinUninstaller는 파일이나 레지스트리를 직접 지우지 않아요. 남은 흔적은 끝난 뒤 따로 찾아요.
+              RobinX는 파일이나 레지스트리를 직접 지우지 않아요. 남은 흔적은 끝난 뒤 따로 찾아요.
             </li>
             {forced.length > 0 && (
               <li className="flex gap-2">

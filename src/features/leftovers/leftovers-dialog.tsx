@@ -210,7 +210,7 @@ function ForceGate({
         <p className="text-base font-semibold">프로그램이 실행 중이에요</p>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           실행 중인 파일은 옮길 수 없어요. 아래 프로그램을 직접 닫은 뒤 다시 확인해 주세요. 작업 중인 내용이 있을 수
-          있어 RobinUninstaller가 대신 끄지는 않아요.
+          있어 RobinX가 대신 끄지는 않아요.
         </p>
       </div>
       <ul className="flex w-full max-w-md flex-col gap-1.5 text-left">

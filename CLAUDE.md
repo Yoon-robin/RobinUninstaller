@@ -1,6 +1,6 @@
-# RobinUninstaller — Claude 작업 규칙
+# RobinX — Claude 작업 규칙
 
-Windows용 언인스톨러 (Revo Uninstaller 같은 프로그램). Tauri 2 + React + shadcn/ui 화면, Rust 엔진.
+Windows 올인원 관리 도구 (예전 이름 RobinUninstaller). 언인스톨러(Revo Uninstaller 같은)에서 출발해 저장공간·시작프로그램·최적화까지 넓혀 간다. Tauri 2 + React + shadcn/ui 화면, Rust 엔진.
 전체 계획과 단계별 구현 메모는 [PLAN.md](PLAN.md), 새 PC 설정과 현재 진행 상황은 [docs/HANDOFF.md](docs/HANDOFF.md).
 
 ## 사용자와 일하는 방식
@@ -21,6 +21,7 @@ Windows용 언인스톨러 (Revo Uninstaller 같은 프로그램). Tauri 2 + Rea
   - **사용자 파일**(문서, 다운로드, 바탕 화면, 프로젝트, 게임 데이터 등)은 절대 자동으로 지우지 않는다. 크기를 보여 주고 탐색기로 열어 주는 것까지만 한다.
   - 저장공간 정리도 실제 캐시로는 시험하지 않는다. 디버그 빌드에만 있는 테스트 항목(`Fixture Notes` 캐시)으로 시험한다.
 - `Revo Uninstaller Pro.zip`(상용 프로그램)과 `docs/private/`(분석 메모)는 **절대 커밋하지 않는다** (.gitignore에 있음). 리포지토리는 공개 상태다.
+- **최적화 원칙:** 바꾸는 설정은 모두 원래 값을 기록해 되돌릴 수 있어야 한다. 레지스트리 클리너·메모리 부스터처럼 효과가 없거나 위험한 기능은 만들지 않고, 보안(Defender·UAC·업데이트)을 끄는 기능도 만들지 않는다. 최적화도 테스트 앱 항목으로만 시험한다.
 - 분석한 외부 프로그램의 코드·리소스를 가져오지 않는다. 아이디어만 참고한다.
 
 ## 자주 쓰는 명령

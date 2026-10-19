@@ -41,7 +41,7 @@ export function Safety() {
             <br className="hidden sm:block" /> 더 조심스러워야 하니까
           </>
         }
-        description="RobinUninstaller는 처음부터 이 네 가지 원칙을 지키도록 만들었어요."
+        description="RobinX는 처음부터 이 네 가지 원칙을 지키도록 만들었어요."
       />
       <div className="mt-14 grid gap-4 sm:grid-cols-2">
         {principles.map((p, i) => (
@@ -130,7 +130,7 @@ export function FinalCta() {
             이제 마음 놓고 지우세요
           </h2>
           <p className="relative mx-auto mt-4 max-w-xl text-pretty text-muted-foreground sm:text-lg">
-            남은 흔적까지 챙기고, 실수는 되돌릴 수 있게. RobinUninstaller의 개발 과정을 GitHub에서 함께 지켜봐 주세요.
+            남은 흔적까지 챙기고, 실수는 되돌릴 수 있게. RobinX의 개발 과정을 GitHub에서 함께 지켜봐 주세요.
           </p>
           <div className="relative mt-8 flex flex-wrap justify-center gap-3">
             <Button asChild size="lg" className="h-12 rounded-xl px-6 text-base shadow-lg shadow-primary/25">
@@ -157,8 +157,8 @@ export function Footer() {
       <div className="flex flex-col items-center justify-between gap-4 text-sm text-muted-foreground sm:flex-row">
         <div className="flex items-center gap-2.5">
           <img src={LOGO} alt="" className="size-6 rounded-md" />
-          <span className="font-medium text-foreground">RobinUninstaller</span>
-          <span>· Windows용 언인스톨러</span>
+          <span className="font-medium text-foreground">RobinX</span>
+          <span>· Windows 올인원 관리 도구</span>
         </div>
         <div className="flex items-center gap-5">
           <a href="#features" className="transition-colors hover:text-foreground">

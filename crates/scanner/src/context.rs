@@ -90,10 +90,9 @@ impl ScanContext {
         }
     }
 
-    /// RobinUninstaller 자신의 파일·설정은 절대 후보로 올리지 않는다.
+    /// RobinX 자신의 파일·설정은 절대 후보로 올리지 않는다.
     pub fn is_self(&self, location: &str) -> bool {
-        let l = location.to_lowercase();
-        l.contains("robinuninstaller") && !l.contains("robinfixture")
+        robin_core::is_own_data(location)
     }
 
     /// 이 경로를 다른 설치 프로그램도 쓰는 것 같으면 그 프로그램 이름.

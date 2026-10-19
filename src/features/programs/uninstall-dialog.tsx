@@ -128,7 +128,7 @@ function ConfirmBody({
         )}
         <li className="flex gap-2">
           <Check className="size-4 shrink-0 text-primary" />
-          RobinUninstaller는 파일이나 레지스트리를 직접 지우지 않아요.
+          RobinX는 파일이나 레지스트리를 직접 지우지 않아요.
         </li>
         <li className="flex gap-2">
           <Check className="size-4 shrink-0 text-primary" />
