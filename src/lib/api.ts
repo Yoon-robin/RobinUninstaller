@@ -384,6 +384,9 @@ export const settingsApi = {
   removeExclusion: (index: number) => invoke<void>("remove_exclusion", { index }),
   backupUsage: () => invoke<BackupUsage>("backup_usage"),
   pruneBackups: () => invoke<{ deleted: number; failed: number }>("prune_backups"),
+  /** `days`일보다 오래된 백업 (읽기 전용). days는 retentionChoices 중 하나 */
+  oldBackups: (days: number) => invoke<{ count: number; bytes: number }>("old_backups", { days }),
+  deleteOldBackups: (days: number) => invoke<{ deleted: number; failed: number }>("delete_old_backups", { days }),
 }
 
 // crates/tweaks 의 TweakView 와 맞춰야 한다.

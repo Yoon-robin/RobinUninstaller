@@ -1101,6 +1101,8 @@ pub fn run() {
             settings::remove_exclusion,
             settings::backup_usage,
             settings::prune_backups,
+            settings::old_backups,
+            settings::delete_old_backups,
             tweaks::list_tweaks,
             tweaks::apply_tweak,
             tweaks::revert_tweak,

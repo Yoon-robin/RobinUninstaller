@@ -105,23 +105,18 @@ impl Store {
 
     /// 백업 저장소 사용량: (작업 수, 바이트). 링크는 따라가지 않는다.
     pub fn usage(&self) -> (usize, u64) {
-        fn size(path: &Path) -> u64 {
-            let Ok(meta) = std::fs::symlink_metadata(path) else {
-                return 0;
-            };
-            if meta.file_type().is_symlink() {
-                0
-            } else if meta.is_dir() {
-                std::fs::read_dir(path)
-                    .map(|entries| entries.flatten().map(|e| size(&e.path())).sum())
-                    .unwrap_or(0)
-            } else {
-                meta.len()
-            }
-        }
         let ops = self.list();
-        let bytes = ops.iter().map(|op| size(&self.dir(&op.id))).sum();
+        let bytes = ops.iter().map(|op| dir_size(&self.dir(&op.id))).sum();
         (ops.len(), bytes)
+    }
+
+    /// 작업 하나의 백업이 차지하는 바이트. 잘못된 ID면 0.
+    pub fn bytes_of(&self, op_id: &str) -> u64 {
+        if is_valid_id(op_id) {
+            dir_size(&self.dir(op_id))
+        } else {
+            0
+        }
     }
 
     /// `days`일보다 오래된 작업 ID (최근 작업부터). `now`는 유닉스 초.
@@ -146,6 +141,22 @@ impl Store {
             }
         }
         std::fs::remove_dir_all(dir)
+    }
+}
+
+/// 폴더 크기. 링크는 따라가지 않는다.
+fn dir_size(path: &Path) -> u64 {
+    let Ok(meta) = std::fs::symlink_metadata(path) else {
+        return 0;
+    };
+    if meta.file_type().is_symlink() {
+        0
+    } else if meta.is_dir() {
+        std::fs::read_dir(path)
+            .map(|entries| entries.flatten().map(|e| dir_size(&e.path())).sum())
+            .unwrap_or(0)
+    } else {
+        meta.len()
     }
 }
 

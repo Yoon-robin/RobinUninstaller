@@ -158,3 +158,67 @@ pub fn prune_expired() -> Result<PruneResult, String> {
 pub async fn prune_backups() -> Result<PruneResult, String> {
     blocking(prune_expired).await
 }
+
+/// 복구 기록에서 고르는 기간은 보관 기간 선택지와 같은 값만 받는다.
+fn retention_choice(days: u32) -> Result<u32, String> {
+    if RETENTION_CHOICES.contains(&days) {
+        Ok(days)
+    } else {
+        Err("고를 수 없는 기간이에요".into())
+    }
+}
+
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OldBackups {
+    count: usize,
+    bytes: u64,
+}
+
+/// `days`일보다 오래된 백업이 몇 개, 얼마나 되는지 (읽기 전용). 복원 중 충돌이 난 백업은 빠진다.
+#[tauri::command]
+pub async fn old_backups(days: u32) -> Result<OldBackups, String> {
+    blocking(move || {
+        let days = retention_choice(days)?;
+        let store = crate::store()?;
+        let ids = store.expired(days, now());
+        let bytes = ids.iter().map(|id| store.bytes_of(id)).sum();
+        Ok(OldBackups {
+            count: ids.len(),
+            bytes,
+        })
+    })
+    .await
+}
+
+/// `days`일보다 오래된 백업을 지운다. 사용자가 기간을 고르고 한 번 더 확인한 뒤에만 부른다.
+/// 관리자 권한으로 격리한 백업처럼 일반 권한으로 못 지운 것은 `failed`로 남고, 복구 기록에서 하나씩 지울 수 있다.
+#[tauri::command]
+pub async fn delete_old_backups(days: u32) -> Result<PruneResult, String> {
+    blocking(move || {
+        let days = retention_choice(days)?;
+        let store = crate::store()?;
+        let (mut deleted, mut failed) = (0, 0);
+        for id in store.expired(days, now()) {
+            match store.delete(&id) {
+                Ok(()) => deleted += 1,
+                Err(_) => failed += 1,
+            }
+        }
+        Ok(PruneResult { deleted, failed })
+    })
+    .await
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn only_retention_choices_are_accepted() {
+        for d in robin_settings::RETENTION_CHOICES {
+            assert_eq!(super::retention_choice(d), Ok(d));
+        }
+        for d in [0, 1, 7, 29, 31, 365, u32::MAX] {
+            assert!(super::retention_choice(d).is_err());
+        }
+    }
+}

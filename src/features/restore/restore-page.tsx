@@ -57,6 +57,7 @@ function formatDate(seconds: number) {
 export function RestorePage() {
   const backups = useQuery({ queryKey: ["backups"], queryFn: recoveryApi.list })
   const [deleting, setDeleting] = useState<Operation | null>(null)
+  const [emptying, setEmptying] = useState(false)
 
   return (
     <Stagger className="relative mx-auto flex max-w-4xl min-w-0 flex-col gap-6 px-7 pt-7 pb-10">
@@ -95,8 +96,14 @@ export function RestorePage() {
         </FadeUp>
       ) : (
         <>
-          <FadeUp>
+          <FadeUp className="flex flex-col gap-3">
             <HeldSpace ops={backups.data ?? []} />
+            <div>
+              <Button variant="outline" size="sm" onClick={() => setEmptying(true)}>
+                <Trash2 />
+                오래된 백업 비우기
+              </Button>
+            </div>
           </FadeUp>
           {(backups.data ?? []).map((op) => (
             <FadeUp key={op.id}>
@@ -107,6 +114,7 @@ export function RestorePage() {
       )}
 
       <DeleteBackupDialog op={deleting} onClose={() => setDeleting(null)} />
+      <EmptyOldBackupsDialog open={emptying} onClose={() => setEmptying(false)} />
     </Stagger>
   )
 }
@@ -131,6 +139,93 @@ function HeldSpace({ ops }: { ops: Operation[] }) {
           : `보관 기간 ${days}일이 지난 백업은 자동으로 지워져요.`}
       </p>
     </div>
+  )
+}
+
+/**
+ * 고른 기간보다 오래된 백업을 한 번에 지운다. 기간은 기본 선택 없이 직접 고르고,
+ * 지울 개수와 크기를 본 뒤 한 번 더 눌러야 지워진다. 되돌릴 수 없다.
+ */
+function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () => void }) {
+  const queryClient = useQueryClient()
+  const settings = useQuery({ queryKey: ["settings"], queryFn: settingsApi.get, enabled: open })
+  const [days, setDays] = useState<number | null>(null)
+  const [busy, setBusy] = useState(false)
+  const preview = useQuery({
+    queryKey: ["old-backups", days],
+    queryFn: () => settingsApi.oldBackups(days!),
+    enabled: open && days != null,
+  })
+
+  useEffect(() => {
+    if (open) setDays(null)
+  }, [open])
+
+  const run = async () => {
+    if (days == null) return
+    setBusy(true)
+    try {
+      const r = await settingsApi.deleteOldBackups(days)
+      if (r.failed > 0) {
+        toast.warning(`${r.deleted}개를 지웠어요. ${r.failed}개는 지우지 못했어요`, {
+          description: "관리자 권한으로 정리한 백업일 수 있어요. 복구 기록에서 하나씩 지워 주세요.",
+        })
+      } else {
+        toast.success(`오래된 백업 ${r.deleted}개를 지웠어요`)
+      }
+      onClose()
+    } catch (e) {
+      toast.error("백업을 지우지 못했어요", { description: String(e) })
+    } finally {
+      setBusy(false)
+      for (const key of ["backups", "backup-usage", "old-backups"]) queryClient.invalidateQueries({ queryKey: [key] })
+    }
+  }
+
+  const count = preview.data?.count ?? 0
+  return (
+    <Dialog open={open} onOpenChange={(v) => !v && !busy && onClose()}>
+      <DialogContent className="sm:max-w-md" showCloseButton={!busy}>
+        <DialogTitle>오래된 백업 비우기</DialogTitle>
+        <DialogDescription className="leading-relaxed">
+          고른 기간보다 오래된 정리 기록과 백업을 지워 공간을 돌려받아요. 지운 백업으로는 다시 되돌릴 수 없어요.
+          복원하다 충돌이 난 백업은 지우지 않아요.
+        </DialogDescription>
+        <div role="radiogroup" aria-label="기간" className="flex flex-wrap gap-2">
+          {(settings.data?.retentionChoices ?? []).map((d) => (
+            <Button
+              key={d}
+              role="radio"
+              aria-checked={days === d}
+              variant={days === d ? "default" : "outline"}
+              size="sm"
+              onClick={() => setDays(d)}
+              disabled={busy}
+            >
+              {d}일 지난 것
+            </Button>
+          ))}
+        </div>
+        <p className="min-h-5 text-sm text-muted-foreground" aria-live="polite">
+          {days == null
+            ? "기간을 먼저 골라 주세요."
+            : preview.isLoading
+              ? "찾는 중이에요"
+              : count === 0
+                ? `${days}일 지난 백업이 없어요.`
+                : `${count}개, ${formatBytes(preview.data?.bytes ?? 0)}를 지워요.`}
+        </p>
+        <div className="flex justify-end gap-2">
+          <Button variant="outline" onClick={onClose} disabled={busy}>
+            취소
+          </Button>
+          <Button variant="destructive" onClick={run} disabled={busy || days == null || count === 0}>
+            {busy ? <Loader2 className="animate-spin" /> : <Trash2 />}
+            영구 삭제
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
   )
 }
 
