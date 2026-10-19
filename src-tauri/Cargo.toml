@@ -29,10 +29,12 @@ robin-startup.workspace = true
 robin-storage.workspace = true
 robin-tracker.workspace = true
 robin-settings.workspace = true
+robin-setup.workspace = true
 tauri-plugin-dialog = "2"
 
 [target.'cfg(windows)'.dependencies]
 winreg = "0.55"
+windows = { version = "0.62", features = ["Win32_UI_WindowsAndMessaging"] }
 
 [target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
 tauri-plugin-process = "2"

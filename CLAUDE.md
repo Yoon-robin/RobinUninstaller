@@ -71,6 +71,7 @@ DevTools 프로토콜(`http://127.0.0.1:9223/json`)로 클릭·캡처한다. 마
 - `crates/storage` 저장공간 정리(규칙은 `rules.rs`, 사용자 폴더를 넣으면 테스트가 실패한다)와 폴더 크기 분석(읽기 전용)
 - `crates/tracker` 설치 추적: 설치 전후 스냅샷 비교(읽기 전용), 기록은 잔여물 스캔의 근거로 쓴다
 - `crates/settings` 사용자 설정(백업 보관 기간, 잔여물 스캔 제외 목록)
+- `crates/setup` 자체 설치 프로그램 엔진 + `src-tauri/src/setup.rs`(모드 판단·명령) + `src/features/setup`(화면). 설계는 [docs/INSTALLER.md](docs/INSTALLER.md). 설치·제거 시험은 RobinX 자신으로만 하고, 끝나면 이 PC의 원래 상태(설치 여부, 데이터 폴더)로 돌려놓는다. 0.1.0(NSIS)은 데이터 폴더에 설치됐으므로 그 폴더를 통째로 지우는 코드는 절대 넣지 않는다
 
 - `website/` 소개 사이트 (별도 프로젝트, GitHub Pages). 디자인·문구 규칙과 검사 방법은 [website/README.md](website/README.md)
 - `scripts/release.sh` 서명된 설치 파일과 `latest.json` 만들기, `scripts/ui-mock/` 가짜 응답 화면 캡처, `scripts/wine-check.sh` 클라우드용 검사

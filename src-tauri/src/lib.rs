@@ -3,6 +3,8 @@
 //! 프론트엔드는 경로가 아니라 앱 ID만 넘긴다. 경로는 항상 엔진이 읽어 둔 목록에서 찾는다.
 
 mod settings;
+#[cfg(windows)]
+pub mod setup;
 mod tracking;
 pub mod worker;
 
@@ -1050,7 +1052,25 @@ pub fn run() {
         .manage(AppCache::default())
         .manage(tracking::TrackingState::default())
         .setup(|app| {
-            // 사용자가 보관 기간을 골랐으면 기간이 지난 백업을 정리한다 (기본은 계속 보관이라 아무것도 하지 않는다)
+            // 설치·제거 화면: 작은 고정 크기 창으로 띄우고, 앱의 다른 시작 작업은 하지 않는다
+            #[cfg(windows)]
+            if setup::mode() != setup::Mode::App {
+                if let Some(window) = app.get_webview_window("main") {
+                    let title = if setup::mode() == setup::Mode::Setup {
+                        "RobinX 설치"
+                    } else {
+                        "RobinX 제거"
+                    };
+                    let _ = window.set_title(title);
+                    let _ = window.set_size(tauri::LogicalSize::new(640.0, 480.0));
+                    let _ = window.set_min_size(Some(tauri::LogicalSize::new(640.0, 480.0)));
+                    let _ = window.set_resizable(false);
+                    let _ = window.set_maximizable(false);
+                    let _ = window.center();
+                }
+                return Ok(());
+            }
+            // 기간이 지난 백업을 정리한다 (처음 설정은 30일, 사용자가 "계속 보관"을 고르면 아무것도 하지 않는다)
             std::thread::spawn(|| {
                 let _ = settings::prune_expired();
             });
@@ -1125,7 +1145,19 @@ pub fn run() {
             analyze_folder,
             cancel_folder_analysis,
             reveal_folder_item,
-            window_material
+            window_material,
+            #[cfg(windows)]
+            setup::app_mode,
+            #[cfg(windows)]
+            setup::setup_info,
+            #[cfg(windows)]
+            setup::run_install,
+            #[cfg(windows)]
+            setup::run_uninstall,
+            #[cfg(windows)]
+            setup::launch_installed,
+            #[cfg(windows)]
+            setup::finish_setup
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

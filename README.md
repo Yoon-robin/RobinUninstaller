@@ -53,6 +53,7 @@ pnpm check          # 타입 검사 + fmt + clippy + 테스트 (커밋 전에 �
 - `crates/startup`: 시작프로그램 목록과 끄기·원상복구 (Run 키, 시작 폴더, 예약 작업)
 - `crates/storage`: 저장공간 정리(캐시·임시 파일)와 큰 폴더 분석
 - `crates/settings`: 사용자 설정 (백업 보관 기간, 잔여물 스캔 제외 목록)
+- `crates/setup`: 자체 설치·업데이트·제거 (현재 사용자 설치, 설계는 [docs/INSTALLER.md](docs/INSTALLER.md))
 - `crates/tracker`: 설치 추적: 설치 전후 스냅샷을 비교해 새로 생긴 파일·레지스트리 기록 (읽기 전용)
 - `crates/fixture`: 제거·잔여물 테스트용 가짜 앱 "Fixture Notes" (현재 사용자 영역에만 등록)
 
@@ -75,7 +76,8 @@ cargo run -p robin-fixture -- remove             # 정리
 앱은 GitHub Releases의 `latest.json`으로 새 버전을 확인하고, 사용자가 누를 때만 받아서 설치합니다(Tauri updater). 서명이 맞지 않는 파일은 설치하지 않습니다. 공개 키는 `src-tauri/tauri.conf.json`에, 비밀 키는 배포하는 사람의 PC(`%USERPROFILE%\.tauri\robinx-updater.key`)에만 있습니다.
 
 1. `package.json`, `Cargo.toml`(workspace), `src-tauri/tauri.conf.json`의 버전을 올린다.
-2. `bash scripts/release.sh` → 서명된 설치 파일(`target/release/bundle/nsis/`)과 `latest.json`을 만든다.
+2. `bash scripts/release.sh` → 서명된 설치 파일(`target/release/bundle/RobinX_<버전>_x64-setup.exe`)과 `latest.json`을 만든다.
+   설치 파일은 NSIS가 아니라 robinx.exe 자신이다. setup 이름으로 실행하면 RobinX 디자인의 설치 화면이 뜨고 스스로 설치한다([docs/INSTALLER.md](docs/INSTALLER.md)).
 3. 확인한 뒤 `bash scripts/release.sh --publish` → GitHub Release `v<버전>`에 설치 파일과 `latest.json`을 올린다.
 
 > 비밀 키를 잃어버리면 이미 설치된 앱에 업데이트를 보낼 수 없습니다. 안전한 곳에 따로 백업해 두세요.

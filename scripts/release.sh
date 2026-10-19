@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 # 설치 파일을 만들고 자동 업데이트용 서명과 latest.json을 준비한다. (Git Bash)
+# 설치 파일은 RobinX가 직접 만든 것이다: robinx.exe를 setup 이름으로 복사하면 스스로 설치한다 (docs/INSTALLER.md).
 #
 #   bash scripts/release.sh            # 빌드 + 서명 + latest.json (올리지 않음)
 #   bash scripts/release.sh --publish  # 위 작업 뒤 GitHub Release v<버전>을 만들어 올린다
@@ -34,12 +35,17 @@ VERSION="$ver_conf"
 TAG="v$VERSION"
 echo "버전 $VERSION 빌드"
 
-export TAURI_SIGNING_PRIVATE_KEY="$(cat "$KEY_FILE")"
-export TAURI_SIGNING_PRIVATE_KEY_PASSWORD=""
-pnpm tauri build
+# NSIS는 쓰지 않는다. 앱만 빌드하고, 그 실행 파일이 곧 설치 파일이다.
+pnpm tauri build --no-bundle
 
-NSIS_DIR="target/release/bundle/nsis"
-SETUP=$(ls "$NSIS_DIR"/*_"$VERSION"_x64-setup.exe | head -1)
+OUT_DIR="target/release/bundle"
+mkdir -p "$OUT_DIR"
+SETUP="$OUT_DIR/RobinX_${VERSION}_x64-setup.exe"
+cp target/release/robinx.exe "$SETUP"
+
+# 자동 업데이트 서명 (비밀 키는 화면에 내보내지 않는다)
+TAURI_SIGNING_PRIVATE_KEY_PATH="$(cygpath -w "$KEY_FILE")" TAURI_SIGNING_PRIVATE_KEY_PASSWORD="" \
+  pnpm tauri signer sign "$(cygpath -w "$SETUP")" >/dev/null
 SIG="$SETUP.sig"
 [ -f "$SIG" ] || { echo "서명 파일이 없어요: $SIG" >&2; exit 1; }
 NAME=$(basename "$SETUP")

@@ -2857,6 +2857,7 @@ dependencies = [
  "robin-recovery",
  "robin-scanner",
  "robin-settings",
+ "robin-setup",
  "robin-startup",
  "robin-storage",
  "robin-tracker",
@@ -2867,6 +2868,7 @@ dependencies = [
  "tauri-plugin-dialog",
  "tauri-plugin-process",
  "tauri-plugin-updater",
+ "windows",
  "winreg 0.55.0",
 ]
 
