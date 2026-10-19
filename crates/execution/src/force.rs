@@ -121,6 +121,34 @@ pub fn is_inside(file: &str, dir: &str) -> bool {
             .is_some_and(|rest| rest.starts_with('\\'))
 }
 
+/// MSIX(패키지) 앱 안에서 설치된 프로그램은 실제 파일이 `%LOCALAPPDATA%\Packages\<패키지>\LocalCache\Local\...`
+/// (또는 `...\LocalCache\Roaming\...`)에 있지만, 등록 정보에는 `%LOCALAPPDATA%\...`(`%APPDATA%\...`)로 적힌다.
+/// 실행 중인 프로세스의 실제 경로를 등록 정보와 같은 모양으로 바꾼다. 해당하지 않으면 `None`.
+pub fn devirtualize(path: &str, local_appdata: &str, appdata: &str) -> Option<String> {
+    let packages = format!("{}\\packages\\", normalize(local_appdata));
+    let lower = normalize(path);
+    let rest = lower.strip_prefix(&packages)?;
+    let (_package, rest) = rest.split_once('\\')?;
+    let rest = rest.strip_prefix("localcache\\")?;
+    if let Some(rest) = rest.strip_prefix("local\\") {
+        Some(format!("{}\\{rest}", normalize(local_appdata)))
+    } else {
+        rest.strip_prefix("roaming\\")
+            .map(|rest| format!("{}\\{rest}", normalize(appdata)))
+    }
+}
+
+/// 실행 파일 `path`가 설치 폴더 `dir` 안에 있는지. 패키지 앱의 가상화 경로도 같은 위치로 본다.
+fn runs_from(path: &str, dir: &str) -> bool {
+    is_inside(path, dir)
+        || match (std::env::var("LOCALAPPDATA"), std::env::var("APPDATA")) {
+            (Ok(local), Ok(roaming)) => {
+                devirtualize(path, &local, &roaming).is_some_and(|p| is_inside(&p, dir))
+            }
+            _ => false,
+        }
+}
+
 /// 강제 제거 전 확인.
 pub fn check(app: &InstalledApplication) -> ForceCheck {
     let running = match app.install_location.as_deref().map(str::trim) {
@@ -160,7 +188,7 @@ fn running_in(dir: &str) -> Vec<RunningProcess> {
             let _ = CloseHandle(handle);
             ok.ok()?;
             let path = String::from_utf16_lossy(&buf[..len as usize]);
-            is_inside(&path, dir).then_some(RunningProcess { pid, path })
+            runs_from(&path, dir).then_some(RunningProcess { pid, path })
         })
         .collect();
     out.sort_by_key(|p| p.pid);
@@ -220,5 +248,29 @@ mod tests {
         assert!(is_inside(r"C:\Apps\Foo\bin\foo.exe", r"c:\apps\foo\"));
         assert!(!is_inside(r"C:\Apps\Foo2\foo.exe", r"C:\Apps\Foo"));
         assert!(!is_inside(r"C:\foo.exe", r"C:\"));
+    }
+
+    #[test]
+    fn devirtualizes_package_local_cache_paths() {
+        let (local, roaming) = (r"C:\Users\me\AppData\Local", r"C:\Users\me\AppData\Roaming");
+        let real =
+            r"C:\Users\me\AppData\Local\Packages\Some.App_abc\LocalCache\Local\Acme\Tool\tool.exe";
+        let shown = devirtualize(real, local, roaming).unwrap();
+        assert!(is_inside(&shown, r"C:\Users\me\AppData\Local\Acme\Tool"));
+        let roam = r"C:\Users\me\AppData\Local\Packages\Some.App_abc\LocalCache\Roaming\Acme\a.exe";
+        assert!(is_inside(
+            &devirtualize(roam, local, roaming).unwrap(),
+            r"C:\Users\me\AppData\Roaming\Acme"
+        ));
+        // 패키지 자신의 파일이나 다른 위치는 바꾸지 않는다
+        assert!(
+            devirtualize(
+                r"C:\Users\me\AppData\Local\Packages\Some.App_abc\AC\x.exe",
+                local,
+                roaming
+            )
+            .is_none()
+        );
+        assert!(devirtualize(r"C:\Program Files\Acme\a.exe", local, roaming).is_none());
     }
 }
