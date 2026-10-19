@@ -37,6 +37,7 @@ pnpm tauri dev                 # 개발 모드 실행
 pnpm check                     # tsc + prettier + cargo fmt + clippy + cargo test
 pnpm format                    # 프론트엔드 포맷
 cargo run -p robin-fixture -- install [--cancel|--hang|--machine|--broken]   # 테스트 앱 (--machine은 관리자로, --broken은 언인스톨러 없음)
+cargo run -p robin-fixture -- run | stop   # 설치 폴더에서 실제로 도는 프로세스 (강제 제거 "실행 중" 안내 시험)
 cargo run -p robin-fixture -- remove
 cargo run -p robin-execution --example uninstall_fixture
 cargo run -p robin-scanner --example scan_fixture
