@@ -15,7 +15,6 @@ const rows: { task: string; level: Level; note: string }[] = [
   { task: "시작프로그램 끄기", level: "가능", note: "등록 정보는 그대로 두고 끄기만 해요" },
   { task: "남은 흔적 정리", level: "조건부", note: "백업을 보관하는 동안 복구 기록에서" },
   { task: "강제 제거", level: "조건부", note: "백업한 흔적만 돌아와요" },
-  { task: "최적화", level: "조건부", note: "그 사이 다른 곳에서 바꾼 값은 덮어쓰지 않아요" },
   { task: "프로그램 제거", level: "불가", note: "프로그램은 다시 설치해야 해요" },
   { task: "캐시·임시 파일 정리", level: "불가", note: "다시 만들어지는 것만 지워요" },
   { task: "백업 삭제·기간 만료", level: "불가", note: "그 백업으로는 더 복원할 수 없어요" },

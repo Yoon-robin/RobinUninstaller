@@ -2838,17 +2838,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "robin-tweaks"
-version = "0.1.0"
-dependencies = [
- "robin-core",
- "serde",
- "serde_json",
- "windows",
- "winreg 0.55.0",
-]
-
-[[package]]
 name = "robinx"
 version = "0.1.0"
 dependencies = [
@@ -2861,7 +2850,6 @@ dependencies = [
  "robin-startup",
  "robin-storage",
  "robin-tracker",
- "robin-tweaks",
  "serde",
  "serde_json",
  "tauri",

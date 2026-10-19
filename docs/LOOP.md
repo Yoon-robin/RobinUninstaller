@@ -14,7 +14,7 @@ Claude가 `/loop`으로 혼자 이어서 일할 때 읽는 문서. 한 바퀴에
 3. **만들기.** 항목의 "끝난 기준"을 그대로 따른다. 관련 없는 파일은 고치지 않는다.
 4. **확인.**
    - 앱 코드: `pnpm check` 통과. 화면이 바뀌면 `pnpm tauri dev`로 띄워 DevTools 포트(9223)로 실제 화면을 본다.
-   - 삭제·정리·최적화 동작은 테스트 앱(`robin-fixture`)과 디버그 전용 테스트 항목으로만 시험하고, 끝나면 `robin-fixture remove`.
+   - 삭제·정리·시작 항목 동작은 테스트 앱(`robin-fixture`)과 디버그 전용 테스트 항목으로만 시험하고, 끝나면 `robin-fixture remove`.
    - 웹사이트: `website/README.md`의 빌드와 taste-skill 검사(FAIL 0), 그다음 `bash website/scripts/deploy.sh`.
    - 문서만 바꿨으면 링크와 명령이 실제로 있는지만 확인한다.
    - 확인용으로 띄운 앱, 개발 서버, 브라우저는 끝나면 닫는다. 앱은 창을 닫는 방법을 먼저 쓴다(`taskkill /F`는 WebView2 프로세스를 남긴다).
@@ -37,7 +37,7 @@ Claude가 `/loop`으로 혼자 이어서 일할 때 읽는 문서. 한 바퀴에
 
 - UAC "예", 로그인, 저장 창 확인처럼 사용자의 손이 필요한 것
 - GitHub Release 공개(`scripts/release.sh --publish`) 같은 공개 행동
-- 정한 원칙(삭제 원칙, 최적화 원칙)이나 기본값을 바꾸는 결정
+- 정한 원칙(삭제 원칙, 만들지 않는 기능)이나 기본값을 바꾸는 결정
 - 외부 서비스에 무엇을 보내거나 계정 설정을 바꾸는 것
 
 ### 절대 하지 않는 것
@@ -70,7 +70,7 @@ Claude가 `/loop`으로 혼자 이어서 일할 때 읽는 문서. 한 바퀴에
 - [ ] B3. 복구 기록 (`src/features/restore`)
 - [ ] B4. 저장공간 (`src/features/storage`)
 - [ ] B5. 시작프로그램 (`src/features/startup`)
-- [ ] B6. 최적화 (`src/features/tweaks`, `crates/tweaks/src/catalog.rs`의 설명)
+- [x] ~~B6. 최적화~~ (2026-10-19 기능을 뺌)
 - [ ] B7. 설치 추적, 설정, 업데이트, 공통 컴포넌트
 
 끝난 기준: 화면을 띄워 바뀐 문구가 잘리지 않는지 확인, `pnpm check` 통과.

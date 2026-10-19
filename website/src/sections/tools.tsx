@@ -39,12 +39,6 @@ const tools: { name: string; text: string; shot?: string; alt?: string }[] = [
     alt: "저장공간 정리 화면",
   },
   {
-    name: "최적화",
-    text: "Windows 설정 앱에 있는 설정만 바꾸고, 바꾸기 전 값을 기록해 두어 끄면 원래대로 돌아가요.",
-    shot: "tweaks",
-    alt: "최적화 화면",
-  },
-  {
     name: "강제 제거",
     text: "언인스톨러가 사라졌거나 망가진 프로그램도 설치 정보와 흔적을 찾아 백업 후 정리해요. 보안 프로그램과 드라이버는 빼요.",
   },

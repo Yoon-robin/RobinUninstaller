@@ -388,37 +388,3 @@ export const settingsApi = {
   oldBackups: (days: number) => invoke<{ count: number; bytes: number }>("old_backups", { days }),
   deleteOldBackups: (days: number) => invoke<{ deleted: number; failed: number }>("delete_old_backups", { days }),
 }
-
-// crates/tweaks 의 TweakView 와 맞춰야 한다.
-export type TweakGroup = "privacy" | "taskbar" | "suggestions" | "convenience" | "gaming" | "test"
-/** 바꾼 뒤 보이려면 필요한 것 */
-export type TweakRestart = "none" | "explorer" | "signOut"
-export type TweakState = "applied" | "notApplied" | "partial"
-
-export interface TweakView {
-  id: string
-  group: TweakGroup
-  title: string
-  description: string
-  why: string
-  /** Windows 설정 앱에서 같은 설정을 찾는 위치 */
-  settingsPath: string
-  restart: TweakRestart
-  state: TweakState
-  /** RobinX가 바꿨고 원래 값 기록이 있어 되돌릴 수 있음 */
-  changedByUs: boolean
-  appliedAt: number | null
-  changes: { location: string; name: string; value: string }[]
-  /** 여러 값 중 고르는 항목의 선택지 (켜기/끄기 항목이면 비어 있다) */
-  options: { id: string; label: string }[]
-  /** 지금 값에 맞는 선택지. 어느 것에도 맞지 않으면 null */
-  selected: string | null
-}
-
-export const tweaksApi = {
-  list: () => invoke<TweakView[]>("list_tweaks"),
-  /** 원래 값을 기록한 뒤 적용한다 */
-  apply: (id: string, option?: string) => invoke<void>("apply_tweak", { id, option: option ?? null }),
-  /** 원래 값으로 되돌린다. 그 사이 다른 곳에서 바뀐 값은 그대로 두고 `leftAsIs`로 알려 준다 */
-  revert: (id: string) => invoke<{ leftAsIs: string[] }>("revert_tweak", { id }),
-}

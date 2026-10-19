@@ -1,6 +1,6 @@
 # RobinX — Claude 작업 규칙
 
-Windows 올인원 관리 도구 (예전 이름 RobinUninstaller). 언인스톨러(Revo Uninstaller 같은)에서 출발해 저장공간·시작프로그램·최적화까지 넓혀 간다. Tauri 2 + React + shadcn/ui 화면, Rust 엔진.
+Windows 프로그램 제거·정리 도구 (예전 이름 RobinUninstaller). 언인스톨러(Revo Uninstaller 같은)에서 출발해 남은 흔적 정리·저장공간·시작프로그램까지 다룬다. Tauri 2 + React + shadcn/ui 화면, Rust 엔진.
 전체 계획과 단계별 구현 메모는 [PLAN.md](PLAN.md), 새 PC 설정과 현재 진행 상황은 [docs/HANDOFF.md](docs/HANDOFF.md), **할 일 목록과 루프 작업 방법은 [docs/LOOP.md](docs/LOOP.md)**.
 
 ## 사용자와 일하는 방식
@@ -25,7 +25,8 @@ Windows 올인원 관리 도구 (예전 이름 RobinUninstaller). 언인스톨�
   - 저장공간 정리도 실제 캐시로는 시험하지 않는다. 디버그 빌드에만 있는 테스트 항목(`Fixture Notes` 캐시)으로 시험한다.
 - **업데이트 서명 비밀 키**(`%USERPROFILE%\.tauri\robinx-updater.key`)는 저장소에 넣거나 출력·전송하지 않는다. 공개 키만 `tauri.conf.json`에 있다. 릴리스 올리기(`scripts/release.sh --publish`)는 공개 행동이라 사용자에게 먼저 묻는다.
 - `Revo Uninstaller Pro.zip`(상용 프로그램)과 `docs/private/`(분석 메모)는 **절대 커밋하지 않는다** (.gitignore에 있음). 리포지토리는 공개 상태다.
-- **최적화 원칙:** 바꾸는 설정은 모두 원래 값을 기록해 되돌릴 수 있어야 한다. 레지스트리 클리너·메모리 부스터처럼 효과가 없거나 위험한 기능은 만들지 않고, 보안(Defender·UAC·업데이트)을 끄는 기능도 만들지 않는다. 최적화도 테스트 앱 항목으로만 시험한다.
+- **만들지 않는 기능:** 레지스트리 클리너·메모리 부스터처럼 효과가 없거나 위험한 기능, 보안(Defender·UAC·업데이트·방화벽)을 끄는 기능. 바꾸는 설정은 모두 원래 값을 기록해 되돌릴 수 있어야 한다.
+- 최적화(Windows 설정 바꾸기)는 26개 중 19개가 이미 적용돼 있을 만큼 효과가 작고 앱의 초점을 흐려 2026-10-19에 뺐다(사용자 결정). 코드는 git 기록(`crates/tweaks`, 커밋 `73a24a5` 무렵)에 있다. 다시 넣자는 요청이 없으면 비슷한 기능을 만들지 않는다.
 - 분석한 외부 프로그램의 코드·리소스를 가져오지 않는다. 아이디어만 참고한다.
 
 ## 자주 쓰는 명령
@@ -50,7 +51,6 @@ cargo run -p robin-startup --example list             # 시작 항목 보기 (�
 cargo run -p robin-startup --example toggle_fixture   # 테스트 앱 시작 항목만 껐다 켜기
 cargo run -p robin-storage --example storage_scan            # 정리할 수 있는 항목 보기 (읽기 전용)
 cargo run -p robin-storage --example storage_clean_fixture   # 테스트 앱 캐시만 정리해 보기
-cargo run -p robin-tweaks --example tweaks_fixture           # 최적화 적용·되돌리기를 테스트 항목으로만
 bash scripts/release.sh [--publish]                         # 서명된 설치 파일 + latest.json (--publish는 GitHub Release에 올림)
 ```
 
@@ -63,7 +63,7 @@ DevTools 프로토콜(`http://127.0.0.1:9223/json`)로 클릭·캡처한다. 마
 
 ## 코드 구조
 
-- `src/` React 화면 (`features/programs`, `features/leftovers`, `features/storage`, `features/startup`, `features/tracking`, `features/tweaks`, `features/settings`, `features/restore`, `features/updates`, `components/`)
+- `src/` React 화면 (`features/programs`, `features/leftovers`, `features/storage`, `features/startup`, `features/tracking`, `features/settings`, `features/restore`, `features/updates`, `components/`)
 - `src-tauri/` Tauri command 계층(얇게 유지) + `worker.rs`(관리자 권한 작업자 모드)
 - `crates/core` 공통 모델 · `crates/discovery` 설치 목록(Store 앱 포함)·아이콘 · `crates/execution` 언인스톨러 실행
 - `crates/scanner` 잔여물 탐지(읽기 전용) · `crates/recovery` 백업·정리·복원 · `crates/fixture` 테스트 앱
@@ -71,7 +71,6 @@ DevTools 프로토콜(`http://127.0.0.1:9223/json`)로 클릭·캡처한다. 마
 - `crates/storage` 저장공간 정리(규칙은 `rules.rs`, 사용자 폴더를 넣으면 테스트가 실패한다)와 폴더 크기 분석(읽기 전용)
 - `crates/tracker` 설치 추적: 설치 전후 스냅샷 비교(읽기 전용), 기록은 잔여물 스캔의 근거로 쓴다
 - `crates/settings` 사용자 설정(백업 보관 기간, 잔여물 스캔 제외 목록)
-- `crates/tweaks` 최적화: 항목은 `catalog.rs`에 데이터로 정의(HKCU 공식 설정만, 정책·보안 키 금지는 테스트가 확인). 원래 값을 먼저 기록하고 바꾸며, 되돌릴 때 다른 곳에서 바뀐 값은 덮어쓰지 않는다. 실제 항목은 켜고 끄며 시험하지 않고 `test.fixture`(디버그 전용)로만 시험한다
 
 - `website/` 소개 사이트 (별도 프로젝트, GitHub Pages). 디자인·문구 규칙과 검사 방법은 [website/README.md](website/README.md)
 - `scripts/release.sh` 서명된 설치 파일과 `latest.json` 만들기, `scripts/ui-mock/` 가짜 응답 화면 캡처, `scripts/wine-check.sh` 클라우드용 검사

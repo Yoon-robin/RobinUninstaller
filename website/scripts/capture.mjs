@@ -368,95 +368,6 @@ const storage = [
   guidance: null,
 }))
 
-// 최적화 화면: 실제 항목 이름과 설명 (상태는 예시)
-const hk = (path) => `HKCU\\${path}`
-const tw = (id, group, title, description, why, state, changedByUs, restart, key, name, value, settingsPath) => ({
-  id,
-  group,
-  title,
-  description,
-  why,
-  state,
-  changedByUs,
-  restart,
-  settingsPath,
-  appliedAt: changedByUs ? now - 2 * 3600 : null,
-  changes: [{ location: hk(key), name, value }],
-})
-const ADV = "Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\Advanced"
-const tweaks = [
-  tw(
-    "privacy.advertising-id",
-    "privacy",
-    "앱 맞춤 광고 끄기",
-    "앱이 광고 ID로 나에게 맞춘 광고를 보여 주지 않게 해요.",
-    "광고 ID는 앱 사이에서 같은 사람으로 알아보는 데 쓰여요. 꺼도 광고 수는 같고, 맞춤이 아닐 뿐이에요.",
-    "applied",
-    true,
-    "none",
-    "Software\\Microsoft\\Windows\\CurrentVersion\\AdvertisingInfo",
-    "Enabled",
-    "0 (DWORD)",
-    "설정 > 개인 정보 및 보안 > 일반",
-  ),
-  tw(
-    "privacy.tailored-experiences",
-    "privacy",
-    "진단 데이터로 맞춤 팁·광고 받지 않기",
-    "Microsoft가 진단 데이터를 바탕으로 팁과 광고, 추천을 맞추지 않게 해요.",
-    "진단 데이터 자체를 보내는 설정은 그대로이고, 그 데이터를 맞춤 제안에 쓰는 것만 꺼요.",
-    "applied",
-    true,
-    "none",
-    "Software\\Microsoft\\Windows\\CurrentVersion\\Privacy",
-    "TailoredExperiencesWithDiagnosticDataEnabled",
-    "0 (DWORD)",
-    "설정 > 개인 정보 및 보안 > 진단 및 피드백",
-  ),
-  tw(
-    "privacy.feedback-requests",
-    "privacy",
-    "피드백 요청 받지 않기",
-    "Windows가 사용 경험에 대한 의견을 묻는 알림을 띄우지 않게 해요.",
-    "피드백 허브에서 직접 의견을 보내는 것은 그대로 할 수 있어요.",
-    "notApplied",
-    false,
-    "none",
-    "Software\\Microsoft\\Siuf\\Rules",
-    "NumberOfSIUFInPeriod",
-    "0 (DWORD)",
-    "설정 > 개인 정보 및 보안 > 진단 및 피드백",
-  ),
-  tw(
-    "suggestions.start-menu",
-    "suggestions",
-    "시작 메뉴의 추천 앱·팁 끄기",
-    "시작 메뉴에 설치하지 않은 앱 추천과 팁을 띄우지 않게 해요.",
-    "시작 메뉴가 내가 설치한 앱과 파일 위주로 정리돼요.",
-    "notApplied",
-    false,
-    "explorer",
-    ADV,
-    "Start_IrisRecommendations",
-    "0 (DWORD)",
-    "설정 > 개인 설정 > 시작",
-  ),
-  tw(
-    "convenience.file-extensions",
-    "convenience",
-    "파일 확장자 보이기",
-    "탐색기에서 '사진.jpg', '설치.exe'처럼 파일 이름 끝의 확장자를 보여 줘요.",
-    "문서처럼 보이는 실행 파일(예: 보고서.pdf.exe)을 알아보기 쉬워져요.",
-    "applied",
-    true,
-    "explorer",
-    ADV,
-    "HideFileExt",
-    "0 (DWORD)",
-    "탐색기 > 보기 > 표시",
-  ),
-]
-
 const overrides = {
   list_installed_apps: appList,
   measure_app_sizes: {},
@@ -468,7 +379,6 @@ const overrides = {
   list_startup_items: startup,
   scan_storage: storage,
   disk_usage: { drive: "C:\\", total: 1_000e9, free: 214e9 },
-  list_tweaks: tweaks,
 }
 
 const browser = await launch()
@@ -511,11 +421,5 @@ await shot("startup", page)
 await nav(page, "저장공간")
 await page.waitForTimeout(1800)
 await shot("storage", page)
-
-await nav(page, "최적화")
-await page.waitForTimeout(1500)
-await page.getByRole("button", { name: "바꾸는 값 보기" }).first().click()
-await page.waitForTimeout(600)
-await shot("tweaks", page)
 
 await browser.close()
