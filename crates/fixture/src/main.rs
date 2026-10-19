@@ -6,8 +6,13 @@
 //! robin-fixture install [--cancel|--hang|--machine|--broken]   등록 + 일부러 흔적과 미끼를 만든다
 //!                                         (--machine: 관리자 권한 흔적도 만든다. 관리자로 실행해야 함)
 //!                                         (--broken: 언인스톨러 파일을 지워 "언인스톨러 없음" 상태로 만든다 → 강제 제거 시험용)
-//! robin-fixture remove                      만든 것을 전부 지운다 (정리용)
+//! robin-fixture run                         설치 폴더에서 실제로 도는 프로세스를 띄운다 (강제 제거 "실행 중" 안내 시험용)
+//! robin-fixture stop                        run으로 띄운 프로세스를 끝낸다
+//! robin-fixture remove                      만든 것을 전부 지운다 (정리용, run으로 띄운 것도 먼저 끝낸다)
 //! ```
+//!
+//! `run`이 띄우는 `notes-running.exe`는 시작 항목이 가리키는 `notes.exe`와 따로 둔 파일이라, 로그인할 때 저절로
+//! 실행되는 일이 없다. 멈춤 신호 파일이 생기거나, 설치 폴더가 사라지거나, 10분이 지나면 스스로 끝난다.
 //!
 //! 등록되는 언인스톨러는 NSIS처럼 동작한다: 자기 자신을 임시 폴더에 복사해 다시 실행하고 원본은 바로 끝난다.
 //! 복사본은 몇 초 뒤 **설치 폴더와 등록 정보만** 지운다. 아래 흔적은 일부러 남긴다:
@@ -77,6 +82,11 @@ mod imp {
     const GHOST_RUN_VALUE: &str = "RobinGhostTool";
     const GHOST_SHORTCUT: &str = "Robin Ghost Tool.lnk";
     const MACHINE_TASK_NAME: &str = "Fixture Notes Machine Task";
+    /// `run`이 설치 폴더에 복사해 띄우는 실행 파일과, 그 프로세스를 끝내라는 신호 파일
+    const RUNNING_EXE: &str = "notes-running.exe";
+    const STOP_FILE: &str = "notes-running.stop";
+    /// `run`으로 띄운 프로세스가 아무 신호 없이도 끝나는 시간
+    const RUNNING_LIMIT: Duration = Duration::from_secs(600);
 
     fn env_dir(var: &str) -> PathBuf {
         PathBuf::from(std::env::var(var).unwrap_or_else(|_| panic!("{var}")))
@@ -165,11 +175,14 @@ mod imp {
         match args.first().map(String::as_str) {
             Some("install") => install(args.get(1).map(String::as_str)),
             Some("remove") => remove_all(),
+            Some("run") => run_helper(),
+            Some("stop") => stop_helper(),
+            Some("--idle") => idle(Path::new(&args[1])),
             Some("--uninstall") => stage1(args.get(1).map(String::as_str)),
             Some("--stage2") => stage2(Path::new(&args[1])),
             _ => {
                 eprintln!(
-                    "사용법: robin-fixture install [--cancel|--hang|--machine|--broken] | remove"
+                    "사용법: robin-fixture install [--cancel|--hang|--machine|--broken] | run | stop | remove"
                 );
                 exit(2);
             }
@@ -334,7 +347,68 @@ mod imp {
         }
     }
 
+    /// 설치 폴더에서 실제로 도는 프로세스를 띄운다 (강제 제거 전 "프로그램이 실행 중이에요" 안내 시험용).
+    fn run_helper() {
+        let dir = install_dir();
+        assert!(dir.is_dir(), "먼저 robin-fixture install 을 실행하세요");
+        let exe = dir.join(RUNNING_EXE);
+        let _ = std::fs::remove_file(dir.join(STOP_FILE));
+        std::fs::copy(std::env::current_exe().unwrap(), &exe).expect("실행 파일 복사");
+        winapi::stop_inheriting_std_handles();
+        // 기다리지 않고 띄워 둔다 (스스로 끝나는 프로세스). 터미널 출력을 물려받으면
+        // 이 명령을 파이프로 부른 쪽이 10분 동안 끝나지 않으므로 입출력을 끊는다.
+        let pid = Command::new(&exe)
+            .arg("--idle")
+            .arg(&dir)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+            .expect("실행")
+            .id();
+        println!(
+            "실행 중: {} (pid {}). robin-fixture stop 이나 remove, 또는 10분 뒤에 끝나요",
+            exe.display(),
+            pid
+        );
+    }
+
+    /// `run`으로 뜬 프로세스: 멈춤 신호 파일이 생기거나, 폴더가 사라지거나, 시간이 다 되면 끝난다
+    fn idle(dir: &Path) {
+        let until = std::time::Instant::now() + RUNNING_LIMIT;
+        while std::time::Instant::now() < until && dir.is_dir() && !dir.join(STOP_FILE).exists() {
+            std::thread::sleep(Duration::from_millis(300));
+        }
+        exit(0);
+    }
+
+    /// `run`으로 띄운 프로세스를 끝내고 그 실행 파일을 지운다 (다른 프로그램의 프로세스는 건드리지 않는다)
+    fn stop_helper() {
+        let dir = install_dir();
+        let exe = dir.join(RUNNING_EXE);
+        if !exe.exists() {
+            return;
+        }
+        let _ = std::fs::write(dir.join(STOP_FILE), "");
+        // 프로세스가 끝나야 실행 파일을 지울 수 있다 (최대 3초)
+        let mut removed = false;
+        for _ in 0..30 {
+            if std::fs::remove_file(&exe).is_ok() {
+                removed = true;
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(100));
+        }
+        let _ = std::fs::remove_file(dir.join(STOP_FILE));
+        if removed {
+            println!("멈춤: {}", exe.display());
+        } else {
+            println!("아직 끝나지 않았어요: {}", exe.display());
+        }
+    }
+
     fn remove_all() {
+        stop_helper();
         // 관리자 권한 흔적 (권한이 없으면 조용히 건너뛴다)
         let hklm = RegKey::predef(HKEY_LOCAL_MACHINE);
         let _ = hklm.delete_subkey_all(machine_key());

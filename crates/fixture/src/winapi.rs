@@ -150,3 +150,22 @@ pub fn delete_task(name: &str) -> Result<()> {
             .DeleteTask(&BSTR::from(name), 0)
     })
 }
+
+/// 이 프로세스의 표준 입출력 핸들을 자식 프로세스에 물려주지 않게 한다.
+/// Windows는 물려줄 수 있는 핸들을 모두 자식에게 넘기므로(입출력을 끊어도), 오래 사는 자식이 부른 쪽의 파이프를
+/// 잡고 있어 `robin-fixture run | ...` 같은 호출이 끝나지 않는다.
+pub fn stop_inheriting_std_handles() {
+    use windows::Win32::Foundation::{HANDLE_FLAG_INHERIT, HANDLE_FLAGS, SetHandleInformation};
+    use windows::Win32::System::Console::{
+        GetStdHandle, STD_ERROR_HANDLE, STD_INPUT_HANDLE, STD_OUTPUT_HANDLE,
+    };
+    for which in [STD_INPUT_HANDLE, STD_OUTPUT_HANDLE, STD_ERROR_HANDLE] {
+        unsafe {
+            if let Ok(handle) = GetStdHandle(which)
+                && !handle.is_invalid()
+            {
+                let _ = SetHandleInformation(handle, HANDLE_FLAG_INHERIT.0, HANDLE_FLAGS(0));
+            }
+        }
+    }
+}
