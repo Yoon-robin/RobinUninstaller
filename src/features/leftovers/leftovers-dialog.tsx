@@ -363,8 +363,8 @@ function Results({
             <div className="flex gap-2 border-b bg-destructive/5 px-5 py-2.5 text-xs leading-relaxed text-muted-foreground">
               <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-primary" />
               <span>
-                <b className="text-foreground">프로그램 등록 정보</b>와 설치 폴더를 지우면 목록에서 사라져요. 모두
-                백업돼 복구 기록에서 되돌릴 수 있어요. Windows 서비스는 건드리지 않아요.
+                프로그램 등록 정보와 설치 폴더를 지우면 목록에서 사라져요. 백업해 두므로 보관하는 동안 복구 기록에서
+                되돌릴 수 있어요. Windows 서비스는 건드리지 않아요.
               </span>
             </div>
           )}
@@ -601,10 +601,10 @@ function Clean({ protectedSkipped }: { protectedSkipped: number }) {
         <Sparkles className="size-7" />
       </motion.div>
       <div>
-        <p className="text-base font-semibold">깨끗해요</p>
+        <p className="text-base font-semibold">남은 흔적을 찾지 못했어요</p>
         <p className="mt-1 text-sm text-muted-foreground">
-          남은 흔적을 찾지 못했어요.
-          {protectedSkipped > 0 && ` (보호 규칙으로 ${protectedSkipped}개는 살펴보지 않았어요)`}
+          설치 폴더, AppData, 레지스트리에서 이 프로그램과 이어진 항목이 없었어요.
+          {protectedSkipped > 0 && ` 보호 규칙으로 ${protectedSkipped}개는 살펴보지 않았어요.`}
         </p>
       </div>
     </div>

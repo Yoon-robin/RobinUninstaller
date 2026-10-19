@@ -46,9 +46,8 @@ export function ConfirmClean({
           <span className="font-normal text-muted-foreground">({formatBytes(bytes)})</span>
         </p>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          바로 지우지 않고 <b className="text-foreground">백업 폴더로 옮겨 보관</b>해요. 레지스트리는 원래 값을 그대로
-          기록해 두고요. 문제가 생기면 백업을 보관하는 동안 <b className="text-foreground">복구 기록</b>에서 되돌릴 수
-          있어요. {retentionNote}
+          바로 지우지 않고 백업 폴더로 옮겨 보관해요. 레지스트리는 원래 값을 그대로 기록해 두고요. 문제가 생기면 백업을
+          보관하는 동안 복구 기록에서 되돌릴 수 있어요. {retentionNote}
         </p>
         {bytes > 0 && (
           <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
