@@ -138,7 +138,7 @@ static RULES: &[Rule] = &[
             "windows-update-cache",
             "Windows 업데이트 다운로드 파일",
             "Windows 업데이트가 설치하려고 받아 둔 파일",
-            "설치가 끝난 업데이트의 원본이에요. 하루 넘게 손대지 않은 파일만 지우고, 지금 쓰는 파일은 잠겨 있어 건너뛰어요. 필요하면 Windows가 다시 받아요. 관리자 권한이 필요해요.",
+            "업데이트를 설치하려고 받아 둔 원본이에요. 하루 넘게 손대지 않은 파일만 지우고, 지금 쓰는 파일은 잠겨 있어 건너뛰어요. 아직 설치하지 않은 업데이트가 있었다면 Windows가 다시 받아요. 관리자 권한이 필요해요.",
             &[(Base::SystemRoot, r"SoftwareDistribution\Download")],
             &[],
         )
@@ -149,7 +149,7 @@ static RULES: &[Rule] = &[
             "delivery-optimization",
             "배달 최적화 파일",
             "업데이트를 다른 PC와 나눠 받으려고 Windows가 모아 둔 파일",
-            "Windows가 필요하면 다시 받아요. 지우면 이 PC가 다른 PC에 업데이트를 나눠 주지 못할 뿐이에요. 관리자 권한이 필요해요.",
+            "이 PC의 업데이트에는 영향이 없고, 다른 PC에 나눠 줄 파일만 없어져요. 필요하면 Windows가 다시 받아요. 관리자 권한이 필요해요.",
             &[(
                 Base::SystemRoot,
                 r"ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization\Cache",
