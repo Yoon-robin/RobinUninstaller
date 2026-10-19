@@ -97,7 +97,8 @@ export function StoragePage() {
       <FadeUp>
         <h1 className="text-2xl font-bold tracking-tight">저장공간</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          캐시·임시 파일처럼 지워도 다시 만들어지는 것만 골라 정리해요. 문서·사진·다운로드 같은 내 파일은 지우지 않아요.
+          캐시·임시 파일처럼 지워도 다시 만들어지는 것을 미리 골라 두고, 휴지통처럼 되돌릴 수 없는 항목은 한 번 더
+          확인한 뒤 지워요. 문서·사진·다운로드 같은 내 파일은 지우지 않아요.
         </p>
       </FadeUp>
 
@@ -145,7 +146,7 @@ export function StoragePage() {
                 <Sparkles className="size-6 text-primary" />
               </div>
               <p className="font-medium">정리할 게 없어요</p>
-              <p className="text-sm text-muted-foreground">캐시와 임시 파일이 이미 깨끗해요.</p>
+              <p className="text-sm text-muted-foreground">지금은 정리할 만한 캐시와 임시 파일을 찾지 못했어요.</p>
             </div>
           ) : (
             <ul className="divide-y">
@@ -338,7 +339,7 @@ function CategoryRow({
           <span className="shrink-0 text-right text-sm font-semibold tabular-nums">
             {c.bytes > 0 ? formatBytes(c.bytes) : "—"}
             {c.inaccessible > 0 && c.admin && (
-              <span className="block text-[10px] font-normal text-muted-foreground">관리자만 볼 수 있어요</span>
+              <span className="block text-[10px] font-normal text-muted-foreground">일부만 셌어요</span>
             )}
           </span>
           <ChevronRight
