@@ -108,7 +108,7 @@ export function TextTabs<K extends string>({
   label: string
 }) {
   return (
-    <div className="flex h-9 items-center rounded-xl border bg-muted/40 p-1" role="tablist" aria-label={label}>
+    <div className="glass liquid flex h-9 items-center rounded-full p-1" role="tablist" aria-label={label}>
       {options.map((o) => {
         const active = value === o.key
         return (
@@ -119,14 +119,14 @@ export function TextTabs<K extends string>({
             aria-selected={active}
             onClick={() => onChange(o.key)}
             className={cn(
-              "relative flex h-full items-center gap-1.5 rounded-lg px-3 text-sm transition-colors",
+              "relative flex h-full items-center gap-1.5 rounded-full px-3 text-sm transition-colors",
               active ? "font-medium text-foreground" : "text-muted-foreground hover:text-foreground",
             )}
           >
             {active && (
               <motion.span
                 layoutId={layoutId}
-                className="absolute inset-0 rounded-lg bg-background shadow-sm"
+                className="absolute inset-0 rounded-full bg-background shadow-sm"
                 transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
               />
             )}

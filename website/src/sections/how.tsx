@@ -85,7 +85,7 @@ export function Gallery() {
 
         <Reveal className="mt-10 flex justify-center">
           <div
-            className="flex max-w-full gap-1 overflow-x-auto glass rounded-full p-1.5"
+            className="glass liquid flex max-w-full gap-1 overflow-x-auto rounded-full p-1.5"
             role="tablist"
             aria-label="앱 화면"
           >

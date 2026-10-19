@@ -15,6 +15,7 @@ import {
   Sparkles,
   Trash2,
   TriangleAlert,
+  ScanSearch,
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
@@ -36,6 +37,7 @@ import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT } from "@/components/motion"
 import { IconTooltip } from "@/components/icon-tooltip"
+import { BorderBeam } from "@/components/ui/border-beam"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
@@ -245,6 +247,11 @@ function Scanning() {
       exit={{ opacity: 0, transition: { duration: 0.12 } }}
       className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center"
     >
+      {/* 돋보기 타일 테두리를 따라 빛이 돈다 */}
+      <div className="relative flex size-16 items-center justify-center rounded-2xl bg-primary/10 text-primary">
+        <ScanSearch className="size-7" />
+        <BorderBeam size={36} duration={2.4} borderWidth={1.5} colorFrom="var(--chart-1)" colorTo="var(--chart-2)" />
+      </div>
       <div className="relative h-1 w-56 overflow-hidden rounded-full bg-muted">
         <div className="scan-sweep absolute inset-y-0 w-1/3 rounded-full bg-primary" />
       </div>

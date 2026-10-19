@@ -20,6 +20,7 @@ import { toast } from "sonner"
 import { api, trackingApi, type ChangeKind, type Trace, type TraceDraft } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
+import { BorderBeam } from "@/components/ui/border-beam"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
@@ -95,6 +96,10 @@ export function TrackingPage() {
 
       <FadeUp>
         <section className="relative overflow-hidden rounded-2xl border bg-card p-6 shadow-sm">
+          {/* 추적하는 동안 테두리를 따라 빛이 돌아 "지금 기록 중"임을 알린다 */}
+          {startedAt != null && (
+            <BorderBeam size={120} duration={8} borderWidth={1.5} colorFrom="var(--chart-1)" colorTo="var(--chart-2)" />
+          )}
           {status.isLoading ? (
             <Skeleton className="h-24 w-full rounded-xl" />
           ) : startedAt == null ? (

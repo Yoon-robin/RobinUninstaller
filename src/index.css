@@ -417,3 +417,11 @@
     0 12px 32px -12px oklch(0 0 0 / 18%);
   --tw-ring-shadow: 0 0 #0000;
 }
+
+/* 진짜 굴절(WebView2는 Chromium이라 동작). 작은 떠 있는 요소에만 쓴다. 지원하지 않으면 흐림만 남는다. */
+@supports (backdrop-filter: url(#a)) {
+  .liquid {
+    -webkit-backdrop-filter: url(#liquid-glass) blur(4px) saturate(190%);
+    backdrop-filter: url(#liquid-glass) blur(4px) saturate(190%);
+  }
+}

@@ -5,6 +5,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react"
 
 import { AppSidebar, type Page } from "@/components/app-sidebar"
 import { IconTooltip } from "@/components/icon-tooltip"
+import { LiquidGlassFilter } from "@/components/liquid-glass"
 import { ThemeProvider, ThemeToggle } from "@/components/theme"
 import { WindowControls } from "@/components/window-controls"
 import { LeftoversPage } from "@/features/leftovers/leftovers-page"
@@ -51,6 +52,7 @@ export default function App() {
       <ThemeProvider>
         {/* OS의 "애니메이션 효과 줄이기" 설정을 따른다. */}
         <MotionConfig reducedMotion="user">
+          <LiquidGlassFilter />
           {/* 첫 툴팁은 잠깐 기다렸다가, 이어서 옮겨 다닐 때는 바로 뜬다. */}
           <TooltipProvider delayDuration={400} skipDelayDuration={300}>
             <SidebarProvider className="h-svh">

@@ -159,7 +159,7 @@ function FloatingChip({
       <motion.div
         animate={reduce ? undefined : { y: [0, -6, 0] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay }}
-        className="glass-strong flex items-center gap-3 rounded-2xl px-4 py-3 text-left"
+        className="glass liquid flex items-center gap-3 rounded-2xl px-4 py-3 text-left"
       >
         <span className="flex size-9 items-center justify-center rounded-xl bg-white/5">{icon}</span>
         <span>

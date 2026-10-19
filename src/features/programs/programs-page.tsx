@@ -494,7 +494,7 @@ export function ProgramsPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16, transition: { duration: 0.15 } }}
             transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
-            className="glass-strong sticky bottom-4 z-20 mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl px-4 py-3"
+            className="glass-strong liquid sticky bottom-4 z-20 mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl px-4 py-3"
           >
             <p className="mr-auto text-sm tabular-nums">
               {picked.size > 0 ? `${picked.size}개 선택` : "제거할 프로그램을 눌러 고르세요"}

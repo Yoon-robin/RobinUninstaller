@@ -192,3 +192,11 @@
     box-shadow: 0 1px 1px oklch(0 0 0 / 4%);
   }
 }
+
+/* 진짜 굴절(Chromium 전용). 지원하지 않으면 .glass의 흐림만 남는다. */
+@supports (backdrop-filter: url(#a)) {
+  .liquid {
+    -webkit-backdrop-filter: url(#liquid-glass) blur(3px) saturate(190%);
+    backdrop-filter: url(#liquid-glass) blur(3px) saturate(190%);
+  }
+}
