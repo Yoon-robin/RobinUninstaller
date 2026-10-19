@@ -363,7 +363,7 @@ export interface Exclusion {
 }
 
 export interface Settings {
-  /** 이 기간(일)보다 오래된 백업을 지운다. null이면 계속 보관 */
+  /** 이 기간(일)보다 오래된 백업을 지운다. null이면 계속 보관. 처음에는 30 */
   backupRetentionDays: number | null
   retentionChoices: number[]
   exclusions: Exclusion[]

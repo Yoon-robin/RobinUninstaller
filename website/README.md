@@ -27,10 +27,11 @@ pnpm build                                 # dist/ 에 정적 파일
 git clone --depth 1 https://github.com/Leonxlnx/taste-skill.git "$TEMP/taste-skill"   # 처음 한 번 (저장소에 넣지 않음)
 pnpm --dir website build                                                            # BASE_PATH 없이
 node "$TEMP/taste-skill/skills/taste-skill/scripts/lint.mjs" website/src
-node "$TEMP/taste-skill/skills/taste-skill/scripts/inspect.mjs" website/dist/index.html --out "$TEMP/taste-out"
+(cd website/dist && node "$TEMP/taste-skill/skills/taste-skill/scripts/inspect.mjs" index.html --out "$TEMP/taste-out")
 ```
 
-검사기는 1440·768·390px 화면을 `$TEMP/taste-out`에 찍는다. 눈으로도 본다.
+검사기는 지금 폴더를 웹 서버의 뿌리로 쓰므로 `website/dist` 안에서 실행해야 한다(밖에서 실행하면 `/assets/...`를 못 찾아 빈 페이지로 검사한다).
+1440·768·390px 화면을 `$TEMP/taste-out`에 찍는다. 눈으로도 본다.
 
 ## 앱 화면 (public/shots)
 

@@ -166,7 +166,10 @@ export function SettingsPage() {
   const retention = settings.data?.backupRetentionDays ?? null
   const retentionOptions = [
     { value: null as number | null, label: "계속 보관" },
-    ...(settings.data?.retentionChoices ?? []).map((d) => ({ value: d as number | null, label: `${d}일` })),
+    ...(settings.data?.retentionChoices ?? []).map((d) => ({
+      value: d as number | null,
+      label: d === 30 ? "30일 (기본)" : `${d}일`,
+    })),
   ]
 
   return (

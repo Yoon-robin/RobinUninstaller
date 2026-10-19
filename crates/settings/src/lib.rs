@@ -1,7 +1,8 @@
 //! 사용자 설정: `%LOCALAPPDATA%\RobinX\settings.json`.
 //!
-//! - 백업 보관 기간: 기본은 "계속 보관"(None). 사용자가 직접 기간을 고른 경우에만 오래된 백업을 지운다.
-//!   백업을 지우면 되돌릴 수 없으므로 화면에서 경고하고 고르게 한다.
+//! - 백업 보관 기간: 새로 쓰기 시작하면 30일 (사용자와 정함, 2026-10-19). 정리한 흔적의 백업도 공간을 차지하므로,
+//!   기간이 지난 백업은 앱을 켤 때 지운다. 사용자가 저장해 둔 값("계속 보관" 포함)은 그대로 따른다.
+//!   설정 파일이 있는데 읽지 못하면 백업을 지우지 않는 쪽("계속 보관")으로 둔다.
 //! - 잔여물 스캔 제외 목록: 사용자가 "다음부터 제외"를 고른 위치. 스캔 결과에서 빼기만 하므로 무언가를 지우게 만들 수는 없다.
 //!   항목은 화면이 경로를 직접 넘기지 않고, 스캔 결과의 항목 ID로만 추가된다.
 
@@ -12,6 +13,8 @@ use serde::{Deserialize, Serialize};
 
 /// 고를 수 있는 백업 보관 기간 (일)
 pub const RETENTION_CHOICES: [u32; 3] = [30, 90, 180];
+/// 설정 파일이 없거나 값이 빠져 있을 때의 보관 기간 (일)
+pub const DEFAULT_RETENTION_DAYS: u32 = 30;
 /// 제외 목록 상한
 pub const MAX_EXCLUSIONS: usize = 500;
 
@@ -35,15 +38,33 @@ pub struct Exclusion {
     pub added_at: u64,
 }
 
-#[derive(Debug, Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase", default)]
 pub struct Settings {
     /// 이 기간(일)보다 오래된 백업을 지운다. None이면 계속 보관.
+    /// 파일에 값이 없으면 기본값(30일), `null`로 저장돼 있으면 사용자가 고른 "계속 보관"이다.
     pub backup_retention_days: Option<u32>,
     pub exclusions: Vec<Exclusion>,
 }
 
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            backup_retention_days: Some(DEFAULT_RETENTION_DAYS),
+            exclusions: Vec::new(),
+        }
+    }
+}
+
 impl Settings {
+    /// 백업을 지우지 않는 설정 (설정을 읽지 못했을 때 쓴다)
+    fn keep_all() -> Self {
+        Self {
+            backup_retention_days: None,
+            exclusions: Vec::new(),
+        }
+    }
+
     /// 보관 기간은 정해진 값만 받는다.
     pub fn set_retention(&mut self, days: Option<u32>) -> Result<(), String> {
         if days.is_some_and(|d| !RETENTION_CHOICES.contains(&d)) {
@@ -133,12 +154,14 @@ impl SettingsStore {
         &self.path
     }
 
-    /// 없거나 읽을 수 없으면 기본값 (계속 보관, 제외 없음).
+    /// 파일이 없으면 기본값(30일 보관, 제외 없음). 파일이 있는데 읽지 못하거나 깨져 있으면
+    /// 사용자가 고른 값을 알 수 없으므로 백업을 지우지 않는 "계속 보관"으로 둔다.
     pub fn load(&self) -> Settings {
-        std::fs::read_to_string(&self.path)
-            .ok()
-            .and_then(|t| serde_json::from_str(&t).ok())
-            .unwrap_or_default()
+        match std::fs::read_to_string(&self.path) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Settings::default(),
+            Ok(text) => serde_json::from_str(&text).unwrap_or_else(|_| Settings::keep_all()),
+            Err(_) => Settings::keep_all(),
+        }
     }
 
     /// 임시 파일에 쓰고 바꿔치기한다.
@@ -261,6 +284,39 @@ mod tests {
         assert_eq!(store.load(), s);
         update(&store, |s| s.set_retention(None)).unwrap();
         assert_eq!(store.load().backup_retention_days, None);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn retention_defaults_to_30_days_only_when_nothing_was_saved() {
+        let dir =
+            std::env::temp_dir().join(format!("robin-settings-default-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        std::fs::create_dir_all(&dir).unwrap();
+        let path = dir.join("settings.json");
+        let store = SettingsStore::new(path.clone());
+
+        // 파일이 없으면 30일
+        assert_eq!(
+            store.load().backup_retention_days,
+            Some(DEFAULT_RETENTION_DAYS)
+        );
+        // 값이 빠진 예전 파일도 30일 (제외 목록은 그대로)
+        std::fs::write(&path, r#"{"exclusions":[]}"#).unwrap();
+        assert_eq!(store.load().backup_retention_days, Some(30));
+        // 사용자가 "계속 보관"을 저장했으면 그대로
+        std::fs::write(&path, r#"{"backupRetentionDays":null,"exclusions":[]}"#).unwrap();
+        assert_eq!(store.load().backup_retention_days, None);
+        // 고른 기간도 그대로
+        std::fs::write(&path, r#"{"backupRetentionDays":180}"#).unwrap();
+        assert_eq!(store.load().backup_retention_days, Some(180));
+        // 깨진 파일이면 지우지 않는 쪽
+        std::fs::write(&path, "{ not json").unwrap();
+        assert_eq!(store.load().backup_retention_days, None);
+        // 저장하면 기본값도 파일에 남아, 다음에 읽어도 같다
+        store.save(&Settings::default()).unwrap();
+        assert_eq!(store.load(), Settings::default());
+
         let _ = std::fs::remove_dir_all(dir);
     }
 }
