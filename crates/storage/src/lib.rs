@@ -62,6 +62,13 @@ fn running_blockers(rule: &Rule, running: &std::collections::HashSet<String>) ->
 /// 정리할 수 있는 항목을 찾는다 (읽기 전용). 크기가 0인 항목은 뺀다.
 #[cfg(windows)]
 pub fn scan() -> Vec<Category> {
+    scan_with(&|_| {})
+}
+
+/// [`scan`]과 같고, 항목 하나를 다 셀 때마다 `on_item`을 부른다 (화면이 찾는 대로 보여 주도록).
+/// 여러 스레드에서 동시에 불릴 수 있다.
+#[cfg(windows)]
+pub fn scan_with(on_item: &(dyn Fn(&Category) + Sync)) -> Vec<Category> {
     let running = robin_execution::running_exe_names();
     let mut out: Vec<Category> = rules::all()
         .collect::<Vec<_>>()
@@ -83,25 +90,32 @@ pub fn scan() -> Vec<Category> {
             }
             // 관리자 항목은 크기를 못 세도(권한 없음) 보여 준다
             let visible = tally.bytes > 0 || (rule.admin && tally.inaccessible > 0);
-            visible.then(|| Category {
-                id: rule.id.into(),
-                name: rule.name.into(),
-                description: rule.description.into(),
-                why: rule.why.into(),
-                risk: rule.risk,
-                kind: rule.kind,
-                admin: rule.admin,
-                default_selected: rule.default_selected(),
-                bytes: tally.bytes,
-                files: tally.files,
-                inaccessible: tally.inaccessible,
-                locations: paths.iter().map(|p| p.display().to_string()).collect(),
-                running: running_blockers(rule, &running),
-                guidance: rule.guidance.map(Into::into),
+            visible.then(|| {
+                let category = Category {
+                    id: rule.id.into(),
+                    name: rule.name.into(),
+                    description: rule.description.into(),
+                    why: rule.why.into(),
+                    risk: rule.risk,
+                    kind: rule.kind,
+                    admin: rule.admin,
+                    default_selected: rule.default_selected(),
+                    bytes: tally.bytes,
+                    files: tally.files,
+                    inaccessible: tally.inaccessible,
+                    locations: paths.iter().map(|p| p.display().to_string()).collect(),
+                    running: running_blockers(rule, &running),
+                    guidance: rule.guidance.map(Into::into),
+                };
+                on_item(&category);
+                category
             })
         })
         .collect();
-    out.extend(downloads_category());
+    if let Some(downloads) = downloads_category() {
+        on_item(&downloads);
+        out.push(downloads);
+    }
     out.sort_by_key(|c| std::cmp::Reverse(c.bytes));
     out
 }

@@ -27,6 +27,7 @@ import { Skeleton } from "@/components/ui/skeleton"
 
 import { FolderAnalysisCard } from "./folder-analysis"
 import { LargeFilesCard } from "./large-files"
+import { BigProgramsCard } from "./big-programs"
 import { ErrorState } from "@/components/error-state"
 
 const SCAN_KEY = ["storage-scan"]
@@ -35,16 +36,49 @@ const DISK_KEY = ["disk-usage"]
 /** 정리할 수 있는지 (실행 중이 아니고, 안내만 하는 항목이 아님) */
 const cleanable = (c: StorageCategory) => c.kind !== "info" && c.running.length === 0
 
+/** 실행 파일 이름 → 사람이 아는 이름 */
+const APP_NAMES: Record<string, string> = {
+  "chrome.exe": "Chrome",
+  "msedge.exe": "Edge",
+  "brave.exe": "Brave",
+  "whale.exe": "웨일",
+  "firefox.exe": "Firefox",
+  "discord.exe": "Discord",
+  "code.exe": "VS Code",
+  "slack.exe": "Slack",
+  "spotify.exe": "Spotify",
+  "steam.exe": "Steam",
+  "steamwebhelper.exe": "Steam",
+  "pip.exe": "pip",
+  "cargo.exe": "Cargo",
+  "rustc.exe": "Rust 빌드",
+  "java.exe": "Java(Gradle)",
+  "studio64.exe": "Android Studio",
+  "dotnet.exe": ".NET",
+  "devenv.exe": "Visual Studio",
+}
+const runningNames = (exes: string[]) => [...new Set(exes.map((e) => APP_NAMES[e] ?? e))].join(", ")
+
 export function StoragePage() {
   const queryClient = useQueryClient()
-  const scan = useQuery({ queryKey: SCAN_KEY, queryFn: storageApi.scan })
+  // 처음 찾을 때는 다 셀 때까지 기다리지 않고, 찾은 항목부터 크기 순으로 보여 준다
+  const [partial, setPartial] = useState<StorageCategory[]>([])
+  const scan = useQuery({
+    queryKey: SCAN_KEY,
+    queryFn: () => {
+      setPartial([])
+      return storageApi.scan((item) => setPartial((p) => [...p, item].sort((a, b) => b.bytes - a.bytes)))
+    },
+  })
+  const data = scan.data ?? (partial.length > 0 ? partial : undefined)
+  const finding = scan.isLoading
   const disk = useQuery({ queryKey: DISK_KEY, queryFn: storageApi.diskUsage })
   // 사용자가 직접 바꾼 선택. 없으면 기본 선택(다시 만들어지는 항목)을 따른다.
   const [picked, setPicked] = useState<Record<string, boolean>>({})
   const [confirming, setConfirming] = useState(false)
 
-  const items = useMemo(() => (scan.data ?? []).filter((c) => c.kind !== "info"), [scan.data])
-  const infos = useMemo(() => (scan.data ?? []).filter((c) => c.kind === "info"), [scan.data])
+  const items = useMemo(() => (data ?? []).filter((c) => c.kind !== "info"), [data])
+  const infos = useMemo(() => (data ?? []).filter((c) => c.kind === "info"), [data])
   const isSelected = (c: StorageCategory) => cleanable(c) && (picked[c.id] ?? c.defaultSelected)
   const selected = items.filter(isSelected)
   const selectedBytes = selected.reduce((s, c) => s + c.bytes, 0)
@@ -94,7 +128,7 @@ export function StoragePage() {
               onRetry={() => scan.refetch()}
               retrying={scan.isFetching}
             />
-          ) : scan.isLoading ? (
+          ) : finding && items.length === 0 ? (
             <div className="divide-y">
               {Array.from({ length: 5 }, (_, i) => (
                 <div key={i} className="flex items-center gap-4 px-5 py-4">
@@ -120,8 +154,16 @@ export function StoragePage() {
                   category={c}
                   checked={isSelected(c)}
                   onCheckedChange={(v) => setPicked((p) => ({ ...p, [c.id]: v }))}
+                  onRecheck={refresh}
+                  rechecking={scan.isFetching}
                 />
               ))}
+              {finding && (
+                <li className="flex items-center gap-2 px-5 py-3 text-xs text-muted-foreground" role="status">
+                  <Loader2 className="size-3.5 animate-spin" />
+                  나머지 항목을 찾는 중이에요
+                </li>
+              )}
             </ul>
           )}
 
@@ -132,13 +174,17 @@ export function StoragePage() {
                 <span className="font-semibold tabular-nums">{formatBytes(selectedBytes)}</span>
                 <span className="text-muted-foreground"> 확보 예상</span>
               </p>
-              <Button disabled={selected.length === 0} onClick={() => setConfirming(true)}>
+              <Button disabled={selected.length === 0 || finding} onClick={() => setConfirming(true)}>
                 <Sparkles />
                 정리하기
               </Button>
             </div>
           )}
         </section>
+      </FadeUp>
+
+      <FadeUp>
+        <BigProgramsCard />
       </FadeUp>
 
       {infos.length > 0 && (
@@ -241,10 +287,15 @@ function CategoryRow({
   category: c,
   checked,
   onCheckedChange,
+  onRecheck,
+  rechecking,
 }: {
   category: StorageCategory
   checked: boolean
   onCheckedChange: (v: boolean) => void
+  /** 실행 중이라 막힌 항목: 프로그램을 닫은 뒤 다시 확인 */
+  onRecheck: () => void
+  rechecking: boolean
 }) {
   const [open, setOpen] = useState(false)
   const blocked = c.running.length > 0
@@ -276,9 +327,7 @@ function CategoryRow({
               )}
             </p>
             <p className="truncate text-xs text-muted-foreground">
-              {blocked
-                ? `${c.running.join(", ")} 실행 중이라 지금은 정리할 수 없어요. 종료한 뒤 다시 찾아 주세요.`
-                : c.description}
+              {blocked ? `${runningNames(c.running)} 실행 중 · 닫으면 정리할 수 있어요` : c.description}
             </p>
           </div>
           <span className="shrink-0 text-right text-sm font-semibold tabular-nums">
@@ -291,6 +340,12 @@ function CategoryRow({
             className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
           />
         </button>
+        {blocked && (
+          <Button variant="outline" size="sm" onClick={onRecheck} disabled={rechecking}>
+            <RefreshCw className={cn(rechecking && "animate-spin")} />
+            다시 확인
+          </Button>
+        )}
       </div>
       <AnimatePresence initial={false}>
         {open && (
@@ -398,6 +453,8 @@ function CleanDialog({
   const [understood, setUnderstood] = useState(false)
   // 정리가 끝나면 창을 닫지 않고 항목별 결과를 보여 준다
   const [results, setResults] = useState<CleanResult[] | null>(null)
+  // 정리 전후 시스템 드라이브의 남은 공간 차이 (실제로 늘어난 공간)
+  const [measured, setMeasured] = useState<{ drive: string; gained: number } | null>(null)
   const [adminError, setAdminError] = useState<string | null>(null)
   // 정리하는 동안의 진행: 지금 항목, 지금까지 센 것, 끝난 항목들
   const [live, setLive] = useState<LiveProgress | null>(null)
@@ -406,6 +463,7 @@ function CleanDialog({
     if (open) {
       setUnderstood(false)
       setResults(null)
+      setMeasured(null)
       setAdminError(null)
       setLive(null)
     }
@@ -418,6 +476,7 @@ function CleanDialog({
   const onlyIrreversible = irreversible.length === items.length
 
   const run = async () => {
+    const before = await storageApi.diskUsage().catch(() => null)
     setBusy(true)
     const allow = irreversible.length > 0 && understood
     setLive({ startedAt: Date.now(), stage: "normal", current: null, done: [] })
@@ -472,6 +531,8 @@ function CleanDialog({
         }
       }
       setResults(all)
+      const after = await storageApi.diskUsage().catch(() => null)
+      setMeasured(before && after ? { drive: after.drive, gained: after.free - before.free } : null)
       onDone()
     } catch (e) {
       toast.error(String(e))
@@ -497,6 +558,7 @@ function CleanDialog({
         ) : results ? (
           <CleanResultView
             results={results}
+            measured={measured}
             items={items}
             adminError={adminError}
             onClose={() => {
@@ -725,28 +787,46 @@ function CleanProgressView({ live, items }: { live: LiveProgress; items: Storage
 /** 정리 결과: 항목마다 확보한 공간, 지운 파일 수, 사용 중이라 건너뛴 파일, 건너뛴 이유 */
 function CleanResultView({
   results,
+  measured,
   items,
   adminError,
   onClose,
 }: {
   results: CleanResult[]
+  measured: { drive: string; gained: number } | null
   items: StorageCategory[]
   adminError: string | null
   onClose: () => void
 }) {
   const { freed, failed } = summarize(results)
+  const drive = measured?.drive.replace(/\\$/, "") ?? "C:"
   return (
     <>
       <DialogTitle className="flex items-center gap-2">
         {freed > 0 ? (
           <>
             <Check className="size-5 text-chart-5" />
-            {formatBytes(freed)}를 확보했어요
+            {formatBytes(freed)}를 지웠어요
           </>
         ) : (
-          "확보한 공간이 없어요"
+          "지운 파일이 없어요"
         )}
       </DialogTitle>
+      {measured && freed > 0 && (
+        <p className="rounded-xl bg-muted/50 px-3.5 py-2.5 text-sm">
+          {measured.gained > 0 ? (
+            <>
+              {drive} 드라이브 남은 공간이 실제로{" "}
+              <span className="font-semibold text-chart-5 tabular-nums">{formatBytes(measured.gained)}</span> 늘었어요.
+            </>
+          ) : (
+            `${drive} 드라이브 남은 공간은 거의 그대로예요.`
+          )}{" "}
+          <span className="text-muted-foreground">
+            지운 양과 다를 수 있어요. 휴지통은 다른 드라이브에도 있고, 그사이 다른 프로그램이 파일을 쓰기도 해요.
+          </span>
+        </p>
+      )}
       <DialogDescription className="leading-relaxed">
         {failed > 0
           ? `지금 쓰고 있는 파일 ${failed.toLocaleString()}개는 건너뛰었어요. 해당 프로그램을 닫고 다시 정리하면 더 비울 수 있어요.`

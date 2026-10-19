@@ -803,10 +803,18 @@ fn disk_usage() -> Result<DiskUsage, String> {
 
 /// 정리할 수 있는 항목 (읽기 전용).
 #[tauri::command]
-async fn scan_storage(cache: State<'_, AppCache>) -> Result<Vec<robin_storage::Category>, String> {
-    let items = tauri::async_runtime::spawn_blocking(robin_storage::scan)
-        .await
-        .map_err(|e| e.to_string())?;
+async fn scan_storage(
+    on_item: Channel<robin_storage::Category>,
+    cache: State<'_, AppCache>,
+) -> Result<Vec<robin_storage::Category>, String> {
+    // 항목을 다 세는 데 몇 초 걸리므로, 찾는 대로 화면에 먼저 보낸다
+    let items = tauri::async_runtime::spawn_blocking(move || {
+        robin_storage::scan_with(&|c| {
+            let _ = on_item.send(c.clone());
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())?;
     if let Ok(mut storage) = cache.storage.lock() {
         *storage = items.clone();
     }

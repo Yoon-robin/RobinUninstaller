@@ -317,7 +317,12 @@ export interface FolderAnalysis {
 
 export const storageApi = {
   diskUsage: () => invoke<DiskUsage>("disk_usage"),
-  scan: () => invoke<StorageCategory[]>("scan_storage"),
+  /** 정리할 수 있는 항목. `onItem`은 항목을 하나 찾을 때마다 (다 찾기 전에 먼저 보여 주려고) */
+  scan: (onItem?: (item: StorageCategory) => void) => {
+    const channel = new Channel<StorageCategory>()
+    if (onItem) channel.onmessage = onItem
+    return invoke<StorageCategory[]>("scan_storage", { onItem: channel })
+  },
   clean: (ids: string[], allowIrreversible: boolean, onEvent: (event: CleanEvent) => void) => {
     const channel = new Channel<CleanEvent>()
     channel.onmessage = onEvent

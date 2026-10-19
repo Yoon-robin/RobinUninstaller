@@ -302,25 +302,27 @@ static RULES: &[Rule] = &[
         "npm-cache",
         "npm 캐시",
         "Node.js 패키지를 내려받아 둔 사본",
-        "다음 설치 때 인터넷에서 다시 받아 와요. 이미 설치된 프로젝트는 그대로예요.",
+        "다음 설치 때 인터넷에서 다시 받아 와요. 이미 설치된 프로젝트는 그대로예요. 파일마다 내용 검사가 있어서, 쓰는 중에 지워져도 빠진 것만 다시 받아요. 지금 쓰는 파일은 잠겨 있어 건너뛰어요.",
         &[(Base::LocalAppData, "npm-cache")],
-        &["node.exe"],
+        // node.exe는 npm과 상관없는 도구(VS Code, 개발 서버 등)도 써서, 이것으로 막으면 거의 정리할 수 없었다
+        &[],
     ),
     regen(
         "pip-cache",
         "pip 캐시",
         "Python 패키지를 내려받아 둔 사본",
-        "다음 설치 때 인터넷에서 다시 받아 와요. 이미 설치된 패키지는 그대로예요.",
+        "다음 설치 때 인터넷에서 다시 받아 와요. 이미 설치된 패키지는 그대로예요. 파일마다 내용 검사가 있어서, 쓰는 중에 지워져도 빠진 것만 다시 받아요. 지금 쓰는 파일은 잠겨 있어 건너뛰어요.",
         &[(Base::LocalAppData, r"pip\Cache")],
-        &["pip.exe", "python.exe"],
+        // python.exe는 pip과 상관없는 프로그램도 많이 써서 막는 기준으로 쓰지 않는다
+        &["pip.exe"],
     ),
     regen(
         "yarn-cache",
         "Yarn 캐시",
         "Yarn 패키지를 내려받아 둔 사본",
-        "다음 설치 때 인터넷에서 다시 받아 와요. 이미 설치된 프로젝트는 그대로예요.",
+        "다음 설치 때 인터넷에서 다시 받아 와요. 이미 설치된 프로젝트는 그대로예요. 파일마다 내용 검사가 있어서, 쓰는 중에 지워져도 빠진 것만 다시 받아요. 지금 쓰는 파일은 잠겨 있어 건너뛰어요.",
         &[(Base::LocalAppData, r"Yarn\Cache")],
-        &["node.exe"],
+        &[],
     ),
     regen(
         "cargo-cache",
@@ -331,7 +333,8 @@ static RULES: &[Rule] = &[
             (Base::UserProfile, r".cargo\registry\cache"),
             (Base::UserProfile, r".cargo\registry\src"),
         ],
-        &["cargo.exe", "rustc.exe", "rust-analyzer.exe"],
+        // 실제로 빌드할 때만 막는다 (rust-analyzer는 편집기가 늘 띄워 둔다)
+        &["cargo.exe", "rustc.exe"],
     ),
     regen(
         "gradle-cache",
