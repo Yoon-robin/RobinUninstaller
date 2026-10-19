@@ -31,6 +31,8 @@
 //!   - `C:\Program Files\Robin Test Labs\Fixture Notes\data.txt`
 //!   - `HKLM\...\Run` 값 `FixtureNotesMachine` (없는 파일을 가리킴 → "파일 없음" 표시 확인용)
 //!   - 예약 작업 `\Fixture Notes Machine Task` (부팅 때 SYSTEM으로 없는 파일 실행 → 실행돼도 아무 일 없음)
+//!   - `%ProgramData%\Robin Test Labs\Fixture Notes\AdminCache\` 가짜 캐시 (저장공간의 디버그 전용 항목
+//!     "테스트 앱 관리자 캐시"가 가리킨다. 관리자 권한 정리 시험용, `robin-storage --example storage_admin_fixture`)
 //!
 //! 실행 파일이 없는 시작 항목(지워진 프로그램이 남긴 것 흉내, 테스트 앱과 이름이 달라 잔여물 스캔에는 걸리지 않는다):
 //!   - `HKCU\...\Run` 값 `RobinGhostTool`, 시작 폴더의 `Robin Ghost Tool.lnk` (둘 다 없는 `ghost.exe`를 가리킴)
@@ -178,6 +180,11 @@ mod imp {
         env_dir("ProgramFiles").join(PUBLISHER)
     }
 
+    /// 저장공간 관리자 항목 시험용 가짜 캐시 (`fixture-admin-cache` 규칙과 같은 위치)
+    fn admin_cache_dir() -> PathBuf {
+        env_dir("ProgramData").join(PUBLISHER).join(PRODUCT)
+    }
+
     fn machine_key() -> String {
         format!(r"SOFTWARE\{PUBLISHER}\{PRODUCT}")
     }
@@ -187,6 +194,10 @@ mod imp {
         let dir = machine_dir().join(PRODUCT);
         std::fs::create_dir_all(&dir).expect("Program Files 폴더 생성 (관리자 권한 필요)");
         std::fs::write(dir.join("data.txt"), "machine-wide data").unwrap();
+        let cache = admin_cache_dir().join("AdminCache");
+        std::fs::create_dir_all(cache.join("nested")).expect("ProgramData 폴더 생성");
+        std::fs::write(cache.join("a.bin"), [1u8; 8192]).unwrap();
+        std::fs::write(cache.join("nested").join("b.bin"), [2u8; 4096]).unwrap();
         let (k, _) = RegKey::predef(HKEY_LOCAL_MACHINE)
             .create_subkey(machine_key())
             .expect("HKLM 키 생성 (관리자 권한 필요)");
@@ -329,6 +340,9 @@ mod imp {
         let _ = hklm.delete_subkey_all(machine_key());
         let _ = hklm.delete_subkey(format!(r"SOFTWARE\{PUBLISHER}"));
         let _ = std::fs::remove_dir_all(machine_dir());
+        // ProgramData는 테스트 앱 폴더만 지우고, 게시자 폴더는 비었을 때만 지운다
+        let _ = std::fs::remove_dir_all(admin_cache_dir());
+        let _ = std::fs::remove_dir(env_dir("ProgramData").join(PUBLISHER));
         if let Ok(run) = hklm.open_subkey_with_flags(RUN_KEY, KEY_SET_VALUE | KEY_WOW64_64KEY) {
             let _ = run.delete_value(MACHINE_RUN_VALUE);
         }

@@ -452,15 +452,33 @@ static RULES: &[Rule] = &[
 ];
 
 /// 디버그 빌드에만 있는 시험용 규칙. 실제 캐시 대신 이것으로 정리 기능을 시험한다.
+/// `fixture-admin-cache`는 관리자 권한 정리(UAC → 관리자 작업자) 흐름을 시험하는 항목이다.
+/// 파일은 `robin-fixture install --machine`(관리자로 실행)이 만들고, 만든 사람이 관리자라 일반 권한으로는 지울 수 없다.
 #[cfg(debug_assertions)]
-static DEBUG_RULES: &[Rule] = &[regen(
-    "fixture-cache",
-    "테스트 앱 캐시 (개발용)",
-    "테스트 앱 Fixture Notes가 만든 가짜 캐시. 디버그 빌드에만 보여요.",
-    "robin-fixture install이 만든 시험용 파일이에요.",
-    &[(Base::LocalAppData, r"Fixture Notes\cache")],
-    &[],
-)];
+static DEBUG_RULES: &[Rule] = &[
+    regen(
+        "fixture-cache",
+        "테스트 앱 캐시 (개발용)",
+        "테스트 앱 Fixture Notes가 만든 가짜 캐시. 디버그 빌드에만 보여요.",
+        "robin-fixture install이 만든 시험용 파일이에요.",
+        &[(Base::LocalAppData, r"Fixture Notes\cache")],
+        &[],
+    ),
+    Rule {
+        admin: true,
+        ..regen(
+            "fixture-admin-cache",
+            "테스트 앱 관리자 캐시 (개발용)",
+            "관리자 권한으로 만든 테스트 앱 Fixture Notes의 가짜 캐시. 디버그 빌드에만 보여요.",
+            "robin-fixture install --machine이 만든 시험용 파일이에요. 관리자 권한이 필요해요.",
+            &[(
+                Base::ProgramData,
+                r"Robin Test Labs\Fixture Notes\AdminCache",
+            )],
+            &[],
+        )
+    },
+];
 #[cfg(not(debug_assertions))]
 static DEBUG_RULES: &[Rule] = &[];
 
@@ -539,6 +557,21 @@ mod tests {
         }
         assert!(!is_valid_id(r"..\x"));
         assert!(!is_valid_id("no-such-rule"));
+    }
+
+    /// 관리자 권한 정리를 시험하는 항목은 관리자 항목이고, 미리 고르지 않으며, 테스트 앱 폴더만 가리킨다
+    #[cfg(debug_assertions)]
+    #[test]
+    fn admin_fixture_rule_is_admin_only() {
+        let rule = find("fixture-admin-cache").expect("디버그 빌드에 있어야 함");
+        assert!(rule.admin);
+        assert!(!rule.default_selected());
+        assert!(
+            rule.paths
+                .iter()
+                .all(|(base, rel)| *base == Base::ProgramData
+                    && rel.starts_with(r"Robin Test Labs\Fixture Notes\"))
+        );
     }
 
     #[test]

@@ -51,6 +51,7 @@ cargo run -p robin-startup --example list             # 시작 항목 보기 (�
 cargo run -p robin-startup --example toggle_fixture   # 테스트 앱 시작 항목만 껐다 켜기
 cargo run -p robin-storage --example storage_scan            # 정리할 수 있는 항목 보기 (읽기 전용)
 cargo run -p robin-storage --example storage_clean_fixture   # 테스트 앱 캐시만 정리해 보기
+cargo run -p robin-storage --example storage_admin_fixture   # 관리자 항목 정리 (먼저 관리자로 robin-fixture install --machine)
 bash scripts/release.sh [--publish]                         # 서명된 설치 파일 + latest.json (--publish는 GitHub Release에 올림)
 ```
 
