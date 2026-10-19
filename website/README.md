@@ -1,6 +1,6 @@
 # RobinX 웹사이트
 
-주소: https://yoon-robin.github.io/RobinUninstaller/
+주소: https://yoon-robin.github.io/RobinX/
 
 소개용 랜딩 페이지. React + Vite + Tailwind CSS v4 + shadcn/ui + Motion. 앱과 같은 청록 다크 테마와 Pretendard 글꼴을 쓴다.
 앱과는 따로 설치하는 별도 프로젝트다 (`website/` 안에서 명령 실행).

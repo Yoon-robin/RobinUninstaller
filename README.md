@@ -4,7 +4,7 @@ Windows를 가볍고 깔끔하게 관리하는 올인원 도구. 언인스톨러
 
 프로그램을 제거한 뒤 남은 파일과 레지스트리를 찾아 **왜 그 프로그램 것인지 근거와 함께** 보여주고, 사용자가 고른 것만 백업 후 정리합니다. 지운 것은 언제든 되돌릴 수 있습니다.
 
-소개 페이지: https://yoon-robin.github.io/RobinUninstaller/
+소개 페이지: https://yoon-robin.github.io/RobinX/
 
 > 개발 초기 단계입니다. 자세한 계획은 [PLAN.md](PLAN.md), 다른 PC에서 개발을 이어 가려면 [docs/HANDOFF.md](docs/HANDOFF.md)를 보세요.
 

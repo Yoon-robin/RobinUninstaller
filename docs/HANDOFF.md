@@ -15,8 +15,8 @@
 | GitHub CLI (선택) | | `winget install GitHub.cli` 후 `gh auth login` |
 
 ```bash
-git clone https://github.com/Yoon-robin/RobinUninstaller.git
-cd RobinUninstaller
+git clone https://github.com/Yoon-robin/RobinX.git
+cd RobinX
 pnpm install
 pnpm check        # 모두 통과해야 정상
 pnpm tauri dev    # 앱 실행

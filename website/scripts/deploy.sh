@@ -6,8 +6,8 @@ cd "$(dirname "$0")/.."
 
 # 폴더 자체는 다른 프로그램이 열고 있을 수 있어 안의 내용만 지운다
 [ -d dist ] && find dist -mindepth 1 -delete
-# Git Bash가 /RobinUninstaller/ 를 Windows 경로로 바꾸지 않게 한다
-MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" BASE_PATH=/RobinUninstaller/ pnpm build
+# Git Bash가 /RobinX/ 를 Windows 경로로 바꾸지 않게 한다
+MSYS_NO_PATHCONV=1 MSYS2_ARG_CONV_EXCL="*" BASE_PATH=/RobinX/ pnpm build
 touch dist/.nojekyll
 
 cd dist
@@ -17,4 +17,4 @@ git add -A
 git -c core.autocrlf=false -c user.name="$(git -C ../.. config user.name)" -c user.email="$(git -C ../.. config user.email)" commit -q -m "Deploy website"
 git push -q -f "$(git -C ../.. remote get-url origin)" gh-pages
 rm -rf .git
-echo "배포함: https://yoon-robin.github.io/RobinUninstaller/ (반영까지 1분쯤)"
+echo "배포함: https://yoon-robin.github.io/RobinX/ (반영까지 1분쯤)"
