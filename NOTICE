@@ -1,0 +1,13 @@
+RobinX
+Copyright 2026 Yoon-robin
+
+This product is licensed under the Apache License, Version 2.0 (see LICENSE).
+
+This product includes third-party software:
+
+- Border Beam component (src/components/ui/border-beam.tsx), from Magic UI
+  (https://magicui.design), MIT License, Copyright (c) Magic UI.
+- Pretendard font, SIL Open Font License 1.1, Copyright (c) Kil Hyung-jin.
+
+Other dependencies are listed in Cargo.lock, pnpm-lock.yaml and
+website/pnpm-lock.yaml and remain under their own licenses.

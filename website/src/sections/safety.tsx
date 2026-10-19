@@ -115,7 +115,7 @@ const restoreScope = [
 const faqs = [
   {
     q: "소스 코드를 볼 수 있나요?",
-    a: "네, GitHub에 모두 공개되어 있어요. 무엇을 어떻게 지우는지 코드로 직접 확인할 수 있어요.",
+    a: "네, GitHub에 모두 공개되어 있고 Apache License 2.0으로 쓰고 고치고 배포할 수 있어요. 무엇을 어떻게 지우는지 코드로 직접 확인할 수 있어요.",
   },
   {
     q: "지운 건 다 되돌릴 수 있나요?",
@@ -216,6 +216,14 @@ export function Footer() {
           </a>
           <a href={REPO_URL} target="_blank" rel="noreferrer" className="transition-colors hover:text-foreground">
             GitHub
+          </a>
+          <a
+            href={`${REPO_URL}/blob/main/LICENSE`}
+            target="_blank"
+            rel="noreferrer"
+            className="transition-colors hover:text-foreground"
+          >
+            Apache-2.0
           </a>
         </div>
       </div>

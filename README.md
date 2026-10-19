@@ -72,3 +72,7 @@ cargo run -p robin-scanner --example scan_fixture   # 제거 → 잔여물 스�
 cargo run -p robin-recovery --example clean_fixture  # 제거 → 정리 → 복원 → 원본과 비교
 cargo run -p robin-fixture -- remove             # 정리
 ```
+
+## 라이선스
+
+[Apache License 2.0](LICENSE). 함께 들어 있는 외부 코드·글꼴의 라이선스는 [NOTICE](NOTICE)에 있습니다.
