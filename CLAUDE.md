@@ -46,6 +46,7 @@ cargo run -p robin-startup --example list             # 시작 항목 보기 (�
 cargo run -p robin-startup --example toggle_fixture   # 테스트 앱 시작 항목만 껐다 켜기
 cargo run -p robin-storage --example storage_scan            # 정리할 수 있는 항목 보기 (읽기 전용)
 cargo run -p robin-storage --example storage_clean_fixture   # 테스트 앱 캐시만 정리해 보기
+cargo run -p robin-tweaks --example tweaks_fixture           # 최적화 적용·되돌리기를 테스트 항목으로만
 ```
 
 Windows PC를 쓸 수 없을 때(클라우드 세션 등)는 먼저 `bash scripts/cloud-setup.sh`로 도구를 준비하고,
@@ -65,5 +66,6 @@ DevTools 프로토콜(`http://127.0.0.1:9223/json`)로 클릭·캡처한다. 마
 - `crates/storage` 저장공간 정리(규칙은 `rules.rs`, 사용자 폴더를 넣으면 테스트가 실패한다)와 폴더 크기 분석(읽기 전용)
 - `crates/tracker` 설치 추적: 설치 전후 스냅샷 비교(읽기 전용), 기록은 잔여물 스캔의 근거로 쓴다
 - `crates/settings` 사용자 설정(백업 보관 기간, 잔여물 스캔 제외 목록)
+- `crates/tweaks` 최적화: 항목은 `catalog.rs`에 데이터로 정의(HKCU 공식 설정만, 정책·보안 키 금지는 테스트가 확인). 원래 값을 먼저 기록하고 바꾸며, 되돌릴 때 다른 곳에서 바뀐 값은 덮어쓰지 않는다. 실제 항목은 켜고 끄며 시험하지 않고 `test.fixture`(디버그 전용)로만 시험한다
 
 프론트엔드는 경로가 아니라 ID만 넘긴다. 경로·명령은 항상 Rust 쪽이 자기 데이터에서 찾는다.

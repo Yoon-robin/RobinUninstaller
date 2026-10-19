@@ -385,3 +385,33 @@ export const settingsApi = {
   backupUsage: () => invoke<BackupUsage>("backup_usage"),
   pruneBackups: () => invoke<{ deleted: number; failed: number }>("prune_backups"),
 }
+
+// crates/tweaks 의 TweakView 와 맞춰야 한다.
+export type TweakGroup = "privacy" | "suggestions" | "convenience" | "gaming" | "test"
+/** 바꾼 뒤 보이려면 필요한 것 */
+export type TweakRestart = "none" | "explorer" | "signOut"
+export type TweakState = "applied" | "notApplied" | "partial"
+
+export interface TweakView {
+  id: string
+  group: TweakGroup
+  title: string
+  description: string
+  why: string
+  /** Windows 설정 앱에서 같은 설정을 찾는 위치 */
+  settingsPath: string
+  restart: TweakRestart
+  state: TweakState
+  /** RobinX가 바꿨고 원래 값 기록이 있어 되돌릴 수 있음 */
+  changedByUs: boolean
+  appliedAt: number | null
+  changes: { location: string; name: string; value: string }[]
+}
+
+export const tweaksApi = {
+  list: () => invoke<TweakView[]>("list_tweaks"),
+  /** 원래 값을 기록한 뒤 적용한다 */
+  apply: (id: string) => invoke<void>("apply_tweak", { id }),
+  /** 원래 값으로 되돌린다. 그 사이 다른 곳에서 바뀐 값은 그대로 두고 `leftAsIs`로 알려 준다 */
+  revert: (id: string) => invoke<{ leftAsIs: string[] }>("revert_tweak", { id }),
+}

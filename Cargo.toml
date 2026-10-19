@@ -17,6 +17,7 @@ robin-startup = { path = "crates/startup" }
 robin-tracker = { path = "crates/tracker" }
 robin-settings = { path = "crates/settings" }
 robin-storage = { path = "crates/storage" }
+robin-tweaks = { path = "crates/tweaks" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 

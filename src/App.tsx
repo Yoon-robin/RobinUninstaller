@@ -13,6 +13,7 @@ import { RestorePage } from "@/features/restore/restore-page"
 import { SettingsPage } from "@/features/settings/settings-page"
 import { StartupPage } from "@/features/startup/startup-page"
 import { TrackingPage } from "@/features/tracking/tracking-page"
+import { TweaksPage } from "@/features/tweaks/tweaks-page"
 import { StoragePage } from "@/features/storage/storage-page"
 import { ProgramsPage } from "@/features/programs/programs-page"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
@@ -29,6 +30,7 @@ const titles: Record<Page, string> = {
   leftovers: "잔여물 정리",
   storage: "저장공간",
   startup: "시작프로그램",
+  tweaks: "최적화",
   tracking: "설치 추적",
   restore: "복구 기록",
   settings: "설정",
@@ -110,6 +112,7 @@ export default function App() {
                   {page === "restore" && <RestorePage />}
                   {page === "storage" && <StoragePage />}
                   {page === "startup" && <StartupPage />}
+                  {page === "tweaks" && <TweaksPage />}
                   {page === "tracking" && <TrackingPage />}
                   {page === "settings" && <SettingsPage />}
                 </main>

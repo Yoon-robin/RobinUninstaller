@@ -1,0 +1,14 @@
+[package]
+name = "robin-tweaks"
+description = "최적화: Windows 공식 설정을 원래 값을 기록한 뒤 바꾸고, 그대로 되돌린다 (현재 사용자 설정만)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+
+[dependencies]
+robin-core.workspace = true
+serde.workspace = true
+serde_json.workspace = true
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.55"

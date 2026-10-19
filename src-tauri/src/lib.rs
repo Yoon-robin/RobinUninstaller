@@ -4,6 +4,7 @@
 
 mod settings;
 mod tracking;
+mod tweaks;
 pub mod worker;
 
 use std::collections::HashMap;
@@ -1095,6 +1096,9 @@ pub fn run() {
             settings::remove_exclusion,
             settings::backup_usage,
             settings::prune_backups,
+            tweaks::list_tweaks,
+            tweaks::apply_tweak,
+            tweaks::revert_tweak,
             tracking::tracking_status,
             tracking::start_tracking,
             tracking::cancel_tracking,
