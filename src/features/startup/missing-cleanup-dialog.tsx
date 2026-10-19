@@ -30,13 +30,16 @@ export function MissingCleanupDialog({
   const [error, setError] = useState<string | null>(null)
   const [elevating, setElevating] = useState(false)
 
-  // 열 때마다 처음 상태로 (전부 선택). 화면에 그리기 전에 바꿔서 지난 결과가 잠깐 보이지 않게 한다.
+  // 열 때마다 처음 상태로. 현재 사용자 항목만 미리 고르고, 모든 사용자(관리자) 항목은 직접 고르게 한다.
+  // 화면에 그리기 전에 바꿔서 지난 결과가 잠깐 보이지 않게 한다.
   useLayoutEffect(() => {
     if (!open) return
     setStage({ step: "select" })
     setError(null)
     setElevating(false)
-    setSelected(new Set(entries.filter((e) => e.targetMissing && e.source !== "task").map((e) => e.id)))
+    setSelected(
+      new Set(entries.filter((e) => e.targetMissing && e.source !== "task" && !e.needsAdmin).map((e) => e.id)),
+    )
   }, [open])
 
   const toggle = (id: string) =>
@@ -103,8 +106,9 @@ export function MissingCleanupDialog({
               <p className="flex gap-2 border-b bg-muted/20 px-5 py-2.5 text-xs leading-relaxed text-muted-foreground">
                 <ArchiveRestore className="mt-0.5 size-3.5 shrink-0 text-primary" />
                 <span>
-                  Run 값이나 바로 가기, 꺼짐 상태 값을 <b className="text-foreground">백업한 뒤</b> 정리해요. 복구
-                  기록에서 언제든 되돌릴 수 있어요.
+                  Run 값이나 바로 가기, 꺼짐 상태 값을 <b className="text-foreground">백업한 뒤</b> 정리해요. 백업을
+                  보관하는 동안 복구 기록에서 되돌릴 수 있어요. 드라이브를 뺐거나 네트워크 위치라 잠깐 안 보이는 파일일
+                  수도 있으니 이름을 확인하세요. 모든 사용자 항목은 미리 고르지 않았어요.
                   {skippedTasks > 0 && ` 예약 작업 ${skippedTasks}개는 끄기만 할 수 있어 목록에서 뺐어요.`}
                 </span>
               </p>
@@ -142,7 +146,7 @@ export function MissingCleanupDialog({
                 {error && <p className="text-xs text-destructive">{error}</p>}
                 <Button variant="destructive" disabled={selected.size === 0} onClick={run}>
                   <Trash2 />
-                  백업하고 정리
+                  {selected.size > 0 ? `${selected.size}개 백업하고 정리` : "백업하고 정리"}
                 </Button>
                 <Button variant="outline" onClick={close}>
                   닫기

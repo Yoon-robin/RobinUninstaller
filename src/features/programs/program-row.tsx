@@ -48,9 +48,15 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
     <motion.div ref={ref} exit={removing ? removedExit : undefined} className="overflow-hidden">
       <AppContextMenu app={app} {...handlers}>
         <div
-          role="button"
+          // 여러 개 제거 중에는 체크 상자처럼, 평소에는 세부 정보를 여는 버튼처럼 읽힌다
+          role={picked == null ? "button" : "checkbox"}
           tabIndex={0}
-          aria-pressed={picked}
+          aria-checked={picked == null ? undefined : picked}
+          aria-label={
+            picked == null
+              ? `${app.displayName}${app.publisher ? `, ${app.publisher}` : ""} 세부 정보 보기`
+              : `${app.displayName} 제거 대상으로 고르기`
+          }
           onClick={() => (picked == null ? handlers.onSelect(app) : onPick?.(app))}
           onKeyDown={(e) => {
             // 안쪽 버튼·메뉴에서 누른 키는 행 열기로 처리하지 않는다 (메뉴는 포털이라 이벤트가 여기까지 올라온다)

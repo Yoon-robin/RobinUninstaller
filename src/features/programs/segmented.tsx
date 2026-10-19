@@ -1,8 +1,38 @@
+import type { KeyboardEvent } from "react"
 import type { LucideIcon } from "lucide-react"
 import { motion } from "motion/react"
 
 import { cn } from "@/lib/utils"
 import { IconTooltip } from "@/components/icon-tooltip"
+
+/**
+ * 라디오·탭 묶음의 키보드 이동: ←/→(↑/↓)로 앞뒤, Home/End로 처음·끝. 사용 못 하는 항목은 건너뛴다.
+ * 고른 항목만 Tab으로 들어오고(나머지는 tabIndex -1), 방향키로 고르면 바로 선택된다.
+ */
+export function rovingKeyDown<K>(
+  e: KeyboardEvent<HTMLElement>,
+  keys: K[],
+  current: K,
+  isDisabled: (key: K) => boolean,
+  onChange: (key: K) => void,
+) {
+  const enabled = keys.filter((k) => !isDisabled(k))
+  if (enabled.length === 0) return
+  const at = Math.max(0, enabled.indexOf(current))
+  let next: K | undefined
+  if (e.key === "ArrowRight" || e.key === "ArrowDown") next = enabled[(at + 1) % enabled.length]
+  else if (e.key === "ArrowLeft" || e.key === "ArrowUp") next = enabled[(at - 1 + enabled.length) % enabled.length]
+  else if (e.key === "Home") next = enabled[0]
+  else if (e.key === "End") next = enabled[enabled.length - 1]
+  if (next === undefined) return
+  e.preventDefault()
+  onChange(next)
+  // 새로 고른 항목으로 포커스를 옮긴다
+  const group = e.currentTarget
+  requestAnimationFrame(() => {
+    group.querySelector<HTMLElement>('[aria-checked="true"],[aria-selected="true"]')?.focus()
+  })
+}
 
 /** 선택 표시가 미끄러지듯 옮겨 가는 칩 묶음 (빠른 필터). */
 export function FilterChips<K extends string>({
@@ -17,7 +47,20 @@ export function FilterChips<K extends string>({
   onChange: (key: K) => void
 }) {
   return (
-    <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="빠른 필터">
+    <div
+      className="flex flex-wrap gap-1.5"
+      role="radiogroup"
+      aria-label="빠른 필터"
+      onKeyDown={(e) =>
+        rovingKeyDown(
+          e,
+          options.map((o) => o.key),
+          value,
+          (k) => counts[k] === 0 && k !== value,
+          onChange,
+        )
+      }
+    >
       {options.map((o) => {
         const active = o.key === value
         const empty = counts[o.key] === 0 && !active
@@ -27,6 +70,7 @@ export function FilterChips<K extends string>({
             type="button"
             role="radio"
             aria-checked={active}
+            tabIndex={active ? 0 : -1}
             disabled={empty}
             onClick={() => onChange(o.key)}
             className={cn(
@@ -64,13 +108,26 @@ export function IconSegmented<K extends string>({
   layoutId: string
 }) {
   return (
-    <div className="flex h-9 items-center rounded-lg border bg-background/60 p-0.5" role="radiogroup">
+    <div
+      className="flex h-9 items-center rounded-lg border bg-background/60 p-0.5"
+      role="radiogroup"
+      onKeyDown={(e) =>
+        rovingKeyDown(
+          e,
+          options.map((o) => o.key),
+          value,
+          () => false,
+          onChange,
+        )
+      }
+    >
       {options.map((o) => (
         <IconTooltip key={o.key} label={o.label}>
           <button
             type="button"
             role="radio"
             aria-checked={value === o.key}
+            tabIndex={value === o.key ? 0 : -1}
             aria-label={o.label}
             onClick={() => onChange(o.key)}
             className={cn(
@@ -108,7 +165,20 @@ export function TextTabs<K extends string>({
   label: string
 }) {
   return (
-    <div className="glass liquid flex h-9 items-center rounded-full p-1" role="tablist" aria-label={label}>
+    <div
+      className="glass liquid flex h-9 items-center rounded-full p-1"
+      role="tablist"
+      aria-label={label}
+      onKeyDown={(e) =>
+        rovingKeyDown(
+          e,
+          options.map((o) => o.key),
+          value,
+          () => false,
+          onChange,
+        )
+      }
+    >
       {options.map((o) => {
         const active = value === o.key
         return (
@@ -117,6 +187,7 @@ export function TextTabs<K extends string>({
             type="button"
             role="tab"
             aria-selected={active}
+            tabIndex={active ? 0 : -1}
             onClick={() => onChange(o.key)}
             className={cn(
               "relative flex h-full items-center gap-1.5 rounded-full px-3 text-sm transition-colors",

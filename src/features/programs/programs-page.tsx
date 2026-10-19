@@ -50,6 +50,15 @@ import { LeftoversDialog, type LeftoverTarget } from "@/features/leftovers/lefto
 type ViewMode = "list" | "grid"
 
 const VIEW_KEY = "robin.programs.view"
+const INTRO_KEY = "robin.programs.introDismissed"
+
+function loadIntroDismissed() {
+  try {
+    return localStorage.getItem(INTRO_KEY) === "1"
+  } catch {
+    return false
+  }
+}
 
 function loadView(): ViewMode {
   try {
@@ -69,6 +78,15 @@ export function ProgramsPage() {
   const [sort, setSort] = useState<SortKey>("name")
   const [filter, setFilter] = useState<QuickFilter>("all")
   const [view, setViewState] = useState<ViewMode>(loadView)
+  const [introDismissed, setIntroDismissed] = useState(loadIntroDismissed)
+  const dismissIntro = () => {
+    setIntroDismissed(true)
+    try {
+      localStorage.setItem(INTRO_KEY, "1")
+    } catch {
+      // 저장이 막혀 있으면 이번 실행 동안만 숨긴다
+    }
+  }
   const [selected, setSelected] = useState<InstalledApplication | null>(null)
   const [uninstallTarget, setUninstallTarget] = useState<InstalledApplication | null>(null)
   const [leftoversTarget, setLeftoversTarget] = useState<LeftoverTarget | null>(null)
@@ -216,6 +234,27 @@ export function ProgramsPage() {
           ]}
         />
       </FadeUp>
+
+      {!introDismissed && (
+        <FadeUp>
+          <div className="flex items-start gap-3 rounded-2xl border border-primary/30 bg-primary/8 px-5 py-4 text-sm">
+            <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 font-semibold text-primary">
+              1
+            </span>
+            <div className="min-w-0 flex-1">
+              <p className="font-medium">이렇게 시작해 보세요</p>
+              <p className="mt-1 text-muted-foreground">
+                지울 프로그램을 오른쪽 클릭해 <b className="text-foreground">제거</b>를 고르세요. 제거가 끝나면 남은
+                흔적을 찾아 백업한 뒤 정리할 수 있어요. 지우지 않고 무엇이 남을지 먼저 보려면{" "}
+                <b className="text-foreground">흔적 미리 보기</b>를 고르세요.
+              </p>
+            </div>
+            <Button variant="ghost" size="sm" onClick={dismissIntro}>
+              알겠어요
+            </Button>
+          </div>
+        </FadeUp>
+      )}
 
       {tab === "store" ? (
         <FadeUp>

@@ -70,6 +70,24 @@ export function RestorePage() {
         <FadeUp>
           <Skeleton className="h-28 w-full rounded-2xl" />
         </FadeUp>
+      ) : backups.isError ? (
+        <FadeUp>
+          <div
+            role="alert"
+            className="flex flex-col items-center gap-3 rounded-2xl border border-destructive/40 px-6 py-12 text-center"
+          >
+            <p className="font-medium">복구 기록을 읽지 못했어요</p>
+            <p className="max-w-md text-sm text-muted-foreground">
+              기록이 없어진 게 아니라 지금 읽지 못한 거예요. 백업 폴더(%LOCALAPPDATA%\RobinX\backups)는 그대로 있어요.
+            </p>
+            <p data-selectable className="max-w-md font-mono text-xs break-all text-muted-foreground">
+              {String(backups.error)}
+            </p>
+            <Button variant="outline" onClick={() => backups.refetch()} disabled={backups.isFetching}>
+              다시 시도
+            </Button>
+          </div>
+        </FadeUp>
       ) : (backups.data ?? []).length === 0 ? (
         <FadeUp>
           <div className="flex flex-col items-center gap-3 rounded-2xl border border-dashed px-6 py-14 text-center">
@@ -167,7 +185,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
           onClick={() => run("all", () => recoveryApi.restore(op.id))}
         >
           {busy === "all" ? <Loader2 className="animate-spin" /> : <RotateCcw />}
-          모두 되돌리기
+          정리 되돌리기
         </Button>
         <Button
           size="icon"

@@ -77,7 +77,7 @@ export function TweaksPage() {
       if (on) {
         await tweaksApi.apply(t.id)
         toast.success(`${t.title}: 적용했어요`, {
-          description: restartHint[t.restart] ?? "원래 값을 기록해 두었어요. 언제든 끌 수 있어요.",
+          description: restartHint[t.restart] ?? "원래 값을 기록해 두었어요. 끄면 원래대로 돌아가요.",
         })
       } else {
         const { leftAsIs } = await tweaksApi.revert(t.id)

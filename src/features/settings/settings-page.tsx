@@ -20,6 +20,7 @@ import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { FadeUp, Stagger } from "@/components/motion"
 import { useTheme } from "@/components/theme"
+import { rovingKeyDown } from "@/features/programs/segmented"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -66,7 +67,21 @@ function Choice<T extends string | number | null>({
   label: string
 }) {
   return (
-    <div role="radiogroup" aria-label={label} className="inline-flex flex-wrap gap-1 rounded-xl border bg-muted/40 p-1">
+    <div
+      role="radiogroup"
+      aria-label={label}
+      className="inline-flex flex-wrap gap-1 rounded-xl border bg-muted/40 p-1"
+      onKeyDown={(e) =>
+        !disabled &&
+        rovingKeyDown(
+          e,
+          options.map((o) => o.value),
+          value,
+          () => false,
+          onChange,
+        )
+      }
+    >
       {options.map((o) => {
         const active = o.value === value
         return (
@@ -75,6 +90,7 @@ function Choice<T extends string | number | null>({
             type="button"
             role="radio"
             aria-checked={active}
+            tabIndex={active ? 0 : -1}
             disabled={disabled}
             onClick={() => !active && onChange(o.value)}
             className={cn(

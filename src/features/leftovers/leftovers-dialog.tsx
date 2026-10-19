@@ -362,8 +362,8 @@ function Results({
             </div>
           )}
           <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-5 py-2.5 text-xs">
-            <SummaryChip tone="primary" label="근거 강함" value={strong.length} />
-            <SummaryChip tone="warn" label="검토 필요" value={review.length} />
+            <SummaryChip tone="primary" label="연결 정보 일치" value={strong.length} />
+            <SummaryChip tone="warn" label="직접 확인 필요" value={review.length} />
             <span className="text-muted-foreground">· {report.durationMs}ms</span>
             {report.protectedSkipped > 0 && (
               <IconTooltip label="Windows 폴더, 여러 프로그램이 함께 쓰는 폴더 등은 점수와 상관없이 건드리지 않아요">
@@ -377,15 +377,15 @@ function Results({
 
           <div className="min-h-0 flex-1 overflow-y-auto">
             <Group
-              title="근거가 강한 흔적"
-              hint="강한 근거가 있어 미리 선택했어요"
+              title="설치 정보와 연결된 흔적"
+              hint="설치 등록 정보가 직접 가리키는 위치라 미리 골라 두었어요. 안전을 보장하는 표시는 아니니 한 번 훑어보세요"
               items={strong}
               offset={0}
               selected={selected}
               onToggle={toggle}
             />
             <Group
-              title="검토가 필요한 항목"
+              title="직접 확인이 필요한 항목"
               hint="이름만 비슷하거나 다른 프로그램과 겹칠 수 있어요. 확인한 뒤 직접 선택하세요"
               items={review}
               offset={strong.length}

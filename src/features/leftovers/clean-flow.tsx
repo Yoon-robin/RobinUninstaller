@@ -1,9 +1,9 @@
 import { useState } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArchiveRestore, Check, Loader2, ShieldAlert, TriangleAlert } from "lucide-react"
 import { motion } from "motion/react"
 
-import { countStatus, navigate, recoveryApi, type Leftover, type Operation } from "@/lib/api"
+import { countStatus, navigate, recoveryApi, settingsApi, type Leftover, type Operation } from "@/lib/api"
 import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT } from "@/components/motion"
@@ -26,6 +26,11 @@ export function ConfirmClean({
   onCancel: () => void
   onConfirm: () => void
 }) {
+  // 보관 기간이 정해져 있으면 그 기간 동안만 되돌릴 수 있다는 것을 정리 전에 알린다
+  const settings = useQuery({ queryKey: ["settings"], queryFn: settingsApi.get })
+  const days = settings.data?.backupRetentionDays
+  const retentionNote =
+    days == null ? "백업은 직접 지울 때까지 보관돼요." : `백업은 ${days}일 동안 보관된 뒤 자동으로 지워져요.`
   const reviewCount = items.filter((i) => i.confidence === "review").length
   const bytes = items.reduce((sum, i) => sum + (i.sizeBytes ?? 0), 0)
   const needsAdmin = items.some((i) => i.location.startsWith("HKLM") || /\\program files/i.test(i.location))
@@ -42,14 +47,15 @@ export function ConfirmClean({
         </p>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
           바로 지우지 않고 <b className="text-foreground">백업 폴더로 옮겨 보관</b>해요. 레지스트리는 원래 값을 그대로
-          기록해 두고요. 문제가 생기면 <b className="text-foreground">복구 기록</b>에서 언제든 되돌릴 수 있어요.
+          기록해 두고요. 문제가 생기면 백업을 보관하는 동안 <b className="text-foreground">복구 기록</b>에서 되돌릴 수
+          있어요. {retentionNote}
         </p>
       </div>
       <ul className="flex w-full max-w-md flex-col gap-2 text-left text-xs">
         {reviewCount > 0 && (
           <li className="flex gap-2 rounded-lg border border-chart-3/40 bg-chart-3/10 p-3 text-chart-3">
             <TriangleAlert className="size-4 shrink-0" />
-            검토가 필요한 항목 {reviewCount}개를 직접 골랐어요. 다른 프로그램이 쓰는 것이 아닌지 한 번 더 확인해 주세요.
+            직접 확인이 필요한 항목 {reviewCount}개를 골랐어요. 다른 프로그램이 쓰는 것이 아닌지 한 번 더 확인해 주세요.
           </li>
         )}
         {needsAdmin && (
@@ -149,7 +155,8 @@ export function CleanResult({
         <div>
           <p className="text-base font-semibold">{removed}개를 정리했어요</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            백업 폴더로 옮겼어요{freed > 0 && ` (${formatBytes(freed)})`}. 복구 기록에서 언제든 되돌릴 수 있어요.
+            백업 폴더로 옮겼어요{freed > 0 && ` (${formatBytes(freed)})`}. 백업을 보관하는 동안 복구 기록에서 되돌릴 수
+            있어요.
           </p>
         </div>
         {needsAdmin > 0 && (
