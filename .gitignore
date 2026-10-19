@@ -30,3 +30,4 @@ Thumbs.db
 
 # 외부 프로그램 분석 메모 (공개하지 않음)
 docs/private/
+scripts/ui-mock/out/

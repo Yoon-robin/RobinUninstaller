@@ -29,14 +29,54 @@ pnpm tauri dev    # 앱 실행
 - `Revo Uninstaller Pro.zip`, `docs/private/revo-analysis.md`: 상용 프로그램과 그 분석 메모라 공개 리포지토리에 올리지 않았다. 필요하면 원래 PC에서 직접 옮긴다. 분석 결과 중 설계에 반영할 내용은 PLAN.md의 Phase 3·4 메모에 이미 녹아 있다.
 - 백업 저장소(`%LOCALAPPDATA%\RobinUninstaller\backups`): PC마다 따로 생긴다.
 
-## 3. 현재 상태 (2026-10-16)
+## 3. 지금 상태 (2026-10-19) — 새 세션은 여기부터
 
-완료: Phase 0~4 (PLAN.md 로드맵 참고)
+모든 작업은 `main`에 들어 있다. 원격의 `claude/*` 브랜치는 전부 `main`에 합쳐졌으니 GitHub에서 지워도 된다
+(클라우드 세션에서는 원격 브랜치 삭제가 막혀 있다).
 
-- 프로그램 목록(레지스트리·MSI, 아이콘, 세부 정보, 필터·검색·카드 보기)
-- 기본 언인스톨러 실행 + 자식 프로세스 추적 + 제거 확인
-- 잔여물 탐지(근거·점수·보호 규칙, 읽기 전용)
-- 백업·격리 후 정리, 복구 기록, 복원, 관리자 권한 작업자 모드
+### 만든 기능
+
+- 프로그램 목록: 레지스트리·MSI, 아이콘, 세부 정보, 필터·검색·카드 보기, 크기 기록이 없으면 설치 폴더를 직접 잼, CSV 내보내기, 웹에서 검색
+- Microsoft Store·MSIX 앱 목록 (읽기 전용, 제거는 Windows 설정으로 안내)
+- 제거: 기본 언인스톨러 실행·자식 프로세스 추적·제거 확인, 여러 개 차례로 제거, 언인스톨러 없는 프로그램 강제 제거
+- 잔여물: 근거·점수·보호 규칙으로 찾기(읽기 전용) → 백업·격리 후 정리 → 복구 기록에서 복원, 관리자 권한 작업자 모드(UAC)
+- 시작프로그램: Run 키·시작 폴더·예약 작업 끄기·원상복구, 파일 없는 항목 정리
+- 저장공간: 다시 만들어지는 캐시만 정리, 큰 폴더 찾기
+- 설치 추적: 설치 전후 스냅샷 비교 기록 → 잔여물 스캔의 근거
+- 설정: 테마, 백업 보관 기간, 잔여물 스캔 제외 목록
+
+### Windows PC에서 아직 확인하지 않은 것
+
+클라우드에서는 Wine 검사와 가짜 응답 캡처까지만 했다. 아래 4번의 작업 기록마다 **"Windows에서 확인할 것"**이 있다. 한 번에 모으면:
+
+1. `pnpm check`, `pnpm tauri dev`로 앱이 뜨는지 (마지막 Windows 확인 뒤로 기능이 많이 늘었다)
+2. UAC 경로: 관리자 권한 정리·복원(`--items`)·백업 영구 삭제(`--elevated-delete`), 저장공간 관리자 항목, SYSTEM 예약 작업 끄기·켜기 ("코드 리뷰 수정" 참고)
+3. 테스트 앱으로: 강제 제거(`install --broken`), 파일 없는 시작 항목 정리, 설치 추적 → 잔여물 근거, "다음부터 제외", 여러 개 제거
+4. 읽기 전용: `store_apps`, `size_fixture` 예제 출력이 실제 PC에서 그럴듯한지
+5. 저장 창(CSV 내보내기), 웹 검색, Windows 설정 열기 버튼
+
+### 클라우드(리눅스) 세션에서 시작하기
+
+```bash
+bash scripts/cloud-setup.sh      # Wine·mingw·Rust 대상·pnpm 의존성 (여러 번 실행해도 됨)
+bash scripts/wine-check.sh       # 유닛 테스트 + 테스트 앱 예제 10개를 Wine에서
+cargo clippy --workspace --all-targets --target x86_64-pc-windows-msvc -- -D warnings
+pnpm exec tsc --noEmit -p . && pnpm exec prettier --check src
+```
+
+- 리눅스용 `cargo test`는 `--exclude robin-uninstaller`로 돌린다 (Tauri 앱은 GTK가 필요하다).
+- 화면은 `scripts/ui-mock/README.md`대로 가짜 응답으로 캡처해서 확인한다.
+- Wine에서 안 되는 것: 앱 화면(WebView2), UAC, 작업 스케줄러 목록, Store 패키지(빈 목록), 저장 창.
+
+### 다음 작업 후보
+
+- Windows PC에서 위 확인 목록 처리 (가장 먼저)
+- Store 앱 직접 제거: 테스트용 MSIX(자체 서명 또는 개발자 모드 등록)를 `crates/fixture`에 먼저 만든다
+- 시스템 복원 지점(제거 전 선택), 서비스 정리(중지·삭제)
+- 설치 추적을 ETW로 (커널 드라이버는 쓰지 않음)
+- 배포: 코드 서명, NSIS 설치 파일(`pnpm tauri build`)
+
+## 4. 작업 기록 (오래된 것부터)
 
 ### 관리자 권한(UAC) 정리 실제 시험 — 완료 (2026-10-16)
 
@@ -88,8 +128,8 @@ pnpm tauri dev    # 앱 실행
 
 ### 클라우드에서 Wine으로 검사하기 (2026-10-17)
 
-- `scripts/wine-check.sh`: Windows용(x86_64-pc-windows-gnu)으로 빌드해 Wine에서 유닛 테스트 전체와 테스트 앱 예제 6개
-  (uninstall, scan, clean, force, toggle, storage_clean)를 돌린다. 2026-10-17 기준 모두 통과.
+- `scripts/wine-check.sh`: Windows용(x86_64-pc-windows-gnu)으로 빌드해 Wine에서 유닛 테스트 전체와 테스트 앱 예제를 돌린다.
+  처음엔 6개였고 지금은 10개다(2026-10-19 기준 모두 통과). 준비는 `scripts/cloud-setup.sh`.
 - Wine에서 안 되는 것: 앱 화면(WebView2), UAC, 작업 스케줄러 목록·트리거 읽기(`E_NOTIMPL`) → 예약 작업 확인은 건너뛴다.
 - 테스트 앱이 바로 가기·예약 작업을 PowerShell 대신 COM으로 직접 만든다. Wine의 PowerShell은 아무것도 안 하고 성공을 돌려줘서
   흔적이 조용히 빠지는 문제가 있었다. Windows PC에서 `robin-fixture install`/`install --machine`이 여전히 잘 되는지 확인할 것.
@@ -148,11 +188,3 @@ pnpm tauri dev    # 앱 실행
 
 - PLAN.md "목록 내보내기와 웹 검색". CSV 만들기·주소 만들기는 유닛 테스트 통과(Linux·Wine), 화면은 가짜 응답으로 캡처 확인.
 - **Windows에서 확인할 것:** 내보내기 버튼 → 저장 창이 뜨는지, 저장한 CSV를 Excel로 열었을 때 한글·열이 맞는지. 메뉴의 "웹에서 검색"이 기본 브라우저로 열리는지.
-
-### 다음 단계 후보
-
-- Phase 5 나머지: SYSTEM 예약 작업의 UAC 끄기·켜기 시험
-- 시스템 복원 지점, 서비스 정리(중지·삭제)
-- Store 앱 직접 제거: 테스트용 MSIX(자체 서명, 개발자 모드)를 fixture에 먼저 만든다
-- Phase 6 다음: 설치 추적을 ETW로 (커널 드라이버는 쓰지 않음)
-- 배포: 코드 서명, NSIS 설치 파일(`pnpm tauri build`)
