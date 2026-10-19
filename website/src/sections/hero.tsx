@@ -45,8 +45,8 @@ export function Hero() {
           href="#safety"
           className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1 pr-3 pl-1 text-sm text-muted-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-foreground"
         >
-          <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">미리보기</span>
-          새 이름 RobinX · 남은 흔적은 백업한 뒤 정리해요
+          <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">개발 중</span>
+          설치 파일은 아직 없어요 · 안전 원칙 보기
           <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
         </motion.a>
 
@@ -63,16 +63,16 @@ export function Hero() {
           {...rise(0.2)}
           className="mx-auto mt-6 max-w-2xl text-lg text-pretty text-muted-foreground sm:text-xl"
         >
-          프로그램 제거와 남은 흔적 정리부터 저장공간·시작프로그램 관리까지 한곳에서. 무엇을 왜 바꾸는지{" "}
-          <strong className="font-semibold text-foreground">근거와 함께</strong> 보여 주고, 정리한 흔적은 백업해 두어
-          복구 기록에서 되돌릴 수 있어요.
+          프로그램 제거부터 남은 흔적 찾기, 저장공간·시작프로그램 관리까지 한곳에서. 지울 항목은{" "}
+          <strong className="font-semibold text-foreground">근거를 보고 직접</strong> 고르고, 남은 흔적은 백업한 뒤
+          정리해요. 캐시처럼 되돌릴 수 없는 것은 미리 알려 드려요.
         </motion.p>
 
         <motion.div {...rise(0.28)} className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <Button asChild size="lg" className="h-12 rounded-xl px-6 text-base shadow-lg shadow-primary/25">
             <a href={REPO_URL} target="_blank" rel="noreferrer">
               <GithubIcon className="size-4.5" />
-              GitHub에서 보기
+              개발 현황 보기
             </a>
           </Button>
           <Button asChild size="lg" variant="outline" className="h-12 rounded-xl px-6 text-base">
@@ -83,7 +83,8 @@ export function Hero() {
           </Button>
         </motion.div>
         <motion.p {...rise(0.34)} className="mt-4 text-sm text-muted-foreground/80">
-          Windows 10 · 11 (x64) · 소스 공개 · 설치 파일은 곧 제공돼요
+          Windows 10 · 11 (x64) · 소스 공개 · 개발 버전을 테스트 앱으로 검증하는 중이에요. 첫 릴리스부터 다운로드할 수
+          있어요
         </motion.p>
       </div>
 
@@ -106,8 +107,8 @@ export function Hero() {
               className="top-[18%] -left-4 hidden sm:flex lg:-left-12"
               delay={1.1}
               icon={<Sparkles className="size-4 text-primary" />}
-              title="남은 흔적 6개 발견"
-              detail="확실 4 · 검토 필요 2"
+              title="남은 흔적 7개 발견"
+              detail="근거 강함 3 · 검토 필요 4"
             />
             <FloatingChip
               className="top-[46%] -right-4 hidden sm:flex lg:-right-12"

@@ -1,11 +1,13 @@
 import { useEffect, useState } from "react"
 import { motion } from "motion/react"
+import { Menu } from "lucide-react"
 
 import { cn } from "@/lib/utils"
 import { LOGO, REPO_URL } from "@/lib/site"
 import { Button } from "@/components/ui/button"
 import { GithubIcon } from "@/components/github-icon"
 import { easeOutQuint } from "@/components/motion"
+import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 const links = [
   { href: "#features", label: "기능" },
@@ -17,6 +19,7 @@ const links = [
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false)
+  const [menuOpen, setMenuOpen] = useState(false)
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12)
     onScroll()
@@ -46,7 +49,7 @@ export function Nav() {
             <a
               key={l.href}
               href={l.href}
-              className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground"
+              className="rounded-lg px-3 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
             >
               {l.label}
             </a>
@@ -58,6 +61,33 @@ export function Nav() {
             GitHub
           </a>
         </Button>
+        {/* 좁은 화면: 메뉴 버튼 → 옆에서 나오는 패널 */}
+        <Sheet open={menuOpen} onOpenChange={setMenuOpen}>
+          <SheetTrigger asChild>
+            <Button variant="outline" size="icon-lg" className="rounded-xl md:hidden" aria-label="메뉴 열기">
+              <Menu />
+            </Button>
+          </SheetTrigger>
+          <SheetContent side="right" className="w-72 border-white/10 bg-background/95 p-6 backdrop-blur-xl">
+            <SheetTitle className="flex items-center gap-2.5">
+              <img src={LOGO} alt="" className="size-7 rounded-lg" />
+              RobinX
+            </SheetTitle>
+            <SheetDescription className="sr-only">페이지 안의 다른 부분으로 이동해요</SheetDescription>
+            <nav aria-label="페이지 메뉴" className="mt-4 flex flex-col gap-1">
+              {links.map((l) => (
+                <a
+                  key={l.href}
+                  href={l.href}
+                  onClick={() => setMenuOpen(false)}
+                  className="rounded-xl px-3 py-3 text-base text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+                >
+                  {l.label}
+                </a>
+              ))}
+            </nav>
+          </SheetContent>
+        </Sheet>
       </nav>
     </motion.header>
   )

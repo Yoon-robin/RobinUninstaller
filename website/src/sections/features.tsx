@@ -20,7 +20,7 @@ import { Reveal, SectionHeading } from "@/components/motion"
 import { shot } from "@/components/window-frame"
 
 const values: { icon: LucideIcon; title: string; detail: string }[] = [
-  { icon: Undo2, title: "영구 삭제 없음", detail: "지운 건 모두 백업·격리" },
+  { icon: Undo2, title: "잔여물은 백업 후 정리", detail: "보관하는 동안 복구 기록에서 되돌리기" },
   { icon: FileSearch, title: "근거 있는 탐지", detail: "왜 그 프로그램 것인지 표시" },
   { icon: ShieldCheck, title: "보호 규칙", detail: "시스템·공유 경로 제외" },
   { icon: Monitor, title: "Windows 10 · 11", detail: "가볍고 빠른 네이티브 앱" },
@@ -75,7 +75,7 @@ function Card({
 }) {
   return (
     <Reveal delay={delay} className={cn("h-full", className)}>
-      <article className="group relative flex h-full flex-col overflow-hidden glass rounded-3xl p-6 transition-transform duration-300 hover:-translate-y-1 sm:p-7">
+      <article className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-white/8 bg-card p-6 transition-transform duration-300 hover:-translate-y-1 sm:p-7">
         {/* 마우스를 올리면 위쪽 테두리에 빛이 돈다 */}
         <span
           aria-hidden
@@ -131,9 +131,9 @@ export function Features() {
           title="근거와 함께 찾는 남은 흔적"
           visual={<ShotPeek name="leftovers" x={0.2} y={0.05} />}
         >
-          게시자·제품 이름, 설치 폴더를 가리키는 값 같은 근거로 점수를 매겨 <b className="text-foreground">확실</b>과{" "}
-          <b className="text-foreground">검토 필요</b>로 나눠요. 확실한 것만 미리 골라 두고, 내 문서가 섞인 폴더는 따로
-          알려 줘요.
+          등록된 설치 폴더, 설치 폴더를 가리키는 값, 게시자·제품 이름 같은 근거를 붙여{" "}
+          <b className="text-foreground">근거 강함</b>과 <b className="text-foreground">검토 필요</b>로 나눠요. 등록
+          정보가 직접 가리키는 것만 미리 골라 두고, 이름만 맞거나 내 문서가 섞인 폴더는 직접 확인하도록 남겨요.
         </Card>
         <Card
           className="md:col-span-2"
@@ -154,7 +154,8 @@ export function Features() {
           지울 프로그램을 여러 개 골라 두면 하나씩 언인스톨러를 실행하고, 끝날 때마다 남은 흔적을 모아서 보여 줘요.
         </Card>
         <Card className="md:col-span-2" icon={Radar} tone="green" title="설치 추적" delay={0.12}>
-          설치 전후를 비교해 새로 생긴 파일과 레지스트리를 기록해 둬요. 나중에 지울 때 가장 확실한 근거가 돼요.
+          설치 전후를 비교해 새로 생긴 파일과 레지스트리를 기록해 둬요. 나중에 지울 때 이름 일치와 함께 강한 근거가
+          돼요.
         </Card>
 
         <Card
@@ -176,7 +177,7 @@ export function Features() {
           visual={<ShotPeek name="storage" />}
         >
           임시 파일·캐시처럼 지워도 다시 만들어지는 것만 골라요. 되돌릴 수 없는 항목은 따로 경고하고 미리 고르지 않아요.
-          내 파일은 절대 지우지 않아요.
+          문서·사진·다운로드 파일은 정리 대상으로 고르지 않아요. 캐시 정리는 되돌릴 수 없어요.
         </Card>
 
         <Card className="md:col-span-6" icon={Boxes} tone="amber" title="데스크톱 프로그램과 Store 앱을 한곳에서">

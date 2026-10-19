@@ -181,13 +181,23 @@ const leftovers = {
   protectedSkipped: 3,
   durationMs: 412,
   items: [
+    // 엔진 기준과 같게: 등록 정보가 직접 가리키는 것만 "근거 강함", 이름만 맞으면 "검토"
     [
       "folder",
-      "C:\\Program Files\\Forge Interactive",
+      "C:\\Program Files\\Forge Interactive\\Pixel Forge 3D",
       null,
       214_000_000,
-      ["publisherAndProduct", "emptyPublisherFolder"],
-      100,
+      ["installLocation"],
+      85,
+      "strong",
+    ],
+    [
+      "registryKey",
+      "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\PixelForge3D",
+      null,
+      null,
+      ["uninstallEntry"],
+      95,
       "strong",
     ],
     [
@@ -197,7 +207,7 @@ const leftovers = {
       38_400_000,
       ["publisherAndProduct"],
       80,
-      "strong",
+      "review",
     ],
     [
       "registryKey",
@@ -206,7 +216,7 @@ const leftovers = {
       null,
       ["publisherAndProduct"],
       80,
-      "strong",
+      "review",
     ],
     [
       "registryValue",

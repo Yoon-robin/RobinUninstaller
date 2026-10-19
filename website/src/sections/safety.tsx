@@ -11,7 +11,7 @@ const principles = [
   {
     icon: ArchiveRestore,
     title: "남은 흔적은 백업 후 정리",
-    text: "파일은 격리 폴더로, 레지스트리는 내보내기 파일로 보관한 뒤 치워요. 영구 삭제는 하지 않아요.",
+    text: "파일은 격리 폴더로, 레지스트리는 내보내기 파일로 보관한 뒤 치워요. 백업은 복구 기록에서 직접 지우거나 보관 기간이 지나야 사라져요.",
   },
   {
     icon: Recycle,
@@ -46,7 +46,7 @@ export function Safety() {
       <div className="mt-14 grid gap-4 sm:grid-cols-2">
         {principles.map((p, i) => (
           <Reveal key={p.title} delay={(i % 2) * 0.08}>
-            <div className="glass flex h-full gap-5 rounded-3xl p-6 sm:p-7">
+            <div className="flex h-full gap-5 rounded-3xl border border-white/8 bg-card p-6 sm:p-7">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-chart-5/12 text-chart-5">
                 <p.icon className="size-6" />
               </span>
@@ -61,9 +61,56 @@ export function Safety() {
           </Reveal>
         ))}
       </div>
+
+      {/* 무엇을 되돌릴 수 있는지: 정리 종류마다 다르므로 한 표로 분명히 보여 준다 */}
+      <Reveal className="mt-10">
+        <div className="overflow-hidden rounded-3xl border border-white/8 bg-card">
+          <div className="border-b border-white/8 px-6 py-4">
+            <h3 className="font-semibold">무엇을 되돌릴 수 있나요?</h3>
+            <p className="mt-1 text-sm text-muted-foreground">정리하는 종류마다 달라요. 지우기 전에 확인하세요.</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[34rem] text-left text-sm">
+              <caption className="sr-only">작업별 되돌리기 가능 여부</caption>
+              <thead className="text-xs text-muted-foreground">
+                <tr>
+                  <th scope="col" className="px-6 py-3 font-medium">
+                    작업
+                  </th>
+                  <th scope="col" className="px-6 py-3 font-medium">
+                    되돌리기
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-white/6">
+                {restoreScope.map((r) => (
+                  <tr key={r.task}>
+                    <th scope="row" className="px-6 py-3.5 font-medium">
+                      {r.task}
+                    </th>
+                    <td className="px-6 py-3.5">
+                      <span className={r.ok ? "text-chart-5" : "text-chart-3"}>{r.ok ? "가능" : "불가"}</span>
+                      <span className="text-muted-foreground"> · {r.note}</span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </Reveal>
     </section>
   )
 }
+
+const restoreScope = [
+  { task: "남은 흔적(파일·레지스트리) 정리", ok: true, note: "백업을 보관하는 동안 복구 기록에서 복원" },
+  { task: "강제 제거", ok: true, note: "백업한 항목만 복구 기록에서 복원" },
+  { task: "시작프로그램 끄기", ok: true, note: "언제든 다시 켜면 원래 상태로" },
+  { task: "프로그램 제거(원래 언인스톨러)", ok: false, note: "프로그램 자체는 다시 설치해야 해요" },
+  { task: "캐시·임시 파일 정리", ok: false, note: "다시 만들어지는 것만 지우지만, 지운 파일은 돌아오지 않아요" },
+  { task: "백업 삭제·보관 기간 만료", ok: false, note: "그 백업으로는 더 이상 복원할 수 없어요" },
+]
 
 const faqs = [
   {
@@ -71,8 +118,8 @@ const faqs = [
     a: "네, GitHub에 모두 공개되어 있어요. 무엇을 어떻게 지우는지 코드로 직접 확인할 수 있어요.",
   },
   {
-    q: "정말 아무것도 영구 삭제하지 않나요?",
-    a: "남은 흔적 정리와 강제 제거는 항상 백업·격리를 거쳐요. 저장공간 정리에서 지우는 캐시처럼 다시 만들어지는 것만 확인 후 지우고, 휴지통 비우기처럼 되돌릴 수 없는 일은 따로 경고해요. 백업은 설정한 기간이 지나면 정리돼요.",
+    q: "지운 건 다 되돌릴 수 있나요?",
+    a: "남은 흔적 정리와 강제 제거는 항상 백업·격리를 거쳐서, 백업을 보관하는 동안 되돌릴 수 있어요. 저장공간 정리의 캐시·임시 파일은 다시 만들어지는 것만 확인을 받고 지우며, 지운 뒤에는 되돌릴 수 없어요. 휴지통 비우기처럼 되돌릴 수 없는 일은 따로 경고하고 미리 고르지 않아요. 위의 표를 참고하세요.",
   },
   {
     q: "관리자 권한이 필요한가요?",
@@ -97,7 +144,7 @@ export function Faq() {
     <section id="faq" className="relative mx-auto max-w-3xl px-6 pt-32">
       <SectionHeading eyebrow="FAQ" title="자주 묻는 질문" />
       <Reveal className="mt-12">
-        <Accordion type="single" collapsible className="glass rounded-3xl px-6">
+        <Accordion type="single" collapsible className="rounded-3xl border border-white/8 bg-card px-6">
           {faqs.map((f) => (
             <AccordionItem key={f.q} value={f.q} className="border-white/8">
               <AccordionTrigger className="py-5 text-base font-semibold hover:no-underline">{f.q}</AccordionTrigger>
@@ -136,7 +183,7 @@ export function FinalCta() {
             <Button asChild size="lg" className="h-12 rounded-xl px-6 text-base shadow-lg shadow-primary/25">
               <a href={REPO_URL} target="_blank" rel="noreferrer">
                 <GithubIcon className="size-4.5" />
-                GitHub에서 보기
+                개발 현황 보기
               </a>
             </Button>
             <Button asChild size="lg" variant="outline" className="h-12 rounded-xl px-6 text-base">

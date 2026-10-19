@@ -1,5 +1,6 @@
-import { useState } from "react"
-import { AnimatePresence, motion } from "motion/react"
+import { useRef, useState } from "react"
+import { motion, useReducedMotion } from "motion/react"
+import { Tabs } from "radix-ui"
 import { Archive, ScanSearch, Trash2 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -72,10 +73,19 @@ const screens = [
 
 export function Gallery() {
   const [active, setActive] = useState(screens[0].key)
-  const current = screens.find((s) => s.key === active)!
+  const reduce = useReducedMotion()
+  const tabRefs = useRef(new Map<string, HTMLButtonElement>())
+
+  // 좁은 화면에서 탭 목록이 가로로 넘치면, 고른 탭이 보이도록 가운데로 옮긴다
+  const select = (key: string) => {
+    setActive(key)
+    tabRefs.current
+      .get(key)
+      ?.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "nearest", inline: "center" })
+  }
 
   return (
-    <section id="screens" className="relative pt-32">
+    <section id="screens" className="relative pt-20 sm:pt-28 lg:pt-32">
       <div
         aria-hidden
         className="absolute inset-x-0 top-40 -z-10 mx-auto h-[30rem] max-w-4xl rounded-full bg-[radial-gradient(closest-side,oklch(0.72_0.15_285/0.14),transparent)] blur-2xl"
@@ -87,69 +97,68 @@ export function Gallery() {
           description="밝은 테마와 어두운 테마, Windows 11의 Mica 효과를 지원해요."
         />
 
-        <Reveal className="mt-10 flex justify-center">
-          <div
-            className="glass liquid flex max-w-full gap-1 overflow-x-auto rounded-full p-1.5"
-            role="tablist"
-            aria-label="앱 화면"
-          >
-            {screens.map((s) => (
-              <button
-                key={s.key}
-                type="button"
-                role="tab"
-                aria-selected={active === s.key}
-                onClick={() => setActive(s.key)}
-                className={cn(
-                  "relative shrink-0 rounded-full px-4 py-2 text-sm transition-colors",
-                  active === s.key
-                    ? "font-semibold text-primary-foreground"
-                    : "text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {active === s.key && (
-                  <motion.span
-                    layoutId="gallery-tab"
-                    className="absolute inset-0 rounded-full bg-primary shadow-[inset_0_1px_0_oklch(1_0_0/35%)]"
-                    transition={{ type: "spring", duration: 0.4, bounce: 0.15 }}
-                  />
-                )}
-                <span className="relative">{s.label}</span>
-              </button>
-            ))}
-          </div>
-        </Reveal>
-
-        <Reveal className="mx-auto mt-8 max-w-5xl">
-          <div className="relative">
-            <AnimatePresence mode="popLayout" initial={false}>
-              <motion.div
-                key={active}
-                initial={{ opacity: 0, scale: 0.985, filter: "blur(4px)" }}
-                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
-                exit={{ opacity: 0, scale: 1.01, filter: "blur(4px)" }}
-                transition={{ duration: 0.45, ease: easeOutQuint }}
-              >
-                <WindowFrame src={shot(current.key)} alt={`${current.label} 화면`} />
-              </motion.div>
-            </AnimatePresence>
-          </div>
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.p
-              key={active}
-              initial={{ opacity: 0, y: 6 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.25 }}
-              className="mt-5 text-center text-sm text-muted-foreground"
+        {/* Radix Tabs: 방향키로 탭 이동, 탭과 패널이 aria로 연결된다 */}
+        <Tabs.Root value={active} onValueChange={select} className="mt-10">
+          <Reveal className="relative flex justify-center">
+            <Tabs.List
+              aria-label="앱 화면"
+              className="glass liquid flex max-w-full gap-1 overflow-x-auto rounded-full p-1.5 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
             >
-              {current.caption}
-            </motion.p>
-          </AnimatePresence>
-          <p className="mt-1 text-center text-xs text-muted-foreground/60">
-            화면 속 프로그램은 설명을 위한 가상의 예시예요.
-          </p>
-        </Reveal>
+              {screens.map((s) => (
+                <Tabs.Trigger
+                  key={s.key}
+                  value={s.key}
+                  ref={(el) => {
+                    if (el) tabRefs.current.set(s.key, el)
+                  }}
+                  className={cn(
+                    "relative shrink-0 rounded-full px-4 py-2 text-sm transition-colors outline-none",
+                    "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background",
+                    active === s.key
+                      ? "font-semibold text-primary-foreground"
+                      : "text-muted-foreground hover:text-foreground",
+                  )}
+                >
+                  {active === s.key && (
+                    <motion.span
+                      layoutId="gallery-tab"
+                      className="absolute inset-0 rounded-full bg-primary shadow-[inset_0_1px_0_oklch(1_0_0/35%)]"
+                      transition={reduce ? { duration: 0 } : { type: "spring", duration: 0.4, bounce: 0.15 }}
+                    />
+                  )}
+                  <span className="relative">{s.label}</span>
+                </Tabs.Trigger>
+              ))}
+            </Tabs.List>
+            {/* 가로로 더 있다는 단서 (좁은 화면) */}
+            <span
+              aria-hidden
+              className="pointer-events-none absolute inset-y-0 right-0 w-10 rounded-r-full bg-gradient-to-l from-background to-transparent sm:hidden"
+            />
+          </Reveal>
+
+          <Reveal className="mx-auto mt-8 max-w-5xl">
+            {screens.map((s) => (
+              <Tabs.Content
+                key={s.key}
+                value={s.key}
+                className="outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-2xl"
+              >
+                <motion.div
+                  initial={reduce ? false : { opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ duration: 0.35, ease: easeOutQuint }}
+                >
+                  <WindowFrame src={shot(s.key)} alt={`${s.label} 화면`} />
+                  <p className="mt-5 text-center text-sm text-muted-foreground">{s.caption}</p>
+                </motion.div>
+              </Tabs.Content>
+            ))}
+            <p className="mt-1 text-center text-xs text-muted-foreground">
+              실제 개발 버전의 화면이에요. 화면 속 프로그램과 숫자는 설명을 위한 예시예요.
+            </p>
+          </Reveal>
+        </Tabs.Root>
       </div>
     </section>
   )

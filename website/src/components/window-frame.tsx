@@ -15,7 +15,12 @@ export function WindowFrame({
   eager?: boolean
 }) {
   return (
-    <div className={cn("glass overflow-hidden rounded-2xl p-1.5", className)}>
+    <div
+      className={cn(
+        "overflow-hidden rounded-2xl border border-white/10 bg-card/80 p-1.5 shadow-2xl shadow-black/50",
+        className,
+      )}
+    >
       <img
         src={src}
         alt={alt}
