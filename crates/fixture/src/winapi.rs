@@ -115,14 +115,18 @@ pub fn register_task(
     with_com(|| unsafe {
         let folder = connect()?.GetFolder(&BSTR::from(r"\"))?;
         let none = VARIANT::default();
-        let (user, logon) = match trigger {
+        let (user, logon, sddl) = match trigger {
             Trigger::Logon { user } => (
                 VARIANT::from(BSTR::from(user.as_str())),
                 TASK_LOGON_INTERACTIVE_TOKEN,
+                VARIANT::default(),
             ),
+            // 관리자가 기본 권한으로 등록한 SYSTEM 작업은 일반 사용자에게 보이지 않는다.
+            // 실제 프로그램 다수처럼 로그인한 사용자가 읽을 수 있게(AU 읽기) 등록해, 일반 권한 앱의 목록에 나오게 한다.
             Trigger::BootAsSystem => (
                 VARIANT::from(BSTR::from("SYSTEM")),
                 TASK_LOGON_SERVICE_ACCOUNT,
+                VARIANT::from(BSTR::from("D:(A;;FA;;;BA)(A;;FA;;;SY)(A;;FR;;;AU)")),
             ),
         };
         folder.RegisterTask(
@@ -132,7 +136,7 @@ pub fn register_task(
             &user,
             &none,
             logon,
-            &none,
+            &sddl,
         )?;
         Ok(())
     })
