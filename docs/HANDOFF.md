@@ -45,15 +45,32 @@ pnpm tauri dev    # 앱 실행
 - 설치 추적: 설치 전후 스냅샷 비교 기록 → 잔여물 스캔의 근거
 - 설정: 테마, 백업 보관 기간, 잔여물 스캔 제외 목록
 
-### Windows PC에서 아직 확인하지 않은 것
+### Windows PC 확인 (2026-10-19)
 
-클라우드에서는 Wine 검사와 가짜 응답 캡처까지만 했다. 아래 4번의 작업 기록마다 **"Windows에서 확인할 것"**이 있다. 한 번에 모으면:
+**확인 끝남:**
+- `pnpm check` 통과(테스트 93개), `pnpm tauri dev`로 7개 화면 모두 오류 없이 뜸
+- 테스트 앱 예제 10개 모두 통과: uninstall · scan(11) · clean(9) · force(10) · startup_cleanup(12) · recovery_edge(10) · toggle · storage_clean · size · track(13)
+- 앱 화면에서 테스트 앱으로:
+  - 강제 제거 → 목록에서 사라짐 → 잔여물 정리 화면에 보임 → 복구 기록에서 되돌리면 다시 보임
+  - 파일 없는 시작 항목 정리 → 복원
+  - 여러 개 제거(테스트 앱 하나만) → 결과 화면
+  - 잔여물 "다음부터 제외" → 다시 찾으면 빠짐 → 설정에서 빼면 다시 보임
+  - 설치 추적: 시작 3초, 끝남 2초, 테스트 앱 항목 11개만 잡힘(다른 프로그램 섞이지 않음) → 잔여물 근거 "설치 추적 기록에 있음" 11개
+  - 백업 영구 삭제(일반 권한), 추적 기록 지우기
+- 읽기 전용: `store_apps` 출력 정상(40개, 아이콘 35개, 구성 요소·프레임워크 빠짐). `size_fixture`의 실제 대상 목록에 너무 넓은 폴더 없음
+- 고친 것: Store 목록에 앱이 아닌 기반 패키지(`WinAppRuntime.*`, `Winget.Source`, `StorePurchaseApp`)가 보이던 것
 
-1. `pnpm check`, `pnpm tauri dev`로 앱이 뜨는지 (마지막 Windows 확인 뒤로 기능이 많이 늘었다)
-2. UAC 경로: 관리자 권한 정리·복원(`--items`)·백업 영구 삭제(`--elevated-delete`), 저장공간 관리자 항목, SYSTEM 예약 작업 끄기·켜기 ("코드 리뷰 수정" 참고)
-3. 테스트 앱으로: 강제 제거(`install --broken`), 파일 없는 시작 항목 정리, 설치 추적 → 잔여물 근거, "다음부터 제외", 여러 개 제거
-4. 읽기 전용: `store_apps`, `size_fixture` 예제 출력이 실제 PC에서 그럴듯한지
-5. 저장 창(CSV 내보내기), 웹 검색, Windows 설정 열기 버튼
+**주의할 점 (이번에 겪음):**
+- `cargo build -p robin-fixture --examples`는 테스트 앱 **실행 파일을 만들지 않는다**. 반드시 `cargo build -p robin-fixture`. 옛 실행 파일로 돌리면 새 흔적(바로 가기·유령 항목)이 안 생겨 예제가 실패한다.
+- "파일 없는 시작 항목 정리" 창은 실제 PC의 파일 없는 항목(예: Authenticator, ITCS Connect)도 기본 선택한다. 시험할 때는 테스트 앱 항목(`Robin Ghost Tool`, `RobinGhostTool`)만 남기고 선택을 푼다.
+- 이 PC의 Git Bash에는 pnpm 경로(`%APPDATA%
+pm`)가 PATH에 없을 때가 있다: `export PATH="$(cygpath -u "$APPDATA")/npm:$PATH"`
+
+**아직 남은 것 (사용자 손이 필요함):**
+1. UAC 경로: 관리자 권한 정리·고른 항목만 복원(`--items`)·백업 영구 삭제(`--elevated-delete`), SYSTEM 예약 작업 끄기·켜기, UAC "아니요" 눌렀을 때 알림
+2. 저장 창(CSV 내보내기 → Excel로 열기), "웹에서 검색", "Windows 설정에서 제거" 버튼 (외부 창·브라우저가 열려서 사용자가 봐야 함)
+3. 저장공간 "Windows 임시 파일"(관리자) 정리는 실제 파일이라 시험하지 않았다. 테스트 전용 관리자 항목을 먼저 만들어야 한다.
+4. 강제 제거의 "실행 중 안내": 실제로 도는 테스트 실행 파일이 필요하다.
 
 ### 클라우드(리눅스) 세션에서 시작하기
 
@@ -70,7 +87,7 @@ pnpm exec tsc --noEmit -p . && pnpm exec prettier --check src
 
 ### 다음 작업 후보
 
-- Windows PC에서 위 확인 목록 처리 (가장 먼저)
+- 위 "아직 남은 것" (UAC 경로부터)
 - Store 앱 직접 제거: 테스트용 MSIX(자체 서명 또는 개발자 모드 등록)를 `crates/fixture`에 먼저 만든다
 - 시스템 복원 지점(제거 전 선택), 서비스 정리(중지·삭제)
 - 설치 추적을 ETW로 (커널 드라이버는 쓰지 않음)

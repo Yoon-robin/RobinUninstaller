@@ -111,9 +111,37 @@ pub fn usable_display_name(name: &str) -> Option<String> {
         .then(|| name.to_string())
 }
 
+/// 앱이 아니라 다른 앱이 쓰는 기반 패키지(런타임·데이터·스토어 구성 요소)인지.
+/// 프레임워크 표시가 없어 걸러지지 않지만, 사용자가 직접 지울 대상이 아니다.
+pub fn is_infrastructure_package(package_name: &str) -> bool {
+    const PREFIXES: &[&str] = &[
+        "MicrosoftCorporationII.WinAppRuntime.", // Windows 앱 SDK 런타임
+        "Microsoft.WindowsAppRuntime.",
+        "Microsoft.Winget.Source",    // winget 패키지 목록 데이터
+        "Microsoft.StorePurchaseApp", // Microsoft Store 구매 구성 요소
+    ];
+    PREFIXES
+        .iter()
+        .any(|p| package_name.len() >= p.len() && package_name[..p.len()].eq_ignore_ascii_case(p))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn infrastructure_packages_are_recognized() {
+        assert!(is_infrastructure_package(
+            "MicrosoftCorporationII.WinAppRuntime.Main.1.8"
+        ));
+        assert!(is_infrastructure_package(
+            "MicrosoftCorporationII.WinAppRuntime.Singleton"
+        ));
+        assert!(is_infrastructure_package("Microsoft.Winget.Source"));
+        assert!(is_infrastructure_package("Microsoft.StorePurchaseApp"));
+        assert!(!is_infrastructure_package("Microsoft.DesktopAppInstaller"));
+        assert!(!is_infrastructure_package("Microsoft.WindowsCalculator"));
+    }
 
     #[test]
     fn converts_winrt_ticks_to_date() {
