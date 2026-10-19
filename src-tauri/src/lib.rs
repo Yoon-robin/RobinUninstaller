@@ -1040,6 +1040,8 @@ fn supports_mica() -> bool {
 pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .manage(AppCache::default())
         .manage(tracking::TrackingState::default())
         .setup(|app| {
@@ -1055,11 +1057,14 @@ pub fn run() {
             {
                 MICA_ENABLED.store(true, Ordering::Relaxed);
             }
-            // 창은 프론트엔드가 첫 화면을 그린 뒤 보여 준다. 프론트엔드가 실패해도 창이 사라지지 않도록 안전장치.
+            // 창은 index.html이 시작 화면을 그리면서 바로 보여 준다. 이 안전장치는 화면을 끝내 불러오지 못했을 때만
+            // 창이 숨은 채 남지 않게 하려는 것이라 넉넉히 기다린다. 너무 빨리 보이면 내용 없는 빈 창이 먼저 뜬다.
             if let Some(window) = app.get_webview_window("main") {
                 std::thread::spawn(move || {
-                    std::thread::sleep(std::time::Duration::from_secs(3));
-                    let _ = window.show();
+                    std::thread::sleep(std::time::Duration::from_secs(15));
+                    if !window.is_visible().unwrap_or(true) {
+                        let _ = window.show();
+                    }
                 });
             }
             Ok(())

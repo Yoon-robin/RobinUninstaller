@@ -75,6 +75,17 @@ cargo run -p robin-recovery --example clean_fixture  # 제거 → 정리 → 복
 cargo run -p robin-fixture -- remove             # 정리
 ```
 
+## 배포와 자동 업데이트
+
+앱은 GitHub Releases의 `latest.json`을 보고 새 버전을 알려 주고, 사용자가 누르면 받아서 설치합니다(Tauri updater).
+업데이트 파일은 서명을 확인한 뒤에만 설치합니다. 공개 키는 `src-tauri/tauri.conf.json`에, 비밀 키는 배포하는 사람의 PC(`%USERPROFILE%\.tauriobinx-updater.key`)에만 있습니다.
+
+1. `package.json`, `Cargo.toml`(workspace), `src-tauri/tauri.conf.json`의 버전을 올린다.
+2. `bash scripts/release.sh` → 서명된 설치 파일(`target/release/bundle/nsis/`)과 `latest.json`을 만든다.
+3. 확인한 뒤 `bash scripts/release.sh --publish` → GitHub Release `v<버전>`에 설치 파일과 `latest.json`을 올린다.
+
+> 비밀 키를 잃어버리면 이미 설치된 앱에 업데이트를 보낼 수 없습니다. 안전한 곳에 따로 백업해 두세요.
+
 ## 라이선스
 
 [Apache License 2.0](LICENSE). 함께 들어 있는 외부 코드·글꼴의 라이선스는 [NOTICE](NOTICE)에 있습니다.

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArchiveRestore,
+  Download,
   EyeOff,
   KeyRound,
   Loader2,
@@ -24,6 +25,8 @@ import { rovingKeyDown } from "@/features/programs/segmented"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Switch } from "@/components/ui/switch"
+import { useUpdates } from "@/features/updates/updates"
 
 function Section({
   icon: Icon,
@@ -215,6 +218,10 @@ export function SettingsPage() {
       </FadeUp>
 
       <FadeUp>
+        <UpdatesSection />
+      </FadeUp>
+
+      <FadeUp>
         <Section
           icon={ArchiveRestore}
           title="백업 보관"
@@ -342,5 +349,42 @@ export function SettingsPage() {
         </DialogContent>
       </Dialog>
     </Stagger>
+  )
+}
+
+function UpdatesSection() {
+  const { version, autoCheck, setAutoCheck, lastChecked, checking, checkNow } = useUpdates()
+  return (
+    <Section
+      icon={Download}
+      title="업데이트"
+      description="새 버전이 있으면 알려 드려요. 설치는 직접 누를 때만 하고, 서명을 확인한 파일만 설치해요."
+    >
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
+        <div className="min-w-0 flex-1 text-sm">
+          <p>
+            지금 버전 <b className="tabular-nums">{version ?? "…"}</b>
+          </p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {lastChecked
+              ? `마지막 확인 ${new Date(lastChecked).toLocaleString("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
+              : "아직 확인하지 않았어요"}
+          </p>
+        </div>
+        <Button variant="outline" onClick={() => void checkNow(true)} disabled={checking}>
+          {checking ? <Loader2 className="animate-spin" /> : <Download />}
+          업데이트 확인
+        </Button>
+      </div>
+      <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-xl border bg-muted/30 px-4 py-3 text-sm">
+        <span>
+          <span className="block font-medium">앱을 켤 때 확인하기</span>
+          <span className="block text-xs text-muted-foreground">
+            켜 두면 시작하고 몇 초 뒤 새 버전이 있는지만 살펴봐요.
+          </span>
+        </span>
+        <Switch checked={autoCheck} onCheckedChange={setAutoCheck} aria-label="앱을 켤 때 업데이트 확인하기" />
+      </label>
+    </Section>
   )
 }

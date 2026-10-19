@@ -20,6 +20,7 @@ Windows 올인원 관리 도구 (예전 이름 RobinUninstaller). 언인스톨�
   - **되돌릴 수 없는 것**(메모리 덤프, 휴지통, Windows.old 등)은 따로 경고하고 기본 선택하지 않는다. 사용자가 그 항목을 직접 골라 한 번 더 확인해야 지운다.
   - **사용자 파일**(문서, 다운로드, 바탕 화면, 프로젝트, 게임 데이터 등)은 절대 자동으로 지우지 않는다. 크기를 보여 주고 탐색기로 열어 주는 것까지만 한다.
   - 저장공간 정리도 실제 캐시로는 시험하지 않는다. 디버그 빌드에만 있는 테스트 항목(`Fixture Notes` 캐시)으로 시험한다.
+- **업데이트 서명 비밀 키**(`%USERPROFILE%\.tauriobinx-updater.key`)는 저장소에 넣거나 출력·전송하지 않는다. 공개 키만 `tauri.conf.json`에 있다. 릴리스 올리기(`scripts/release.sh --publish`)는 공개 행동이라 사용자에게 먼저 묻는다.
 - `Revo Uninstaller Pro.zip`(상용 프로그램)과 `docs/private/`(분석 메모)는 **절대 커밋하지 않는다** (.gitignore에 있음). 리포지토리는 공개 상태다.
 - **최적화 원칙:** 바꾸는 설정은 모두 원래 값을 기록해 되돌릴 수 있어야 한다. 레지스트리 클리너·메모리 부스터처럼 효과가 없거나 위험한 기능은 만들지 않고, 보안(Defender·UAC·업데이트)을 끄는 기능도 만들지 않는다. 최적화도 테스트 앱 항목으로만 시험한다.
 - 분석한 외부 프로그램의 코드·리소스를 가져오지 않는다. 아이디어만 참고한다.
@@ -47,6 +48,7 @@ cargo run -p robin-startup --example toggle_fixture   # 테스트 앱 시작 항
 cargo run -p robin-storage --example storage_scan            # 정리할 수 있는 항목 보기 (읽기 전용)
 cargo run -p robin-storage --example storage_clean_fixture   # 테스트 앱 캐시만 정리해 보기
 cargo run -p robin-tweaks --example tweaks_fixture           # 최적화 적용·되돌리기를 테스트 항목으로만
+bash scripts/release.sh [--publish]                         # 서명된 설치 파일 + latest.json (--publish는 GitHub Release에 올림)
 ```
 
 Windows PC를 쓸 수 없을 때(클라우드 세션 등)는 먼저 `bash scripts/cloud-setup.sh`로 도구를 준비하고,

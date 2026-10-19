@@ -31,3 +31,6 @@ Thumbs.db
 # 외부 프로그램 분석 메모 (공개하지 않음)
 docs/private/
 scripts/ui-mock/out/
+
+# 업데이트 서명 비밀 키는 절대 커밋하지 않는다 (원래 %USERPROFILE%\.tauri 에 둔다)
+*.key
