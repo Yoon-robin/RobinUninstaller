@@ -13,13 +13,17 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
  * 자동 업데이트 (Tauri updater).
  * - GitHub Releases의 latest.json을 읽어 새 버전이 있는지 본다. 업데이트 파일은 서명을 확인한 뒤에만 설치한다
  *   (공개 키는 tauri.conf.json, 비밀 키는 배포하는 사람의 PC에만 있다).
- * - 앱을 켜고 잠시 뒤 조용히 한 번 확인하고, 새 버전이 있으면 알림만 띄운다. 설치는 사용자가 누를 때만 한다.
+ * - 앱을 켜고 잠시 뒤 확인하고, 새 버전이 있으면 업데이트 창을 바로 띄운다. 나중에로 닫아도 사이드바에 계속 남는다.
+ *   켜 둔 채로 오래 쓰면 몇 시간마다 다시 확인한다 (이때는 작업을 가리지 않게 사이드바에만 알린다).
+ * - 설치는 사용자가 "지금 업데이트"를 누를 때만 한다. 설치하면 앱이 닫혔다 다시 열리므로, 정리 도중에 저절로 닫히면 안 된다.
  */
 
 const AUTO_KEY = "robin.updates.autoCheck"
 const LAST_KEY = "robin.updates.lastChecked"
 /** 시작 화면과 첫 목록 읽기가 끝난 뒤에 확인한다 */
 const STARTUP_DELAY_MS = 6000
+/** 켜 둔 채로 쓰는 동안 다시 확인하는 간격 */
+const RECHECK_MS = 6 * 60 * 60 * 1000
 
 type CheckResult = { kind: "latest" } | { kind: "available"; update: Update } | { kind: "error"; message: string }
 
@@ -31,6 +35,9 @@ const UpdatesContext = createContext<{
   checking: boolean
   /** 직접 누른 확인이면 결과를 알림으로 보여 준다 */
   checkNow: (manual: boolean) => Promise<void>
+  /** 설치할 수 있는 새 버전 (없으면 null) */
+  available: string | null
+  openUpdate: () => void
 } | null>(null)
 
 export const useUpdates = () => {
@@ -82,7 +89,8 @@ export function UpdatesProvider({ children }: { children: ReactNode }) {
   const [checking, setChecking] = useState(false)
   const [pending, setPending] = useState<Update | null>(null)
   const [open, setOpen] = useState(false)
-  const startedRef = useRef(false)
+  // 한 번 띄운 창을 다시 확인할 때마다 또 띄우지 않는다
+  const shownRef = useRef<string | null>(null)
 
   useEffect(() => {
     getVersion()
@@ -99,7 +107,7 @@ export function UpdatesProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const checkNow = useCallback(async (manual: boolean) => {
+  const checkNow = useCallback(async (manual: boolean, popup = manual) => {
     setChecking(true)
     const result = await runCheck()
     setChecking(false)
@@ -112,14 +120,9 @@ export function UpdatesProvider({ children }: { children: ReactNode }) {
     }
     if (result.kind === "available") {
       setPending(result.update)
-      if (manual) {
+      if (manual || (popup && shownRef.current !== result.update.version)) {
+        shownRef.current = result.update.version
         setOpen(true)
-      } else {
-        toast(`새 버전 ${result.update.version}이 나왔어요`, {
-          description: "지금 설치하거나 나중에 설정에서 설치할 수 있어요.",
-          duration: 15000,
-          action: { label: "업데이트", onClick: () => setOpen(true) },
-        })
       }
     } else if (manual) {
       if (result.kind === "latest") toast.success("최신 버전을 쓰고 있어요")
@@ -127,16 +130,31 @@ export function UpdatesProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // 앱을 켜고 잠시 뒤 한 번만, 조용히 확인한다
+  // 앱을 켜고 잠시 뒤 확인하고(새 버전이면 창을 띄운다), 그 뒤로는 몇 시간마다 사이드바에만 알린다.
+  // 정리(cleanup)에서 타이머를 지우므로 개발 모드에서 효과가 두 번 돌아도 확인은 한 번만 한다.
   useEffect(() => {
-    if (!autoCheck || startedRef.current) return
-    startedRef.current = true
-    const t = setTimeout(() => void checkNow(false), STARTUP_DELAY_MS)
-    return () => clearTimeout(t)
+    if (!autoCheck) return
+    const first = setTimeout(() => void checkNow(false, true), STARTUP_DELAY_MS)
+    const again = setInterval(() => void checkNow(false, false), RECHECK_MS)
+    return () => {
+      clearTimeout(first)
+      clearInterval(again)
+    }
   }, [autoCheck, checkNow])
 
   return (
-    <UpdatesContext.Provider value={{ version, autoCheck, setAutoCheck, lastChecked, checking, checkNow }}>
+    <UpdatesContext.Provider
+      value={{
+        version,
+        autoCheck,
+        setAutoCheck,
+        lastChecked,
+        checking,
+        checkNow,
+        available: pending?.version ?? null,
+        openUpdate: () => setOpen(true),
+      }}
+    >
       {children}
       <UpdateDialog update={pending} open={open && pending != null} onClose={() => setOpen(false)} />
     </UpdatesContext.Provider>

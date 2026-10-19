@@ -1,8 +1,19 @@
-import { ArchiveRestore, HardDrive, Package, Radar, Rocket, Settings, ShieldCheck, Sparkles } from "lucide-react"
+import {
+  ArchiveRestore,
+  ArrowDownCircle,
+  HardDrive,
+  Package,
+  Radar,
+  Rocket,
+  Settings,
+  ShieldCheck,
+  Sparkles,
+} from "lucide-react"
 
 import { motion } from "motion/react"
 
 import { Logo } from "@/components/logo"
+import { useUpdates } from "@/features/updates/updates"
 import {
   Sidebar,
   SidebarContent,
@@ -35,6 +46,7 @@ const toolItems: Item[] = [
 ]
 
 export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page: Page) => void }) {
+  const { version, available, openUpdate } = useUpdates()
   const renderItems = (items: Item[]) =>
     items.map((item) => (
       <SidebarMenuItem key={item.page}>
@@ -71,7 +83,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           <Logo className="size-8 shrink-0" />
           <div className="grid leading-tight group-data-[collapsible=icon]:hidden">
             <span className="font-semibold tracking-tight">RobinX</span>
-            <span className="text-xs text-muted-foreground">v0.1.0 · 미리보기</span>
+            <span className="text-xs text-muted-foreground">{version ? `v${version} · ` : ""}미리보기</span>
           </div>
         </div>
       </SidebarHeader>
@@ -89,7 +101,20 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-3 group-data-[collapsible=icon]:hidden">
+      <SidebarFooter className="gap-2 p-3 group-data-[collapsible=icon]:hidden">
+        {available && (
+          <button
+            type="button"
+            onClick={openUpdate}
+            className="flex items-start gap-2.5 rounded-xl bg-primary/10 p-3 text-left shadow-[inset_0_0_0_1px_var(--glass-edge)] transition-colors hover:bg-primary/15"
+          >
+            <ArrowDownCircle className="mt-0.5 size-4 shrink-0 text-primary" />
+            <span className="text-xs leading-relaxed">
+              <span className="block font-medium">새 버전 {available}이 나왔어요</span>
+              <span className="block text-muted-foreground">눌러서 설치할 수 있어요. 설정과 백업은 그대로예요.</span>
+            </span>
+          </button>
+        )}
         <div className="flex items-start gap-2.5 rounded-xl bg-sidebar-accent/60 p-3 shadow-[inset_0_0_0_1px_var(--glass-edge)]">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
           <div className="text-xs leading-relaxed">
