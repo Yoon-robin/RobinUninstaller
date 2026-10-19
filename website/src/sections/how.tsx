@@ -1,0 +1,152 @@
+import { useState } from "react"
+import { AnimatePresence, motion } from "motion/react"
+import { Archive, ScanSearch, Trash2 } from "lucide-react"
+
+import { cn } from "@/lib/utils"
+import { Reveal, SectionHeading, easeOutQuint } from "@/components/motion"
+import { WindowFrame, shot } from "@/components/window-frame"
+
+const steps = [
+  {
+    icon: Trash2,
+    title: "제거",
+    text: "목록에서 프로그램을 골라 제거를 누르면 그 프로그램의 기본 언인스톨러가 실행돼요. 끝날 때까지 기다렸다가 결과를 확인해요.",
+  },
+  {
+    icon: ScanSearch,
+    title: "남은 흔적 찾기",
+    text: "제거가 끝나면 파일·레지스트리·시작 항목을 훑어 남은 흔적을 찾아요. 항목마다 왜 그 프로그램 것인지 근거가 붙어요.",
+  },
+  {
+    icon: Archive,
+    title: "백업하고 정리",
+    text: "고른 항목만 백업한 뒤 치워요. 문제가 생기면 복구 기록에서 바로 되돌리면 돼요.",
+  },
+]
+
+export function How() {
+  return (
+    <section id="how" className="relative mx-auto max-w-6xl px-6 pt-32">
+      <SectionHeading
+        eyebrow="사용 방법"
+        title="세 단계면 끝나요"
+        description="어려운 설정 없이, 평소처럼 제거만 누르면 나머지는 RobinUninstaller가 이어서 챙겨요."
+      />
+      <div className="relative mt-16 grid gap-6 md:grid-cols-3">
+        {/* 단계를 잇는 선 */}
+        <div
+          aria-hidden
+          className="absolute top-7 right-[16%] left-[16%] hidden h-px bg-gradient-to-r from-primary/0 via-primary/40 to-primary/0 md:block"
+        />
+        {steps.map((s, i) => (
+          <Reveal key={s.title} delay={i * 0.12} className="relative text-center">
+            <div className="relative mx-auto flex size-14 items-center justify-center rounded-2xl border border-primary/30 bg-background shadow-[0_0_40px_-8px] shadow-primary/40">
+              <s.icon className="size-6 text-primary" />
+              <span className="absolute -top-2 -right-2 flex size-6 items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                {i + 1}
+              </span>
+            </div>
+            <h3 className="mt-6 text-xl font-semibold">{s.title}</h3>
+            <p className="mx-auto mt-2.5 max-w-xs text-[0.95rem] leading-relaxed text-pretty text-muted-foreground">
+              {s.text}
+            </p>
+          </Reveal>
+        ))}
+      </div>
+    </section>
+  )
+}
+
+const screens = [
+  { key: "programs", label: "프로그램", caption: "설치된 프로그램을 크기·설치일·형식과 함께 보여 줘요." },
+  { key: "programs-grid", label: "카드 보기", caption: "아이콘 위주로 훑어보고 싶을 땐 카드 보기로." },
+  { key: "leftovers", label: "남은 흔적", caption: "확실한 흔적은 미리 고르고, 애매한 건 검토하도록 나눠요." },
+  { key: "restore", label: "복구 기록", caption: "정리한 작업마다 기록이 남아 언제든 되돌릴 수 있어요." },
+  { key: "startup", label: "시작프로그램", caption: "켜고 끄기만 할 뿐 등록 정보는 지우지 않아요." },
+  { key: "storage", label: "저장공간", caption: "다시 만들어지는 캐시만 골라 공간을 확보해요." },
+]
+
+export function Gallery() {
+  const [active, setActive] = useState(screens[0].key)
+  const current = screens.find((s) => s.key === active)!
+
+  return (
+    <section id="screens" className="relative pt-32">
+      <div
+        aria-hidden
+        className="absolute inset-x-0 top-40 -z-10 mx-auto h-[30rem] max-w-4xl rounded-full bg-[radial-gradient(closest-side,oklch(0.72_0.15_285/0.14),transparent)] blur-2xl"
+      />
+      <div className="mx-auto max-w-6xl px-6">
+        <SectionHeading
+          eyebrow="화면"
+          title="깔끔하고 차분한 화면"
+          description="밝은 테마와 어두운 테마, Windows 11의 Mica 효과를 지원해요."
+        />
+
+        <Reveal className="mt-10 flex justify-center">
+          <div
+            className="flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-white/8 bg-white/[0.03] p-1.5"
+            role="tablist"
+            aria-label="앱 화면"
+          >
+            {screens.map((s) => (
+              <button
+                key={s.key}
+                type="button"
+                role="tab"
+                aria-selected={active === s.key}
+                onClick={() => setActive(s.key)}
+                className={cn(
+                  "relative shrink-0 rounded-xl px-4 py-2 text-sm transition-colors",
+                  active === s.key
+                    ? "font-semibold text-primary-foreground"
+                    : "text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {active === s.key && (
+                  <motion.span
+                    layoutId="gallery-tab"
+                    className="absolute inset-0 rounded-xl bg-primary"
+                    transition={{ type: "spring", duration: 0.4, bounce: 0.15 }}
+                  />
+                )}
+                <span className="relative">{s.label}</span>
+              </button>
+            ))}
+          </div>
+        </Reveal>
+
+        <Reveal className="mx-auto mt-8 max-w-5xl">
+          <div className="relative">
+            <AnimatePresence mode="popLayout" initial={false}>
+              <motion.div
+                key={active}
+                initial={{ opacity: 0, scale: 0.985, filter: "blur(4px)" }}
+                animate={{ opacity: 1, scale: 1, filter: "blur(0px)" }}
+                exit={{ opacity: 0, scale: 1.01, filter: "blur(4px)" }}
+                transition={{ duration: 0.45, ease: easeOutQuint }}
+              >
+                <WindowFrame src={shot(current.key)} alt={`${current.label} 화면`} />
+              </motion.div>
+            </AnimatePresence>
+          </div>
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.p
+              key={active}
+              initial={{ opacity: 0, y: 6 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -6 }}
+              transition={{ duration: 0.25 }}
+              className="mt-5 text-center text-sm text-muted-foreground"
+            >
+              {current.caption}
+            </motion.p>
+          </AnimatePresence>
+          <p className="mt-1 text-center text-xs text-muted-foreground/60">
+            화면 속 프로그램은 설명을 위한 가상의 예시예요.
+          </p>
+        </Reveal>
+      </div>
+    </section>
+  )
+}
