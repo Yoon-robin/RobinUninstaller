@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useSyncExternalStore } from "react"
 import { ArrowUp, File, Folder, FolderOpen, Loader2, Package, Radar, RefreshCw, Square } from "lucide-react"
 import { toast } from "sonner"
 
@@ -8,23 +8,38 @@ import { cn } from "@/lib/utils"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { Button } from "@/components/ui/button"
 
+/**
+ * 분석 결과와 진행 상태는 화면 밖(모듈)에 둔다. 다른 탭으로 갔다 와도 결과가 남고, 분석 중이었다면 이어서 보인다.
+ * (예전에는 탭을 바꾸면 컴포넌트와 함께 사라져서, 뒤에서 끝난 분석 결과를 버리고 처음 화면으로 돌아갔다)
+ */
+type AnalysisState = { result: FolderAnalysis | null; loading: string | null }
+let analysisState: AnalysisState = { result: null, loading: null }
+const listeners = new Set<() => void>()
+function setAnalysis(patch: Partial<AnalysisState>) {
+  analysisState = { ...analysisState, ...patch }
+  for (const l of listeners) l()
+}
+function subscribe(listener: () => void) {
+  listeners.add(listener)
+  return () => listeners.delete(listener)
+}
+
+async function load(id?: string, label?: string) {
+  setAnalysis({ loading: label ?? "드라이브" })
+  try {
+    const next = await storageApi.analyze(id)
+    // 다른 분석을 시작해 멈춘 결과는 버린다
+    if (!next.cancelled) setAnalysis({ result: next })
+  } catch (e) {
+    toast.error(String(e))
+  } finally {
+    setAnalysis({ loading: null })
+  }
+}
+
 /** 큰 폴더 찾기. 크기를 보여 주고 탐색기로 열어 주기만 한다 (사용자 파일은 지우지 않는다). */
 export function FolderAnalysisCard() {
-  const [result, setResult] = useState<FolderAnalysis | null>(null)
-  const [loading, setLoading] = useState<string | null>(null)
-
-  const load = async (id?: string, label?: string) => {
-    setLoading(label ?? "드라이브")
-    try {
-      const next = await storageApi.analyze(id)
-      // 다른 분석을 시작해 멈춘 결과는 버린다
-      if (!next.cancelled) setResult(next)
-    } catch (e) {
-      toast.error(String(e))
-    } finally {
-      setLoading(null)
-    }
-  }
+  const { result, loading } = useSyncExternalStore(subscribe, () => analysisState)
 
   const max = result?.items[0]?.bytes ?? 0
 

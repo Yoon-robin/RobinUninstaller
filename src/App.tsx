@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ChevronRight } from "lucide-react"
-import { AnimatePresence, MotionConfig, motion } from "motion/react"
+import { MotionConfig, motion } from "motion/react"
 
 import { AppSidebar, type Page } from "@/components/app-sidebar"
 import { IconTooltip } from "@/components/icon-tooltip"
@@ -94,18 +94,17 @@ export default function App() {
                     >
                       <span>RobinX</span>
                       <ChevronRight className="size-3.5" />
-                      <AnimatePresence mode="popLayout" initial={false}>
-                        <motion.span
-                          key={page}
-                          className="font-medium text-foreground"
-                          initial={{ opacity: 0, y: 6, filter: "blur(3px)" }}
-                          animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                          exit={{ opacity: 0, y: -4, filter: "blur(3px)", transition: { duration: 0.12 } }}
-                          transition={{ type: "spring", duration: 0.35, bounce: 0 }}
-                        >
-                          {titles[page]}
-                        </motion.span>
-                      </AnimatePresence>
+                      {/* 새 제목만 떠오르고 옛 제목은 바로 사라진다. 나가는 애니메이션을 두면 탭을 빠르게 바꿀 때
+                          사라지는 중인 제목들이 겹겹이 쌓여 보였다. */}
+                      <motion.span
+                        key={page}
+                        className="font-medium text-foreground"
+                        initial={{ opacity: 0, y: 6, filter: "blur(3px)" }}
+                        animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                        transition={{ type: "spring", duration: 0.35, bounce: 0 }}
+                      >
+                        {titles[page]}
+                      </motion.span>
                     </div>
                     <div data-tauri-drag-region className="h-full flex-1" />
                     <ThemeToggle />
