@@ -85,7 +85,7 @@ export function Gallery() {
 
         <Reveal className="mt-10 flex justify-center">
           <div
-            className="flex max-w-full gap-1 overflow-x-auto rounded-2xl border border-white/8 bg-white/[0.03] p-1.5"
+            className="flex max-w-full gap-1 overflow-x-auto glass rounded-full p-1.5"
             role="tablist"
             aria-label="앱 화면"
           >
@@ -97,7 +97,7 @@ export function Gallery() {
                 aria-selected={active === s.key}
                 onClick={() => setActive(s.key)}
                 className={cn(
-                  "relative shrink-0 rounded-xl px-4 py-2 text-sm transition-colors",
+                  "relative shrink-0 rounded-full px-4 py-2 text-sm transition-colors",
                   active === s.key
                     ? "font-semibold text-primary-foreground"
                     : "text-muted-foreground hover:text-foreground",
@@ -106,7 +106,7 @@ export function Gallery() {
                 {active === s.key && (
                   <motion.span
                     layoutId="gallery-tab"
-                    className="absolute inset-0 rounded-xl bg-primary"
+                    className="absolute inset-0 rounded-full bg-primary shadow-[inset_0_1px_0_oklch(1_0_0/35%)]"
                     transition={{ type: "spring", duration: 0.4, bounce: 0.15 }}
                   />
                 )}

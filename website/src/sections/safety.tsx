@@ -46,7 +46,7 @@ export function Safety() {
       <div className="mt-14 grid gap-4 sm:grid-cols-2">
         {principles.map((p, i) => (
           <Reveal key={p.title} delay={(i % 2) * 0.08}>
-            <div className="flex h-full gap-5 rounded-3xl border border-white/8 bg-gradient-to-br from-card/80 to-card/30 p-6 sm:p-7">
+            <div className="glass flex h-full gap-5 rounded-3xl p-6 sm:p-7">
               <span className="flex size-12 shrink-0 items-center justify-center rounded-2xl bg-chart-5/12 text-chart-5">
                 <p.icon className="size-6" />
               </span>
@@ -97,7 +97,7 @@ export function Faq() {
     <section id="faq" className="relative mx-auto max-w-3xl px-6 pt-32">
       <SectionHeading eyebrow="FAQ" title="자주 묻는 질문" />
       <Reveal className="mt-12">
-        <Accordion type="single" collapsible className="rounded-3xl border border-white/8 bg-card/40 px-6">
+        <Accordion type="single" collapsible className="glass rounded-3xl px-6">
           {faqs.map((f) => (
             <AccordionItem key={f.q} value={f.q} className="border-white/8">
               <AccordionTrigger className="py-5 text-base font-semibold hover:no-underline">{f.q}</AccordionTrigger>

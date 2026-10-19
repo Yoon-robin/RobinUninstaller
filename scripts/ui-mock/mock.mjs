@@ -114,7 +114,9 @@ export async function openApp(browser, { scheme = "dark", overrides = {}, width 
         : `${JSON.stringify(cmd)}: () => (${JSON.stringify(v)})`,
     )
     .join(",\n")
+  // 앱은 저장된 테마(기본 어두운 테마)를 따르므로, 요청한 테마를 미리 저장해 둔다.
   const init = `
+    try { localStorage.setItem("robin.theme", ${JSON.stringify(scheme)}) } catch {}
     const handlers = { ${table} };
     window.__TAURI_INTERNALS__ = {
       metadata: { currentWindow: { label: "main" }, currentWebview: { windowLabel: "main", label: "main" } },

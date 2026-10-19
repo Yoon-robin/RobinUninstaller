@@ -75,7 +75,7 @@ function Card({
 }) {
   return (
     <Reveal delay={delay} className={cn("h-full", className)}>
-      <article className="group relative flex h-full flex-col overflow-hidden rounded-3xl border border-white/8 bg-card/60 p-6 transition-[border-color,transform,background-color] duration-300 hover:-translate-y-1 hover:border-white/15 hover:bg-card sm:p-7">
+      <article className="group relative flex h-full flex-col overflow-hidden glass rounded-3xl p-6 transition-transform duration-300 hover:-translate-y-1 sm:p-7">
         {/* 마우스를 올리면 위쪽 테두리에 빛이 돈다 */}
         <span
           aria-hidden

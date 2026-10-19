@@ -42,19 +42,17 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           isActive={page === item.page}
           onClick={() => onNavigate(item.page)}
           tooltip={item.label}
-          className="relative isolate h-9 data-[active=true]:bg-transparent data-[active=true]:font-semibold"
+          className="relative isolate h-9 rounded-[0.625rem] data-[active=true]:bg-transparent data-[active=true]:font-semibold"
         >
           {page === item.page && (
-            // 선택 표시가 메뉴 사이를 미끄러지듯 옮겨 간다.
+            // 선택 표시(둥근 알약)가 메뉴 사이를 미끄러지듯 옮겨 간다.
             <motion.span
               layoutId="sidebar-active"
-              className="absolute inset-0 -z-10 rounded-md bg-sidebar-accent"
+              className="absolute inset-0 -z-10 rounded-[0.625rem] bg-sidebar-accent shadow-[inset_0_0_0_1px_var(--glass-edge)]"
               transition={{ type: "spring", duration: 0.4, bounce: 0.12 }}
-            >
-              <span className="absolute top-1/2 left-0 h-4 w-[3px] -translate-y-1/2 rounded-full bg-sidebar-primary" />
-            </motion.span>
+            />
           )}
-          <item.icon />
+          <item.icon className={page === item.page ? "text-sidebar-primary" : undefined} />
           <span>{item.label}</span>
         </SidebarMenuButton>
         {item.soon && (
@@ -66,7 +64,8 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
     ))
 
   return (
-    <Sidebar collapsible="icon">
+    // 창 가장자리에서 떨어져 떠 있는 유리 사이드바 (macOS 스타일)
+    <Sidebar collapsible="icon" variant="floating">
       <SidebarHeader data-tauri-drag-region className="h-[4.5rem] justify-center">
         <div data-tauri-drag-region className="flex items-center gap-2.5 px-1">
           <Logo className="size-8 shrink-0" />
@@ -91,7 +90,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter className="p-3 group-data-[collapsible=icon]:hidden">
-        <div className="flex items-start gap-2.5 rounded-lg border border-sidebar-border bg-sidebar-accent/40 p-3">
+        <div className="flex items-start gap-2.5 rounded-xl bg-sidebar-accent/60 p-3 shadow-[inset_0_0_0_1px_var(--glass-edge)]">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
           <div className="text-xs leading-relaxed">
             <p className="font-medium">안전하게 정리해요</p>

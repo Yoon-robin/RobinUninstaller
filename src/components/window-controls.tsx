@@ -3,7 +3,10 @@ import { getCurrentWindow } from "@tauri-apps/api/window"
 
 import { cn } from "@/lib/utils"
 
-/** 제목 표시줄을 없앤 창(decorations: false)의 최소화/최대화/닫기 버튼. Windows 11 캡션 버튼 모양을 따른다. */
+/**
+ * 제목 표시줄을 없앤 창(decorations: false)의 최소화/최대화/닫기 버튼.
+ * 자리와 순서는 Windows 사용자에게 익숙하게 오른쪽 위에 두고, 모양은 macOS처럼 둥근 유리 버튼으로 만든다.
+ */
 export function WindowControls() {
   const appWindow = getCurrentWindow()
   const [maximized, setMaximized] = useState(false)
@@ -17,7 +20,7 @@ export function WindowControls() {
   }, [appWindow])
 
   return (
-    <div className="flex h-full self-stretch">
+    <div className="flex items-center gap-1 pr-2.5">
       <CaptionButton label="최소화" onClick={() => appWindow.minimize()}>
         <path d="M0 5h10" />
       </CaptionButton>
@@ -56,8 +59,9 @@ function CaptionButton({
       title={label}
       onClick={onClick}
       className={cn(
-        "flex w-12 items-center justify-center text-muted-foreground transition-colors hover:text-foreground",
-        danger ? "hover:bg-[#c42b1c] hover:text-white" : "hover:bg-foreground/8",
+        "flex size-7 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-150",
+        "hover:text-foreground hover:shadow-[inset_0_0_0_1px_var(--glass-edge),inset_0_1px_0_var(--glass-rim)] active:scale-90",
+        danger ? "hover:bg-[#ff5f57] hover:text-white hover:shadow-none" : "hover:bg-foreground/8",
       )}
     >
       <svg viewBox="0 0 10 10" className="size-2.5" fill="none" stroke="currentColor" strokeWidth="1">

@@ -15,12 +15,7 @@ export function WindowFrame({
   eager?: boolean
 }) {
   return (
-    <div
-      className={cn(
-        "overflow-hidden rounded-xl border border-white/10 bg-card shadow-2xl ring-1 shadow-black/50 ring-black/40",
-        className,
-      )}
-    >
+    <div className={cn("glass overflow-hidden rounded-2xl p-1.5", className)}>
       <img
         src={src}
         alt={alt}
@@ -28,7 +23,7 @@ export function WindowFrame({
         height={800}
         loading={eager ? "eager" : "lazy"}
         decoding="async"
-        className="block h-auto w-full select-none"
+        className="block h-auto w-full rounded-[0.75rem] select-none"
         draggable={false}
       />
     </div>

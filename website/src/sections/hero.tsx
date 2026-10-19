@@ -46,7 +46,7 @@ export function Hero() {
           className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1 pr-3 pl-1 text-sm text-muted-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-foreground"
         >
           <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">미리보기</span>
-          지운 건 모두 백업돼요 · 영구 삭제 없음
+          새 이름 RobinX · 바꾼 건 모두 되돌릴 수 있어요
           <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
         </motion.a>
 
@@ -54,18 +54,18 @@ export function Hero() {
           {...rise(0.12)}
           className="mx-auto mt-7 max-w-4xl text-5xl leading-[1.08] font-extrabold tracking-tight text-balance sm:text-6xl lg:text-7xl"
         >
-          지운 다음까지
+          Windows를
           <br />
-          <span className="text-gradient">깔끔하게.</span>
+          <span className="text-gradient">가볍고 깔끔하게.</span>
         </motion.h1>
 
         <motion.p
           {...rise(0.2)}
           className="mx-auto mt-6 max-w-2xl text-lg text-pretty text-muted-foreground sm:text-xl"
         >
-          프로그램을 제거하고, 남은 파일과 레지스트리를{" "}
-          <strong className="font-semibold text-foreground">근거와 함께</strong> 찾아, 백업한 뒤에 정리해요. 실수해도
-          언제든 되돌릴 수 있어요.
+          프로그램 제거와 남은 흔적 정리부터 저장공간·시작프로그램 관리까지 한곳에서. 무엇을 왜 바꾸는지{" "}
+          <strong className="font-semibold text-foreground">근거와 함께</strong> 보여 주고, 바꾼 건 모두 기록해 언제든
+          되돌릴 수 있어요.
         </motion.p>
 
         <motion.div {...rise(0.28)} className="mt-9 flex flex-wrap items-center justify-center gap-3">
@@ -159,7 +159,7 @@ function FloatingChip({
       <motion.div
         animate={reduce ? undefined : { y: [0, -6, 0] }}
         transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay }}
-        className="flex items-center gap-3 rounded-2xl border border-white/10 bg-popover/80 px-4 py-3 text-left shadow-xl shadow-black/40 backdrop-blur-xl"
+        className="glass-strong flex items-center gap-3 rounded-2xl px-4 py-3 text-left"
       >
         <span className="flex size-9 items-center justify-center rounded-xl bg-white/5">{icon}</span>
         <span>

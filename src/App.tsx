@@ -17,6 +17,7 @@ import { ProgramsPage } from "@/features/programs/programs-page"
 import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar"
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
+import { cn } from "@/lib/utils"
 
 const queryClient = new QueryClient({
   defaultOptions: { queries: { refetchOnWindowFocus: false, staleTime: 60_000 } },
@@ -34,6 +35,9 @@ const titles: Record<Page, string> = {
 
 export default function App() {
   const [page, setPage] = useState<Page>("programs")
+  // 내용이 제목 표시줄 밑으로 지나가기 시작하면 표시줄을 유리처럼 만든다.
+  const [scrolled, setScrolled] = useState(false)
+  useEffect(() => setScrolled(false), [page])
 
   // 다른 화면에서 보낸 이동 요청 (예: 정리 완료 → 복구 기록)
   useEffect(() => {
@@ -51,9 +55,16 @@ export default function App() {
           <TooltipProvider delayDuration={400} skipDelayDuration={300}>
             <SidebarProvider className="h-svh">
               <AppSidebar page={page} onNavigate={setPage} />
-              <SidebarInset className="h-svh min-w-0 overflow-hidden">
-                {/* 제목 표시줄: 빈 곳을 끌면 창이 움직이고, 더블클릭하면 최대화된다. */}
-                <header data-tauri-drag-region className="flex h-11 shrink-0 items-center gap-1 border-b pl-2">
+              <SidebarInset className="relative h-svh min-w-0 overflow-hidden bg-transparent">
+                {/* 제목 표시줄: 빈 곳을 끌면 창이 움직이고, 더블클릭하면 최대화된다. 내용 위에 떠 있다. */}
+                <header
+                  data-tauri-drag-region
+                  className={cn(
+                    "absolute inset-x-0 top-0 z-20 flex h-12 items-center gap-1 pl-2 transition-[background-color,box-shadow,backdrop-filter] duration-300",
+                    scrolled &&
+                      "bg-background/55 shadow-[0_1px_0_var(--glass-edge)] backdrop-blur-2xl backdrop-saturate-[1.8]",
+                  )}
+                >
                   <IconTooltip label="사이드바 접기/펼치기">
                     <SidebarTrigger className="text-muted-foreground" />
                   </IconTooltip>
@@ -81,7 +92,10 @@ export default function App() {
                   <div className="mx-1.5 h-4 w-px bg-border" />
                   <WindowControls />
                 </header>
-                <main className="relative flex-1 overflow-y-auto">
+                <main
+                  className="relative flex-1 overflow-y-auto pt-12"
+                  onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 4)}
+                >
                   <div
                     aria-hidden
                     className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_30%_0%,oklch(0.82_0.12_190/9%),transparent)]"

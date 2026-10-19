@@ -34,9 +34,7 @@ export function Nav() {
       <nav
         className={cn(
           "flex w-full max-w-6xl items-center gap-6 rounded-2xl border px-4 py-2.5 transition-[background-color,border-color,box-shadow] duration-300",
-          scrolled
-            ? "border-white/10 bg-background/70 shadow-lg shadow-black/20 backdrop-blur-xl"
-            : "border-transparent bg-transparent",
+          scrolled ? "glass border-transparent" : "border-transparent bg-transparent",
         )}
       >
         <a href="#top" className="flex items-center gap-2.5 font-semibold tracking-tight">
