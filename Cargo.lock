@@ -2673,6 +2673,7 @@ dependencies = [
  "robin-core",
  "serde",
  "serde_json",
+ "windows",
  "winreg 0.55.0",
 ]
 

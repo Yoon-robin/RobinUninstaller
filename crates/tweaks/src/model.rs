@@ -43,11 +43,21 @@ pub struct RegChange {
     pub value: Value,
 }
 
+/// 여러 값 중 하나를 고르는 항목의 선택지 (예: 작업 표시줄 왼쪽/가운데)
+#[derive(Debug, Clone, Copy)]
+pub struct Choice {
+    pub id: &'static str,
+    pub label: &'static str,
+    pub changes: &'static [RegChange],
+}
+
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub enum Group {
     /// 개인정보: 광고 ID, 진단 데이터 기반 맞춤 환경 등
     Privacy,
+    /// 작업 표시줄
+    Taskbar,
     /// 추천·팁·광고성 제안
     Suggestions,
     /// 편의: 파일 확장자, 고정 키 팝업 등
@@ -64,7 +74,7 @@ pub enum Group {
 pub enum Restart {
     /// 바로 반영
     None,
-    /// 탐색기를 새로 고치거나 다시 시작해야 보임
+    /// 탐색기·작업 표시줄에 설정 변경 알림을 보내 반영한다. 열려 있는 창은 새로 고쳐야(F5) 보일 수 있다
     Explorer,
     /// 로그아웃 후 다시 로그인해야 반영
     SignOut,
@@ -85,7 +95,42 @@ pub struct Tweak {
     pub restart: Restart,
     /// 이 빌드 이상에서만 보인다 (Windows 11 = 22000)
     pub min_build: u32,
+    /// 켜기/끄기 항목에서 켤 때 쓰는 값. 선택지 항목이면 비어 있다.
     pub changes: &'static [RegChange],
+    /// 여러 값 중 고르는 항목의 선택지. 켜기/끄기 항목이면 비어 있다.
+    pub options: &'static [Choice],
+    /// 값이 하나도 없을 때 Windows가 쓰는 선택지 (예: 작업 표시줄 가운데)
+    pub default_option: Option<&'static str>,
+}
+
+impl Tweak {
+    pub fn is_choice(&self) -> bool {
+        !self.options.is_empty()
+    }
+
+    /// 이 항목이 건드릴 수 있는 모든 값 (선택지 항목이면 모든 선택지의 값을 합친 것, 중복 없이)
+    pub fn all_changes(&self) -> Vec<&'static RegChange> {
+        let mut out: Vec<&'static RegChange> = Vec::new();
+        let all = self
+            .changes
+            .iter()
+            .chain(self.options.iter().flat_map(|o| o.changes.iter()));
+        for c in all {
+            if !out.iter().any(|x| x.key == c.key && x.name == c.name) {
+                out.push(c);
+            }
+        }
+        out
+    }
+
+    /// 쓸 값: 켜기/끄기 항목은 `option` 없이, 선택지 항목은 선택지 ID로.
+    pub fn targets(&self, option: Option<&str>) -> Option<&'static [RegChange]> {
+        match (self.is_choice(), option) {
+            (false, None) => Some(self.changes),
+            (true, Some(id)) => self.options.iter().find(|o| o.id == id).map(|o| o.changes),
+            _ => None,
+        }
+    }
 }
 
 /// 레지스트리 원본 값 (종류 + 바이트). 되돌릴 때 그대로 쓴다.

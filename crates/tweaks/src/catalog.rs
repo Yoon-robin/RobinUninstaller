@@ -6,10 +6,11 @@
 //! - 보안(Defender, SmartScreen, UAC, 업데이트, 방화벽)은 건드리지 않는다. `tests`가 이를 확인한다.
 //! - 효과를 설명할 수 있는 것만. "성능 n% 향상" 같은 말은 쓰지 않는다.
 
-use crate::model::{Group, RegChange, Restart, Tweak, Value};
+use crate::model::{Choice, Group, RegChange, Restart, Tweak, Value};
 
 const ADVANCED: &str = r"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced";
 const CDM: &str = r"Software\Microsoft\Windows\CurrentVersion\ContentDeliveryManager";
+const SEARCH: &str = r"Software\Microsoft\Windows\CurrentVersion\Search";
 
 const fn dword(key: &'static str, name: &'static str, v: u32) -> RegChange {
     RegChange {
@@ -17,6 +18,25 @@ const fn dword(key: &'static str, name: &'static str, v: u32) -> RegChange {
         name,
         value: Value::Dword(v),
     }
+}
+
+/// 항목마다 같은 기본값 (`..BASE`로 채운다)
+const BASE: Tweak = Tweak {
+    id: "",
+    group: Group::Privacy,
+    title: "",
+    description: "",
+    why: "",
+    settings_path: "",
+    restart: Restart::None,
+    min_build: 0,
+    changes: &[],
+    options: &[],
+    default_option: None,
+};
+
+const fn choice(id: &'static str, label: &'static str, changes: &'static [RegChange]) -> Choice {
+    Choice { id, label, changes }
 }
 
 pub const TWEAKS: &[Tweak] = &[
@@ -35,6 +55,7 @@ pub const TWEAKS: &[Tweak] = &[
             "Enabled",
             0,
         )],
+        ..BASE
     },
     Tweak {
         id: "privacy.tailored-experiences",
@@ -50,6 +71,7 @@ pub const TWEAKS: &[Tweak] = &[
             "TailoredExperiencesWithDiagnosticDataEnabled",
             0,
         )],
+        ..BASE
     },
     Tweak {
         id: "privacy.language-list",
@@ -65,6 +87,7 @@ pub const TWEAKS: &[Tweak] = &[
             "HttpAcceptLanguageOptOut",
             1,
         )],
+        ..BASE
     },
     Tweak {
         id: "privacy.app-launch-tracking",
@@ -76,6 +99,7 @@ pub const TWEAKS: &[Tweak] = &[
         restart: Restart::Explorer,
         min_build: 0,
         changes: &[dword(ADVANCED, "Start_TrackProgs", 0)],
+        ..BASE
     },
     Tweak {
         id: "privacy.feedback-requests",
@@ -91,6 +115,7 @@ pub const TWEAKS: &[Tweak] = &[
             "NumberOfSIUFInPeriod",
             0,
         )],
+        ..BASE
     },
     // ── 추천·제안 ──
     Tweak {
@@ -107,6 +132,7 @@ pub const TWEAKS: &[Tweak] = &[
             dword(CDM, "SubscribedContent-353694Enabled", 0),
             dword(CDM, "SubscribedContent-353696Enabled", 0),
         ],
+        ..BASE
     },
     Tweak {
         id: "suggestions.tips",
@@ -121,6 +147,7 @@ pub const TWEAKS: &[Tweak] = &[
             dword(CDM, "SubscribedContent-338389Enabled", 0),
             dword(CDM, "SoftLandingEnabled", 0),
         ],
+        ..BASE
     },
     Tweak {
         id: "suggestions.start-menu",
@@ -136,6 +163,7 @@ pub const TWEAKS: &[Tweak] = &[
             dword(CDM, "SubscribedContent-338388Enabled", 0),
             dword(ADVANCED, "Start_IrisRecommendations", 0),
         ],
+        ..BASE
     },
     Tweak {
         id: "suggestions.lock-screen",
@@ -150,6 +178,7 @@ pub const TWEAKS: &[Tweak] = &[
             dword(CDM, "RotatingLockScreenOverlayEnabled", 0),
             dword(CDM, "SubscribedContent-338387Enabled", 0),
         ],
+        ..BASE
     },
     Tweak {
         id: "suggestions.copilot-button",
@@ -161,6 +190,7 @@ pub const TWEAKS: &[Tweak] = &[
         restart: Restart::Explorer,
         min_build: 22000,
         changes: &[dword(ADVANCED, "ShowCopilotButton", 0)],
+        ..BASE
     },
     // ── 편의 ──
     Tweak {
@@ -173,6 +203,7 @@ pub const TWEAKS: &[Tweak] = &[
         restart: Restart::Explorer,
         min_build: 0,
         changes: &[dword(ADVANCED, "HideFileExt", 0)],
+        ..BASE
     },
     Tweak {
         id: "convenience.sticky-keys-prompt",
@@ -188,6 +219,7 @@ pub const TWEAKS: &[Tweak] = &[
             name: "Flags",
             value: Value::Str("506"),
         }],
+        ..BASE
     },
     // ── 게임 ──
     Tweak {
@@ -207,6 +239,193 @@ pub const TWEAKS: &[Tweak] = &[
                 0,
             ),
         ],
+        ..BASE
+    },
+    // ── 작업 표시줄 ──
+    Tweak {
+        id: "taskbar.alignment",
+        group: Group::Taskbar,
+        title: "작업 표시줄 아이콘 위치",
+        description: "작업 표시줄의 시작 단추와 앱 아이콘을 가운데 또는 왼쪽에 둬요.",
+        why: "Windows 10처럼 왼쪽이 익숙하면 왼쪽으로 옮길 수 있어요.",
+        settings_path: "설정 > 개인 설정 > 작업 표시줄 > 작업 표시줄 동작",
+        restart: Restart::Explorer,
+        min_build: 22000,
+        options: &[
+            choice("center", "가운데", &[dword(ADVANCED, "TaskbarAl", 1)]),
+            choice("left", "왼쪽", &[dword(ADVANCED, "TaskbarAl", 0)]),
+        ],
+        default_option: Some("center"),
+        ..BASE
+    },
+    Tweak {
+        id: "taskbar.combine",
+        group: Group::Taskbar,
+        title: "작업 표시줄 단추 합치기",
+        description: "같은 앱의 창을 한 단추로 합칠지, 이름표를 보여 줄지 정해요.",
+        why: "창을 여러 개 띄워 두고 오가는 일이 많으면 '합치지 않기'가 편해요.",
+        settings_path: "설정 > 개인 설정 > 작업 표시줄 > 작업 표시줄 동작",
+        restart: Restart::Explorer,
+        min_build: 22631,
+        options: &[
+            choice(
+                "always",
+                "항상 합치기",
+                &[
+                    dword(ADVANCED, "TaskbarGlomLevel", 0),
+                    dword(ADVANCED, "MMTaskbarGlomLevel", 0),
+                ],
+            ),
+            choice(
+                "when-full",
+                "가득 차면 합치기",
+                &[
+                    dword(ADVANCED, "TaskbarGlomLevel", 1),
+                    dword(ADVANCED, "MMTaskbarGlomLevel", 1),
+                ],
+            ),
+            choice(
+                "never",
+                "합치지 않기",
+                &[
+                    dword(ADVANCED, "TaskbarGlomLevel", 2),
+                    dword(ADVANCED, "MMTaskbarGlomLevel", 2),
+                ],
+            ),
+        ],
+        default_option: Some("always"),
+        ..BASE
+    },
+    Tweak {
+        id: "taskbar.search",
+        group: Group::Taskbar,
+        title: "작업 표시줄 검색",
+        description: "작업 표시줄의 검색을 숨기거나, 아이콘이나 검색 상자로 보여 줘요.",
+        why: "숨겨도 시작 메뉴를 열고 바로 입력하면 똑같이 검색돼요.",
+        settings_path: "설정 > 개인 설정 > 작업 표시줄 > 작업 표시줄 항목",
+        restart: Restart::Explorer,
+        min_build: 0,
+        options: &[
+            choice(
+                "hidden",
+                "숨기기",
+                &[dword(SEARCH, "SearchboxTaskbarMode", 0)],
+            ),
+            choice(
+                "icon",
+                "아이콘만",
+                &[dword(SEARCH, "SearchboxTaskbarMode", 1)],
+            ),
+            choice(
+                "box",
+                "검색 상자",
+                &[dword(SEARCH, "SearchboxTaskbarMode", 2)],
+            ),
+        ],
+        ..BASE
+    },
+    Tweak {
+        id: "taskbar.task-view-button",
+        group: Group::Taskbar,
+        title: "작업 보기 단추 숨기기",
+        description: "작업 표시줄에서 작업 보기(가상 데스크톱) 단추를 숨겨요.",
+        why: "Win+Tab으로 똑같이 열 수 있어요.",
+        settings_path: "설정 > 개인 설정 > 작업 표시줄 > 작업 표시줄 항목",
+        restart: Restart::Explorer,
+        changes: &[dword(ADVANCED, "ShowTaskViewButton", 0)],
+        ..BASE
+    },
+    Tweak {
+        id: "taskbar.clock-seconds",
+        group: Group::Taskbar,
+        title: "시계에 초 보이기",
+        description: "작업 표시줄 시계에 초까지 보여 줘요.",
+        why: "시간을 정확히 봐야 할 때 편해요. 전력을 아주 조금 더 쓸 수 있어요.",
+        settings_path: "설정 > 개인 설정 > 작업 표시줄 > 작업 표시줄 동작",
+        restart: Restart::Explorer,
+        min_build: 22621,
+        changes: &[dword(ADVANCED, "ShowSecondsInSystemClock", 1)],
+        ..BASE
+    },
+    Tweak {
+        id: "taskbar.end-task",
+        group: Group::Taskbar,
+        title: "작업 표시줄에서 작업 끝내기",
+        description: "작업 표시줄 앱을 오른쪽 클릭하면 '작업 끝내기'가 나와요.",
+        why: "응답하지 않는 앱을 작업 관리자 없이 바로 닫을 수 있어요.",
+        settings_path: "설정 > 시스템 > 개발자용 > 작업 끝내기",
+        restart: Restart::Explorer,
+        min_build: 22631,
+        changes: &[dword(
+            r"Software\Microsoft\Windows\CurrentVersion\Explorer\Advanced\TaskbarDeveloperSettings",
+            "TaskbarEndTask",
+            1,
+        )],
+        ..BASE
+    },
+    // ── 편의 (탐색기·기타) ──
+    Tweak {
+        id: "convenience.hidden-files",
+        group: Group::Convenience,
+        title: "숨김 파일 보이기",
+        description: "탐색기에서 숨김 파일과 폴더(예: AppData)를 보여 줘요.",
+        why: "남은 흔적이나 설정 파일을 직접 찾을 때 편해요. Windows 보호 파일은 여전히 숨겨져요.",
+        settings_path: "탐색기 > 보기 > 표시 > 숨긴 항목",
+        restart: Restart::Explorer,
+        changes: &[dword(ADVANCED, "Hidden", 1)],
+        ..BASE
+    },
+    Tweak {
+        id: "convenience.compact-explorer",
+        group: Group::Convenience,
+        title: "탐색기 간격 줄이기",
+        description: "탐색기 목록의 줄 간격을 줄여 한 화면에 더 많이 보여 줘요.",
+        why: "터치보다 마우스를 주로 쓰면 더 많은 파일을 한눈에 볼 수 있어요.",
+        settings_path: "탐색기 > 보기 > 간격 줄이기",
+        restart: Restart::Explorer,
+        min_build: 22000,
+        changes: &[dword(ADVANCED, "UseCompactMode", 1)],
+        ..BASE
+    },
+    Tweak {
+        id: "convenience.explorer-start",
+        group: Group::Convenience,
+        title: "탐색기를 열면 먼저 보일 곳",
+        description: "탐색기를 열었을 때 '홈'과 '내 PC' 중 어디를 먼저 보여 줄지 정해요.",
+        why: "드라이브와 폴더로 바로 가고 싶다면 '내 PC'가 편해요.",
+        settings_path: "탐색기 > ... > 옵션 > 일반 > 파일 탐색기 열기",
+        restart: Restart::Explorer,
+        options: &[
+            choice("home", "홈", &[dword(ADVANCED, "LaunchTo", 2)]),
+            choice("this-pc", "내 PC", &[dword(ADVANCED, "LaunchTo", 1)]),
+        ],
+        default_option: Some("home"),
+        ..BASE
+    },
+    Tweak {
+        id: "convenience.clipboard-history",
+        group: Group::Convenience,
+        title: "클립보드 기록 켜기",
+        description: "복사한 내용을 여러 개 기억해 두고 Win+V로 골라 붙여 넣을 수 있게 해요.",
+        why: "기록은 이 PC에만 남고 다시 시작하면 지워져요(고정한 항목 제외). 비밀번호를 자주 복사한다면 신중히 켜세요.",
+        settings_path: "설정 > 시스템 > 클립보드",
+        changes: &[dword(
+            r"Software\Microsoft\Clipboard",
+            "EnableClipboardHistory",
+            1,
+        )],
+        ..BASE
+    },
+    Tweak {
+        id: "suggestions.explorer-ads",
+        group: Group::Suggestions,
+        title: "탐색기의 동기화 서비스 알림 끄기",
+        description: "탐색기 위쪽에 뜨는 OneDrive·Microsoft 365 같은 서비스 안내를 숨겨요.",
+        why: "탐색기 기능은 그대로이고 권유 문구만 사라져요.",
+        settings_path: "탐색기 > ... > 옵션 > 보기 > 동기화 공급자 알림 표시",
+        restart: Restart::Explorer,
+        changes: &[dword(ADVANCED, "ShowSyncProviderNotifications", 0)],
+        ..BASE
     },
 ];
 
@@ -228,6 +447,30 @@ pub const TEST_TWEAK: Tweak = Tweak {
             value: Value::Str("quiet"),
         },
     ],
+    ..BASE
+};
+
+/// 개발용 선택지 테스트 항목. 테스트 앱의 키만 건드린다.
+pub const TEST_CHOICE: Tweak = Tweak {
+    id: "test.choice",
+    group: Group::Test,
+    title: "테스트 앱 단계 (개발용)",
+    description: "테스트 앱 Fixture Notes의 단계 값을 고르는 선택지 항목이에요.",
+    why: "선택지 적용·바꾸기·되돌리기를 실제 설정 없이 시험하려고 있어요.",
+    options: &[
+        choice(
+            "low",
+            "낮음",
+            &[dword(r"Software\Robin Test Labs\Tweaks", "Level", 1)],
+        ),
+        choice(
+            "high",
+            "높음",
+            &[dword(r"Software\Robin Test Labs\Tweaks", "Level", 2)],
+        ),
+    ],
+    default_option: Some("low"),
+    ..BASE
 };
 
 /// 이 빌드에서 보여 줄 항목 (디버그 빌드에는 테스트 항목이 붙는다).
@@ -235,6 +478,7 @@ pub fn all() -> Vec<&'static Tweak> {
     let mut list: Vec<&'static Tweak> = TWEAKS.iter().collect();
     if cfg!(debug_assertions) {
         list.push(&TEST_TWEAK);
+        list.push(&TEST_CHOICE);
     }
     list
 }
@@ -264,7 +508,11 @@ mod tests {
 
     #[test]
     fn ids_are_unique_and_well_formed() {
-        let mut ids: Vec<&str> = TWEAKS.iter().map(|t| t.id).chain([TEST_TWEAK.id]).collect();
+        let mut ids: Vec<&str> = TWEAKS
+            .iter()
+            .map(|t| t.id)
+            .chain([TEST_TWEAK.id, TEST_CHOICE.id])
+            .collect();
         let n = ids.len();
         ids.sort_unstable();
         ids.dedup();
@@ -279,15 +527,55 @@ mod tests {
     }
 
     #[test]
+    fn each_tweak_is_either_a_toggle_or_a_choice() {
+        for t in TWEAKS.iter().chain([&TEST_TWEAK, &TEST_CHOICE]) {
+            assert!(
+                t.changes.is_empty() != t.options.is_empty(),
+                "{}: 켜기/끄기 값과 선택지 중 하나만 있어야 한다",
+                t.id
+            );
+            if t.is_choice() {
+                assert!(t.options.len() >= 2, "{}", t.id);
+                let mut ids: Vec<&str> = t.options.iter().map(|o| o.id).collect();
+                ids.sort_unstable();
+                ids.dedup();
+                assert_eq!(ids.len(), t.options.len(), "{}: 선택지 ID 중복", t.id);
+                for o in t.options {
+                    assert!(!o.changes.is_empty(), "{}/{}", t.id, o.id);
+                }
+                // 선택지마다 같은 값들을 다뤄야 되돌리기가 정확하다
+                let keys = |o: &Choice| {
+                    let mut k: Vec<(&str, &str)> =
+                        o.changes.iter().map(|c| (c.key, c.name)).collect();
+                    k.sort_unstable();
+                    k
+                };
+                let first = keys(&t.options[0]);
+                for o in t.options {
+                    assert_eq!(keys(o), first, "{}/{}", t.id, o.id);
+                }
+                if let Some(d) = t.default_option {
+                    assert!(
+                        t.options.iter().any(|o| o.id == d),
+                        "{}: 기본 선택지 {d}",
+                        t.id
+                    );
+                }
+            } else {
+                assert!(t.default_option.is_none(), "{}", t.id);
+            }
+        }
+    }
+
+    #[test]
     fn no_tweak_touches_policies_or_security() {
         for t in TWEAKS {
-            assert!(!t.changes.is_empty(), "{}", t.id);
             assert!(
                 !t.settings_path.is_empty(),
                 "{}: 설정 앱 위치를 적어야 한다",
                 t.id
             );
-            for c in t.changes {
+            for c in t.all_changes() {
                 let key = c.key.to_lowercase();
                 assert!(
                     !key.starts_with('\\') && !key.contains(".."),
@@ -305,10 +593,13 @@ mod tests {
     }
 
     #[test]
-    fn test_tweak_only_touches_the_fixture_key() {
-        for c in TEST_TWEAK.changes {
-            assert!(c.key.starts_with(r"Software\Robin Test Labs\"), "{}", c.key);
+    fn test_items_only_touch_the_fixture_key() {
+        for t in [&TEST_TWEAK, &TEST_CHOICE] {
+            for c in t.all_changes() {
+                assert!(c.key.starts_with(r"Software\Robin Test Labs\"), "{}", c.key);
+            }
         }
         assert_eq!(find("test.fixture").is_some(), cfg!(debug_assertions));
+        assert_eq!(find("test.choice").is_some(), cfg!(debug_assertions));
     }
 }

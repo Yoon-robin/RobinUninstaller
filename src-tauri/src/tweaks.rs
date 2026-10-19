@@ -21,10 +21,10 @@ pub async fn list_tweaks() -> Result<Vec<TweakView>, String> {
     blocking(|| Ok(robin_tweaks::list(&history()?))).await
 }
 
-/// 원래 값을 기록한 뒤 적용한다.
+/// 원래 값을 기록한 뒤 적용한다. 선택지 항목이면 `option`에 선택지 ID.
 #[tauri::command]
-pub async fn apply_tweak(id: String) -> Result<(), String> {
-    blocking(move || robin_tweaks::apply(&history()?, &id)).await
+pub async fn apply_tweak(id: String, option: Option<String>) -> Result<(), String> {
+    blocking(move || robin_tweaks::apply(&history()?, &id, option.as_deref())).await
 }
 
 /// RobinX가 바꾼 항목을 원래 값으로 되돌린다.

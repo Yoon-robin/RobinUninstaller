@@ -7,6 +7,7 @@ import {
   Gamepad2,
   Loader2,
   MousePointerClick,
+  PanelBottom,
   RefreshCw,
   RotateCcw,
   ShieldCheck,
@@ -22,6 +23,7 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
+import { rovingKeyDown } from "@/features/programs/segmented"
 
 const groups: { key: TweakGroup; title: string; description: string; icon: typeof ShieldCheck }[] = [
   {
@@ -29,6 +31,12 @@ const groups: { key: TweakGroup; title: string; description: string; icon: typeo
     title: "개인정보",
     description: "맞춤 광고와 기록을 줄여요. 진단 데이터 전송 같은 시스템 정책은 바꾸지 않아요.",
     icon: ShieldCheck,
+  },
+  {
+    key: "taskbar",
+    title: "작업 표시줄",
+    description: "아이콘 위치, 단추 합치기, 검색, 시계처럼 작업 표시줄 모양과 동작을 정해요.",
+    icon: PanelBottom,
   },
   {
     key: "suggestions",
@@ -48,7 +56,7 @@ const groups: { key: TweakGroup; title: string; description: string; icon: typeo
 
 const restartHint = {
   none: null,
-  explorer: "탐색기를 새로 고치거나(F5) 다시 시작하면 보여요",
+  explorer: "바로 반영돼요. 열려 있는 탐색기 창은 새로 고치면(F5) 보여요",
   signOut: "다시 로그인하면 반영돼요",
 } as const
 
@@ -70,6 +78,23 @@ export function TweaksPage() {
   const list = tweaks.data ?? []
   const applied = list.filter((t) => t.state === "applied").length
   const ours = list.filter((t) => t.changedByUs)
+
+  /** 선택지 항목: 고른 값으로 바꾼다 (처음이면 원래 값을 기록한다) */
+  const choose = async (t: TweakView, option: string) => {
+    setBusy(t.id)
+    try {
+      await tweaksApi.apply(t.id, option)
+      const label = t.options.find((o) => o.id === option)?.label ?? option
+      toast.success(`${t.title}: ${label}`, {
+        description: restartHint[t.restart] ?? "원래 값을 기록해 두었어요. '원래대로'를 누르면 돌아가요.",
+      })
+    } catch (e) {
+      toast.error(String(e))
+    } finally {
+      setBusy(null)
+      queryClient.invalidateQueries({ queryKey: ["tweaks"] })
+    }
+  }
 
   const toggle = async (t: TweakView, on: boolean) => {
     setBusy(t.id)
@@ -158,7 +183,14 @@ export function TweaksPage() {
                 </header>
                 <ul className="divide-y">
                   {items.map((t) => (
-                    <TweakRow key={t.id} tweak={t} busy={busy === t.id} disabled={busy != null} onToggle={toggle} />
+                    <TweakRow
+                      key={t.id}
+                      tweak={t}
+                      busy={busy === t.id}
+                      disabled={busy != null}
+                      onToggle={toggle}
+                      onChoose={choose}
+                    />
                   ))}
                 </ul>
               </section>
@@ -182,16 +214,19 @@ function TweakRow({
   busy,
   disabled,
   onToggle,
+  onChoose,
 }: {
   tweak: TweakView
   busy: boolean
   disabled: boolean
   onToggle: (t: TweakView, on: boolean) => void
+  onChoose: (t: TweakView, option: string) => void
 }) {
+  const isChoice = t.options.length > 0
   const [open, setOpen] = useState(false)
   const on = t.state === "applied"
   // RobinX가 바꾸지 않았는데 이미 적용된 상태면, 원래 값을 모르므로 여기서 끄지 않는다
-  const lockedOn = on && !t.changedByUs
+  const lockedOn = !isChoice && on && !t.changedByUs
   const hint = restartHint[t.restart]
 
   return (
@@ -205,13 +240,18 @@ function TweakRow({
             {t.changedByUs && t.appliedAt != null && (
               <span className="inline-flex items-center gap-1 text-primary">
                 <Undo2 className="size-3.5" />
-                RobinX가 {formatDate(t.appliedAt)}에 바꿈 · 끄면 원래 값으로
+                RobinX가 {formatDate(t.appliedAt)}에 바꿈 · {isChoice ? "'원래대로'를 누르면" : "끄면"} 원래 값으로
               </span>
             )}
             {lockedOn && (
               <span className="text-muted-foreground">이미 이렇게 설정돼 있어요 (Windows 설정 또는 다른 프로그램)</span>
             )}
             {t.state === "partial" && <span className="text-chart-3">일부만 적용돼 있어요. 켜면 나머지도 맞춰요</span>}
+            {isChoice && t.selected == null && (
+              <span className="text-chart-3">
+                지금은 선택지에 없는 값이에요 (다른 프로그램이나 정책이 바꿨을 수 있어요)
+              </span>
+            )}
             {hint && <span className="text-muted-foreground">· {hint}</span>}
             <button
               type="button"
@@ -234,8 +274,8 @@ function TweakRow({
               >
                 <div className="mt-3 rounded-xl border bg-muted/30 px-4 py-3 text-xs">
                   <ul className="space-y-1.5 font-mono" data-selectable>
-                    {t.changes.map((c) => (
-                      <li key={c.location + c.name} className="break-all">
+                    {t.changes.map((c, i) => (
+                      <li key={i} className="break-all">
                         {c.location.replace(/ → .*$/, "")} <span className="text-muted-foreground">→</span> {c.name} ={" "}
                         <span className="text-primary">{c.value}</span>
                       </li>
@@ -249,15 +289,65 @@ function TweakRow({
             )}
           </AnimatePresence>
         </div>
-        <div className="flex h-6 items-center gap-2 pt-0.5">
-          {busy && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
-          <Switch
-            checked={on}
-            disabled={disabled || lockedOn}
-            onCheckedChange={(v) => onToggle(t, v)}
-            aria-label={`${t.title} ${on ? "끄기" : "켜기"}`}
-          />
-        </div>
+        {isChoice ? (
+          <div className="flex shrink-0 flex-col items-end gap-2">
+            <div className="flex items-center gap-2">
+              {busy && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+              <div
+                role="radiogroup"
+                aria-label={t.title}
+                className="inline-flex flex-wrap gap-1 rounded-xl border bg-muted/40 p-1"
+                onKeyDown={(e) =>
+                  !disabled &&
+                  rovingKeyDown(
+                    e,
+                    t.options.map((o) => o.id),
+                    t.selected ?? t.options[0].id,
+                    () => false,
+                    (id) => id !== t.selected && onChoose(t, id),
+                  )
+                }
+              >
+                {t.options.map((o, i) => {
+                  const active = o.id === t.selected
+                  return (
+                    <button
+                      key={o.id}
+                      type="button"
+                      role="radio"
+                      aria-checked={active}
+                      tabIndex={active || (t.selected == null && i === 0) ? 0 : -1}
+                      disabled={disabled}
+                      onClick={() => !active && onChoose(t, o.id)}
+                      className={cn(
+                        "h-8 rounded-lg px-3 text-sm whitespace-nowrap transition-colors disabled:opacity-50",
+                        active ? "bg-background font-medium shadow-sm" : "text-muted-foreground hover:text-foreground",
+                      )}
+                    >
+                      {o.label}
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+            {t.changedByUs && (
+              <Button variant="ghost" size="sm" disabled={disabled} onClick={() => onToggle(t, false)}>
+                <Undo2 />
+                원래대로
+              </Button>
+            )}
+          </div>
+        ) : (
+          <div className="flex h-6 items-center gap-2 pt-0.5">
+            {busy && <Loader2 className="size-4 animate-spin text-muted-foreground" />}
+            <Switch
+              checked={on}
+              disabled={disabled || lockedOn}
+              onCheckedChange={(v) => onToggle(t, v)}
+              aria-label={`${t.title} ${on ? "끄기" : "켜기"}`}
+            />
+          </div>
+        )}
       </div>
     </li>
   )

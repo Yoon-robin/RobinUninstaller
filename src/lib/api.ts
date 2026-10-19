@@ -387,7 +387,7 @@ export const settingsApi = {
 }
 
 // crates/tweaks 의 TweakView 와 맞춰야 한다.
-export type TweakGroup = "privacy" | "suggestions" | "convenience" | "gaming" | "test"
+export type TweakGroup = "privacy" | "taskbar" | "suggestions" | "convenience" | "gaming" | "test"
 /** 바꾼 뒤 보이려면 필요한 것 */
 export type TweakRestart = "none" | "explorer" | "signOut"
 export type TweakState = "applied" | "notApplied" | "partial"
@@ -406,12 +406,16 @@ export interface TweakView {
   changedByUs: boolean
   appliedAt: number | null
   changes: { location: string; name: string; value: string }[]
+  /** 여러 값 중 고르는 항목의 선택지 (켜기/끄기 항목이면 비어 있다) */
+  options: { id: string; label: string }[]
+  /** 지금 값에 맞는 선택지. 어느 것에도 맞지 않으면 null */
+  selected: string | null
 }
 
 export const tweaksApi = {
   list: () => invoke<TweakView[]>("list_tweaks"),
   /** 원래 값을 기록한 뒤 적용한다 */
-  apply: (id: string) => invoke<void>("apply_tweak", { id }),
+  apply: (id: string, option?: string) => invoke<void>("apply_tweak", { id, option: option ?? null }),
   /** 원래 값으로 되돌린다. 그 사이 다른 곳에서 바뀐 값은 그대로 두고 `leftAsIs`로 알려 준다 */
   revert: (id: string) => invoke<{ leftAsIs: string[] }>("revert_tweak", { id }),
 }

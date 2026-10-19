@@ -35,6 +35,9 @@ pub struct Original {
 pub struct Record {
     pub originals: Vec<Original>,
     pub applied_at: u64,
+    /// 선택지 항목이면 지금 적용한 선택지. 되돌릴 때 "우리가 쓴 값"을 알 수 있게 바꿀 때마다 갱신한다.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub option: Option<String>,
 }
 
 pub struct History {
@@ -87,6 +90,16 @@ impl History {
         Ok(true)
     }
 
+    /// 이미 있는 기록의 선택지만 바꾼다 (원래 값은 처음 것을 그대로 둔다).
+    pub fn set_option(&self, id: &str, option: Option<&str>) -> std::io::Result<()> {
+        let mut all = self.load();
+        if let Some(r) = all.get_mut(id) {
+            r.option = option.map(str::to_string);
+            self.save(&all)?;
+        }
+        Ok(())
+    }
+
     pub fn forget(&self, id: &str) -> std::io::Result<()> {
         let mut all = self.load();
         if all.remove(id).is_some() {
@@ -126,6 +139,7 @@ mod tests {
                 created_from: None,
             }],
             applied_at: 1,
+            option: None,
         };
         assert!(history.remember("a.b", record(7)).unwrap());
         assert!(!history.remember("a.b", record(9)).unwrap());
