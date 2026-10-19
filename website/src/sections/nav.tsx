@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { motion } from "motion/react"
 import { Menu } from "lucide-react"
 
@@ -14,12 +14,24 @@ const links = [
   { href: "#how", label: "사용 방법" },
   { href: "#screens", label: "화면" },
   { href: "#safety", label: "안전 원칙" },
+  { href: "#status", label: "개발 현황" },
   { href: "#faq", label: "FAQ" },
 ]
+
+/** 앵커로 이동하고 그 구역에 포커스를 둔다 (스크린리더·키보드 사용자가 이어서 읽도록) */
+function goTo(href: string) {
+  const el = document.querySelector<HTMLElement>(href)
+  if (!el) return
+  history.pushState(null, "", href)
+  el.scrollIntoView({ behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth" })
+  if (!el.hasAttribute("tabindex")) el.setAttribute("tabindex", "-1")
+  el.focus({ preventScroll: true })
+}
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
+  const pendingTarget = useRef<string | null>(null)
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 12)
     onScroll()
@@ -55,10 +67,10 @@ export function Nav() {
             </a>
           ))}
         </div>
-        <Button asChild variant="outline" size="lg" className="ml-auto rounded-xl px-3.5">
-          <a href={REPO_URL} target="_blank" rel="noreferrer">
+        <Button asChild variant="outline" size="lg" className="ml-auto rounded-xl px-3 sm:px-3.5">
+          <a href={REPO_URL} target="_blank" rel="noreferrer" aria-label="GitHub에서 보기">
             <GithubIcon className="size-4" />
-            GitHub
+            <span className="hidden sm:inline">GitHub</span>
           </a>
         </Button>
         {/* 좁은 화면: 메뉴 버튼 → 옆에서 나오는 패널 */}
@@ -68,7 +80,17 @@ export function Nav() {
               <Menu />
             </Button>
           </SheetTrigger>
-          <SheetContent side="right" className="w-72 border-white/10 bg-background/95 p-6 backdrop-blur-xl">
+          <SheetContent
+            side="right"
+            className="w-72 border-white/10 bg-background/95 p-6 backdrop-blur-xl"
+            onCloseAutoFocus={(e) => {
+              const href = pendingTarget.current
+              if (!href) return
+              pendingTarget.current = null
+              e.preventDefault()
+              goTo(href)
+            }}
+          >
             <SheetTitle className="flex items-center gap-2.5">
               <img src={LOGO} alt="" className="size-7 rounded-lg" />
               RobinX
@@ -79,7 +101,12 @@ export function Nav() {
                 <a
                   key={l.href}
                   href={l.href}
-                  onClick={() => setMenuOpen(false)}
+                  onClick={(e) => {
+                    // 패널이 닫히면서 포커스가 메뉴 버튼으로 돌아가지 않도록, 닫힌 뒤 목적지로 옮긴다
+                    e.preventDefault()
+                    setMenuOpen(false)
+                    pendingTarget.current = l.href
+                  }}
                   className="rounded-xl px-3 py-3 text-base text-muted-foreground transition-colors hover:bg-white/5 hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
                 >
                   {l.label}

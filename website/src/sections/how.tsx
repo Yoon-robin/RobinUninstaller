@@ -1,4 +1,4 @@
-import { useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { motion, useReducedMotion } from "motion/react"
 import { Tabs } from "radix-ui"
 import { Archive, ScanSearch, Trash2 } from "lucide-react"
@@ -16,7 +16,7 @@ const steps = [
   {
     icon: ScanSearch,
     title: "남은 흔적 찾기",
-    text: "제거가 끝나면 파일·레지스트리·시작 항목을 훑어 남은 흔적을 찾아요. 항목마다 왜 그 프로그램 것인지 근거가 붙어요.",
+    text: "제거가 끝나면 파일·레지스트리·시작 항목을 훑어 남은 흔적을 찾아요. 항목마다 왜 그 프로그램 것인지 근거가 붙고, 지울 것은 직접 골라요.",
   },
   {
     icon: Archive,
@@ -31,7 +31,7 @@ export function How() {
       <SectionHeading
         eyebrow="사용 방법"
         title="세 단계면 끝나요"
-        description="어려운 설정 없이, 평소처럼 제거만 누르면 나머지는 RobinX가 이어서 챙겨요."
+        description="기본 제거 → 근거 확인과 선택 → 백업 후 정리. 무엇을 지울지는 마지막에 항상 직접 정해요."
       />
       <div className="relative mt-16 grid gap-6 md:grid-cols-3">
         {/* 단계를 잇는 선 */}
@@ -59,9 +59,8 @@ export function How() {
 }
 
 const screens = [
-  { key: "programs", label: "프로그램", caption: "설치된 프로그램을 크기·설치일·형식과 함께 보여 줘요." },
-  { key: "programs-grid", label: "카드 보기", caption: "아이콘 위주로 훑어보고 싶을 땐 카드 보기로." },
   { key: "leftovers", label: "남은 흔적", caption: "확실한 흔적은 미리 고르고, 애매한 건 검토하도록 나눠요." },
+  { key: "programs", label: "프로그램", caption: "설치된 프로그램을 크기·설치일·형식과 함께 보여 줘요." },
   {
     key: "restore",
     label: "복구 기록",
@@ -78,6 +77,23 @@ export function Gallery() {
   const tabRefs = useRef(new Map<string, HTMLButtonElement>())
 
   // 좁은 화면에서 탭 목록이 가로로 넘치면, 고른 탭이 보이도록 가운데로 옮긴다
+  // 탭을 바꿀 때 기다리지 않도록, 갤러리가 보이기 시작하면 나머지 그림을 미리 받아 둔다
+  const sectionRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    const el = sectionRef.current
+    if (!el) return
+    const io = new IntersectionObserver(
+      (entries) => {
+        if (!entries.some((e) => e.isIntersecting)) return
+        io.disconnect()
+        for (const s of screens) new Image().src = shot(s.key)
+      },
+      { rootMargin: "400px" },
+    )
+    io.observe(el)
+    return () => io.disconnect()
+  }, [])
+
   const select = (key: string) => {
     setActive(key)
     tabRefs.current
@@ -86,7 +102,7 @@ export function Gallery() {
   }
 
   return (
-    <section id="screens" className="relative pt-20 sm:pt-28 lg:pt-32">
+    <section id="screens" ref={sectionRef} className="relative pt-20 sm:pt-28 lg:pt-32">
       <div
         aria-hidden
         className="absolute inset-x-0 top-40 -z-10 mx-auto h-[30rem] max-w-4xl rounded-full bg-[radial-gradient(closest-side,oklch(0.72_0.15_285/0.14),transparent)] blur-2xl"

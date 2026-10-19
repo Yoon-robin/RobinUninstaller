@@ -24,7 +24,7 @@ const values: { icon: LucideIcon; title: string; detail: string }[] = [
   { icon: Undo2, title: "잔여물은 백업 후 정리", detail: "보관하는 동안 복구 기록에서 되돌리기" },
   { icon: FileSearch, title: "근거 있는 탐지", detail: "왜 그 프로그램 것인지 표시" },
   { icon: ShieldCheck, title: "보호 규칙", detail: "시스템·공유 경로 제외" },
-  { icon: Monitor, title: "Windows 10 · 11", detail: "가볍고 빠른 네이티브 앱" },
+  { icon: Monitor, title: "Windows 10 · 11", detail: "Rust 엔진 기반 데스크톱 앱" },
 ]
 
 export function ValueStrip() {

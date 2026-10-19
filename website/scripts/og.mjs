@@ -5,7 +5,7 @@ import { dirname, join } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 
 if (!process.env.CHROMIUM_PATH && process.platform === "win32") {
-  process.env.CHROMIUM_PATH = "C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe"
+  process.env.CHROMIUM_PATH = String.raw`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`
 }
 const site = join(dirname(fileURLToPath(import.meta.url)), "..")
 const { launch } = await import(pathToFileURL(join(site, "..", "scripts", "ui-mock", "mock.mjs")).href)
@@ -44,7 +44,11 @@ p { margin-top: 24px; font-size: 24px; line-height: 1.5; color: #a1a7b4; word-br
 const browser = await launch()
 const page = await browser.newPage({ viewport: { width: 1200, height: 630 } })
 await page.setContent(html)
-await page.waitForTimeout(800)
+// 폰트와 그림이 다 그려진 뒤에 찍는다
+await page.evaluate(async () => {
+  await document.fonts.ready
+  await Promise.all([...document.images].map((img) => img.decode().catch(() => {})))
+})
 await page.screenshot({ path: join(site, "public", "og.png") })
 await browser.close()
 console.log("saved website/public/og.png")

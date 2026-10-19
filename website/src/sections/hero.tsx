@@ -45,7 +45,9 @@ export function Hero() {
           href="#safety"
           className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1 pr-3 pl-1 text-sm text-muted-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-foreground"
         >
-          <span className="rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold text-primary">개발 중</span>
+          <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-primary">
+            개발 중
+          </span>
           설치 파일은 아직 없어요 · 안전 원칙 보기
           <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
         </motion.a>
@@ -101,7 +103,11 @@ export function Hero() {
               style={{ opacity: glow }}
               className="absolute -inset-x-10 -top-10 -bottom-4 -z-10 rounded-[3rem] bg-[radial-gradient(closest-side,oklch(0.82_0.12_190/0.35),transparent)] blur-3xl"
             />
-            <WindowFrame src={shot("programs")} alt="RobinX 프로그램 목록 화면" eager />
+            <WindowFrame
+              src={shot("leftovers")}
+              alt="RobinX 남은 흔적 화면: 항목마다 근거와 위험도가 붙어 있어요"
+              eager
+            />
 
             <FloatingChip
               className="top-[18%] -left-4 hidden sm:flex lg:-left-12"
@@ -115,7 +121,7 @@ export function Hero() {
               delay={1.3}
               icon={<Archive className="size-4 text-chart-2" />}
               title="백업 후 정리 완료"
-              detail="241 MB · 복구 기록에 보관"
+              detail="204 MB · 복구 기록에 보관"
             />
             <FloatingChip
               className="bottom-[10%] left-[8%] hidden md:flex"
@@ -132,6 +138,9 @@ export function Hero() {
           className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent"
         />
       </div>
+      <p className="relative mx-auto mt-2 max-w-6xl px-6 text-center text-xs text-muted-foreground">
+        실제 개발 버전 화면이에요. 화면 속 프로그램 이름과 숫자는 테스트용 예시예요.
+      </p>
     </section>
   )
 }

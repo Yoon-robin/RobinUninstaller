@@ -69,52 +69,80 @@ export function Safety() {
             <h3 className="font-semibold">무엇을 되돌릴 수 있나요?</h3>
             <p className="mt-1 text-sm text-muted-foreground">정리하는 종류마다 달라요. 지우기 전에 확인하세요.</p>
           </div>
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[34rem] text-left text-sm">
-              <caption className="sr-only">작업별 되돌리기 가능 여부</caption>
-              <thead className="text-xs text-muted-foreground">
-                <tr>
-                  <th scope="col" className="px-6 py-3 font-medium">
-                    작업
+          {/* 넓은 화면: 표 */}
+          <table className="hidden w-full text-left text-sm sm:table">
+            <caption className="sr-only">작업별 되돌리기 가능 여부</caption>
+            <thead className="text-xs text-muted-foreground">
+              <tr>
+                <th scope="col" className="px-6 py-3 font-medium">
+                  작업
+                </th>
+                <th scope="col" className="px-6 py-3 font-medium">
+                  되돌리기
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-white/6">
+              {restoreScope.map((r) => (
+                <tr key={r.task}>
+                  <th scope="row" className="px-6 py-3.5 font-medium">
+                    {r.task}
                   </th>
-                  <th scope="col" className="px-6 py-3 font-medium">
-                    되돌리기
-                  </th>
+                  <td className="px-6 py-3.5">
+                    <RestoreLevel level={r.level} />
+                    <span className="text-muted-foreground"> · {r.note}</span>
+                  </td>
                 </tr>
-              </thead>
-              <tbody className="divide-y divide-white/6">
-                {restoreScope.map((r) => (
-                  <tr key={r.task}>
-                    <th scope="row" className="px-6 py-3.5 font-medium">
-                      {r.task}
-                    </th>
-                    <td className="px-6 py-3.5">
-                      <span className={r.ok ? "text-chart-5" : "text-chart-3"}>{r.ok ? "가능" : "불가"}</span>
-                      <span className="text-muted-foreground"> · {r.note}</span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
+          {/* 좁은 화면: 가로로 넘치지 않게 작업마다 한 줄씩 */}
+          <ul className="divide-y divide-white/6 sm:hidden">
+            {restoreScope.map((r) => (
+              <li key={r.task} className="px-5 py-4 text-sm">
+                <p className="flex items-start justify-between gap-3 font-medium">
+                  {r.task}
+                  <RestoreLevel level={r.level} />
+                </p>
+                <p className="mt-1 text-muted-foreground">{r.note}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="border-t border-white/8 px-6 py-3 text-xs text-muted-foreground">
+            조건부: 백업을 보관하는 동안, 그리고 원래 자리에 다른 파일이나 값이 새로 생기지 않았을 때만 되돌려요. 겹치면
+            덮어쓰지 않고 알려 줘요.
+          </p>
         </div>
       </Reveal>
     </section>
   )
 }
 
-const restoreScope = [
-  { task: "남은 흔적(파일·레지스트리) 정리", ok: true, note: "백업을 보관하는 동안 복구 기록에서 복원" },
-  { task: "강제 제거", ok: true, note: "백업한 항목만 복구 기록에서 복원" },
-  { task: "시작프로그램 끄기", ok: true, note: "언제든 다시 켜면 원래 상태로" },
+type Level = "yes" | "conditional" | "no"
+
+const levelLabel: Record<Level, { text: string; className: string }> = {
+  yes: { text: "가능", className: "text-chart-5" },
+  conditional: { text: "조건부", className: "text-chart-1" },
+  no: { text: "불가", className: "text-chart-3" },
+}
+
+function RestoreLevel({ level }: { level: Level }) {
+  const l = levelLabel[level]
+  return <span className={`shrink-0 font-medium ${l.className}`}>{l.text}</span>
+}
+
+const restoreScope: { task: string; level: Level; note: string }[] = [
+  { task: "시작프로그램 끄기", level: "yes", note: "등록 정보는 그대로 두고 끄기만 해서, 다시 켜면 원래 상태로" },
+  { task: "남은 흔적(파일·레지스트리) 정리", level: "conditional", note: "백업을 보관하는 동안 복구 기록에서 복원" },
+  { task: "강제 제거", level: "conditional", note: "백업한 흔적만 복원돼요. 프로그램이 다시 실행되는 건 아니에요" },
   {
     task: "최적화 설정 바꾸기",
-    ok: true,
-    note: "끄면 기록해 둔 원래 값으로 (그 사이 다른 곳에서 바꾼 값은 그대로 둬요)",
+    level: "conditional",
+    note: "끄면 기록해 둔 원래 값으로. 그 사이 다른 곳에서 바꾼 값은 덮어쓰지 않아요",
   },
-  { task: "프로그램 제거(원래 언인스톨러)", ok: false, note: "프로그램 자체는 다시 설치해야 해요" },
-  { task: "캐시·임시 파일 정리", ok: false, note: "다시 만들어지는 것만 지우지만, 지운 파일은 돌아오지 않아요" },
-  { task: "백업 삭제·보관 기간 만료", ok: false, note: "그 백업으로는 더 이상 복원할 수 없어요" },
+  { task: "프로그램 제거(원래 언인스톨러)", level: "no", note: "프로그램 자체는 다시 설치해야 해요" },
+  { task: "캐시·임시 파일 정리", level: "no", note: "다시 만들어지는 것만 지우지만, 지운 파일은 돌아오지 않아요" },
+  { task: "백업 삭제·보관 기간 만료", level: "no", note: "그 백업으로는 더 이상 복원할 수 없어요" },
 ]
 
 const faqs = [
@@ -136,7 +164,11 @@ const faqs = [
   },
   {
     q: "지금 바로 설치할 수 있나요?",
-    a: "지금은 미리보기 단계라 설치 파일을 준비하고 있어요. 개발 환경이 있다면 GitHub의 안내대로 소스에서 바로 실행해 볼 수 있어요.",
+    a: "아직 공개한 설치 파일은 없어요. 첫 릴리스는 GitHub Releases에 올리고, 그 뒤로는 앱이 서명을 확인한 업데이트만 설치해요. 개발 환경이 있다면 GitHub의 안내대로 소스에서 바로 실행해 볼 수 있어요.",
+  },
+  {
+    q: "백업은 어디에 저장되고, 무엇이 PC 밖으로 나가나요?",
+    a: "백업과 복구 기록은 내 PC의 %LOCALAPPDATA%\\RobinX 아래에만 저장돼요. RobinX가 인터넷에 연결하는 건 새 버전이 있는지 GitHub에서 확인할 때(설정에서 끌 수 있어요)와 직접 누른 웹 검색(기본 브라우저로 열어요)뿐이에요. 사용 기록이나 프로그램 목록을 보내지 않아요.",
   },
   {
     q: "잘못 정리하면 어떻게 하나요?",
