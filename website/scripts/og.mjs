@@ -12,33 +12,33 @@ const { launch } = await import(pathToFileURL(join(site, "..", "scripts", "ui-mo
 
 const data = (file, type) => `data:${type};base64,${readFileSync(join(site, "public", file)).toString("base64")}`
 const logo = data("logo.svg", "image/svg+xml")
-const shot = data("shots/programs.png", "image/png")
-const font = pathToFileURL(
+const shot = data("shots/leftovers.png", "image/png")
+// 빈 페이지에서는 file:// 글꼴을 읽지 못하므로 data URI로 넣는다
+const font = `data:font/woff2;base64,${readFileSync(
   join(site, "node_modules", "pretendard", "dist", "web", "variable", "woff2", "PretendardVariable.woff2"),
-).href
+).toString("base64")}`
 
+// 사이트 첫 화면과 같은 구성: 밝은 바탕에 제목, 오른쪽은 청록 무대 위의 "남은 흔적" 화면.
+// 그라데이션·그림자 없이 면과 글자만으로.
 const html = `<!doctype html><html><head><style>
 @font-face { font-family: P; src: url("${font}") format("woff2"); font-weight: 100 900; }
 * { margin: 0; box-sizing: border-box; }
-body { width: 1200px; height: 630px; overflow: hidden; font-family: P, sans-serif; color: #f3f4f6;
-  background: radial-gradient(60% 80% at 15% 0%, rgba(46,230,240,.18), transparent 60%),
-              radial-gradient(50% 70% at 100% 100%, rgba(139,92,246,.22), transparent 60%), #111318; }
+body { width: 1200px; height: 630px; overflow: hidden; font-family: P, sans-serif; color: #1d1f23; background: #fbfcfc; word-break: keep-all; }
 .wrap { position: absolute; left: 72px; top: 0; bottom: 0; width: 520px; display: flex; flex-direction: column; justify-content: center; }
-.brand { display: flex; align-items: center; gap: 16px; font-size: 34px; font-weight: 800; letter-spacing: -0.02em; }
-.brand img { width: 64px; height: 64px; }
-h1 { margin-top: 36px; font-size: 64px; line-height: 1.12; font-weight: 800; letter-spacing: -0.03em; word-break: keep-all; }
-h1 span { background: linear-gradient(100deg, #3cf0ef, #3aa0f5 50%, #9b5cf6); -webkit-background-clip: text; color: transparent; }
-p { margin-top: 24px; font-size: 24px; line-height: 1.5; color: #a1a7b4; word-break: keep-all; }
-.shot { position: absolute; left: 640px; top: 96px; width: 760px; border-radius: 20px; padding: 8px;
-  background: rgba(36,39,48,.8); border: 1px solid rgba(255,255,255,.12); box-shadow: 0 30px 80px rgba(0,0,0,.6); }
-.shot img { display: block; width: 100%; border-radius: 13px; }
+.brand { display: flex; align-items: center; gap: 14px; font-size: 30px; font-weight: 700; letter-spacing: -0.02em; }
+.brand img { width: 48px; height: 48px; }
+h1 { margin-top: 44px; font-size: 88px; line-height: 1.04; font-weight: 700; letter-spacing: -0.035em; }
+p { margin-top: 32px; font-size: 27px; line-height: 1.45; }
+.stage { position: absolute; left: 640px; top: 72px; right: 0; bottom: 0; background: #50d5ce; border-top-left-radius: 28px; overflow: hidden; }
+.crop { position: absolute; left: 48px; top: 48px; width: 640px; height: 600px; overflow: hidden; border-top-left-radius: 14px; }
+.crop img { position: absolute; width: 1036px; left: -208px; top: -39px; }
 </style></head><body>
 <div class="wrap">
   <div class="brand"><img src="${logo}">RobinX</div>
-  <h1>Windows를<br><span>가볍고 깔끔하게.</span></h1>
-  <p>근거를 보고 고르는 제거·정리.<br>남은 흔적은 백업한 뒤 정리해요.</p>
+  <h1>지우기 전에,<br>근거부터.</h1>
+  <p>프로그램을 지운 뒤 남은 흔적을<br>근거와 함께 찾아, 백업하고 정리해요.</p>
 </div>
-<div class="shot"><img src="${shot}"></div>
+<div class="stage"><div class="crop"><img src="${shot}"></div></div>
 </body></html>`
 
 const browser = await launch()
