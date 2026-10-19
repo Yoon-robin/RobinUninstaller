@@ -50,6 +50,11 @@ export function ConfirmClean({
           기록해 두고요. 문제가 생기면 백업을 보관하는 동안 <b className="text-foreground">복구 기록</b>에서 되돌릴 수
           있어요. {retentionNote}
         </p>
+        {bytes > 0 && (
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            백업도 공간을 차지해서, 정리한 뒤에도 PC의 남은 공간은 바로 늘지 않아요. 백업을 지우면 그때 돌아와요.
+          </p>
+        )}
       </div>
       <ul className="flex w-full max-w-md flex-col gap-2 text-left text-xs">
         {reviewCount > 0 && (
@@ -114,7 +119,10 @@ export function CleanResult({
   const problems = current.items.filter(
     (i) => i.status === "failed" || i.status === "blocked" || i.status === "partial",
   )
-  const freed = current.items.filter((i) => i.status === "removed").reduce((s, i) => s + (i.sizeBytes ?? 0), 0)
+  // 정리한 파일은 지워진 게 아니라 백업 폴더에 있다. 공간은 백업을 지워야 돌아온다.
+  const held = current.items.filter((i) => i.status === "removed").reduce((s, i) => s + (i.sizeBytes ?? 0), 0)
+  const settings = useQuery({ queryKey: ["settings"], queryFn: settingsApi.get })
+  const days = settings.data?.backupRetentionDays
 
   const elevate = async () => {
     setElevating(true)
@@ -155,9 +163,17 @@ export function CleanResult({
         <div>
           <p className="text-base font-semibold">{removed}개를 정리했어요</p>
           <p className="mt-1 text-sm text-muted-foreground">
-            백업 폴더로 옮겼어요{freed > 0 && ` (${formatBytes(freed)})`}. 백업을 보관하는 동안 복구 기록에서 되돌릴 수
-            있어요.
+            백업 폴더로 옮겼어요. 백업을 보관하는 동안 복구 기록에서 되돌릴 수 있어요.
           </p>
+          {held > 0 && (
+            <p className="mt-2 max-w-md text-sm text-muted-foreground">
+              <span className="font-medium text-foreground">{formatBytes(held)}</span>는 백업으로 보관 중이라 PC의 남은
+              공간은 아직 그대로예요.{" "}
+              {days == null
+                ? "복구 기록에서 백업을 지우면 공간이 돌아와요."
+                : `${days}일 뒤 백업이 자동으로 지워지거나, 복구 기록에서 먼저 지우면 공간이 돌아와요.`}
+            </p>
+          )}
         </div>
         {needsAdmin > 0 && (
           <div className="mt-1 flex items-center gap-3 rounded-xl border bg-muted/30 px-4 py-3 text-left text-sm">

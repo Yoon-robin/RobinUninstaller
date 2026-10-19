@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArchiveRestore,
   ChevronRight,
+  HardDrive,
   FileText,
   Folder,
   KeyRound,
@@ -15,7 +16,7 @@ import {
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
-import { isRestorable, recoveryApi, type ItemStatus, type LeftoverKind, type Operation } from "@/lib/api"
+import { isRestorable, recoveryApi, settingsApi, type ItemStatus, type LeftoverKind, type Operation } from "@/lib/api"
 import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
@@ -93,15 +94,43 @@ export function RestorePage() {
           </div>
         </FadeUp>
       ) : (
-        (backups.data ?? []).map((op) => (
-          <FadeUp key={op.id}>
-            <OperationCard op={op} onDelete={() => setDeleting(op)} />
+        <>
+          <FadeUp>
+            <HeldSpace ops={backups.data ?? []} />
           </FadeUp>
-        ))
+          {(backups.data ?? []).map((op) => (
+            <FadeUp key={op.id}>
+              <OperationCard op={op} onDelete={() => setDeleting(op)} />
+            </FadeUp>
+          ))}
+        </>
       )}
 
       <DeleteBackupDialog op={deleting} onClose={() => setDeleting(null)} />
     </Stagger>
+  )
+}
+
+/** 보관 중인 백업이 차지하는 공간. 정리했다고 공간이 바로 늘지는 않는다는 것을 알려 준다. */
+function HeldSpace({ ops }: { ops: Operation[] }) {
+  const settings = useQuery({ queryKey: ["settings"], queryFn: settingsApi.get })
+  const days = settings.data?.backupRetentionDays
+  const held = ops
+    .flatMap((op) => op.items)
+    .filter((i) => isRestorable(i.status))
+    .reduce((s, i) => s + (i.sizeBytes ?? 0), 0)
+  if (held === 0) return null
+  return (
+    <div className="flex items-start gap-3 rounded-2xl border bg-muted/30 px-4 py-3.5 text-sm">
+      <HardDrive className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
+      <p className="text-muted-foreground">
+        백업으로 보관 중인 파일이 <span className="font-semibold text-foreground">{formatBytes(held)}</span>예요. 이
+        공간은 백업을 지워야 돌아와요.{" "}
+        {days == null
+          ? "지금은 직접 지울 때까지 보관하도록 설정돼 있어요."
+          : `보관 기간 ${days}일이 지난 백업은 자동으로 지워져요.`}
+      </p>
+    </div>
   )
 }
 
