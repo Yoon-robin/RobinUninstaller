@@ -29,7 +29,9 @@ pnpm tauri dev    # 앱 실행
 - `Revo Uninstaller Pro.zip`, `docs/private/revo-analysis.md`: 상용 프로그램과 그 분석 메모라 공개 리포지토리에 올리지 않았다. 필요하면 원래 PC에서 직접 옮긴다. 분석 결과 중 설계에 반영할 내용은 PLAN.md의 Phase 3·4 메모에 이미 녹아 있다.
 - 백업 저장소(`%LOCALAPPDATA%\RobinX\backups`): PC마다 따로 생긴다.
 
-## 3. 지금 상태 (2026-10-19) — 새 세션은 여기부터
+## 3. 지금 상태 (2026-10-19 저녁) — 새 세션은 여기부터
+
+> 할 일 목록과 루프 작업 방법은 [LOOP.md](LOOP.md)에 있다. 이 문서는 PC 준비, 지금까지 만든 것, 확인 기록을 담는다.
 
 모든 작업은 `main`에 들어 있다. 원격의 `claude/*` 브랜치는 GitHub에서 지워도 된다 (클라우드 세션에서는 원격 브랜치 삭제가 막혀 있다).
 `claude/phase5-startup`만 `main`의 조상이 아닌데, 시작프로그램 1차 작업의 옛 사본이고 내용은 `main`에 다른 커밋으로 들어가 있다.
@@ -45,6 +47,10 @@ pnpm tauri dev    # 앱 실행
 - 설치 추적: 설치 전후 스냅샷 비교 기록 → 잔여물 스캔의 근거
 - 설정: 테마, 투명 효과(자동/줄이기), 백업 보관 기간, 잔여물 스캔 제외 목록
 - 최적화: HKCU 공식 설정 24개(개인정보·작업 표시줄·추천 줄이기·편의·게임, 그중 선택지 항목 4개), 원래 값 기록 후 적용·되돌리기 (`crates/tweaks`)
+- 화면 전체: 시작 화면(첫 목록을 읽는 동안), 공통 오류 화면(다시 시도), 키보드 이동, 투명 효과 줄이기
+- 자동 업데이트: GitHub Releases의 `latest.json`을 확인하고 서명이 맞는 설치 파일만 설치(`src/features/updates`, 설정 → 업데이트). 배포는 `bash scripts/release.sh [--publish]`
+  - 서명된 v0.1.0 설치 파일은 만들어 봤지만 **아직 공개하지 않았다**(릴리스 0개). 공개는 사용자에게 먼저 묻는다.
+- 웹사이트(`website/`): 밝은 Apple 풍 디자인, 첫 화면에서 눌러 볼 수 있는 남은 흔적 데모, taste-skill 검사기 FAIL 0. GitHub Pages에 배포됨
 
 ### Windows PC 확인 (2026-10-19)
 
@@ -64,8 +70,7 @@ pnpm tauri dev    # 앱 실행
 **주의할 점 (이번에 겪음):**
 - `cargo build -p robin-fixture --examples`는 테스트 앱 **실행 파일을 만들지 않는다**. 반드시 `cargo build -p robin-fixture`. 옛 실행 파일로 돌리면 새 흔적(바로 가기·유령 항목)이 안 생겨 예제가 실패한다.
 - "파일 없는 시작 항목 정리" 창은 실제 PC의 파일 없는 항목(예: Authenticator, ITCS Connect)도 기본 선택한다. 시험할 때는 테스트 앱 항목(`Robin Ghost Tool`, `RobinGhostTool`)만 남기고 선택을 푼다.
-- 이 PC의 Git Bash에는 pnpm 경로(`%APPDATA%
-pm`)가 PATH에 없을 때가 있다: `export PATH="$(cygpath -u "$APPDATA")/npm:$PATH"`
+- 이 PC의 Git Bash에는 pnpm 경로(`%APPDATA%\npm`)가 PATH에 없을 때가 있다: `export PATH="$(cygpath -u "$APPDATA")/npm:$PATH"`
 
 **UAC 경로 확인 (2026-10-19, 사용자가 UAC 허용):**
 - 관리자 권한 정리: HKLM 키·Program Files 폴더 → 7개 모두 정리
@@ -102,16 +107,13 @@ pnpm exec tsc --noEmit -p . && pnpm exec prettier --check src
 - 화면은 `scripts/ui-mock/README.md`대로 가짜 응답으로 캡처해서 확인한다.
 - Wine에서 안 되는 것: 앱 화면(WebView2), UAC, 작업 스케줄러 목록, Store 패키지(빈 목록), 저장 창.
 
-### 다음 작업 후보
+### 다음 작업
 
-- 위 "아직 남은 것"
-- 시작프로그램: 일반 사용자에게 안 보이는 SYSTEM 예약 작업을 관리자 권한으로 읽어 보여 주기
-- Store 앱 직접 제거: 테스트용 MSIX(자체 서명 또는 개발자 모드 등록)를 `crates/fixture`에 먼저 만든다
-- 시스템 복원 지점(제거 전 선택), 서비스 정리(중지·삭제)
-- 설치 추적을 ETW로 (커널 드라이버는 쓰지 않음)
-- 배포: 코드 서명, NSIS 설치 파일(`pnpm tauri build`)
+[LOOP.md](LOOP.md)의 할 일 목록을 본다. 위 "아직 남은 것"도 거기에 옮겨 두었다.
 
 ## 4. 작업 기록 (오래된 것부터)
+
+> 클라우드 세션 기록의 "Windows에서 확인할 것"은 위 "Windows PC 확인 (2026-10-19)"에서 대부분 확인했다. 남은 것은 "아직 남은 것"과 LOOP.md에 있다.
 
 ### 관리자 권한(UAC) 정리 실제 시험 — 완료 (2026-10-16)
 
@@ -228,7 +230,7 @@ pnpm exec tsc --noEmit -p . && pnpm exec prettier --check src
 
 - optimizerNXT(GPL-3.0)는 코드 없이 구조 아이디어만 참고 (분석 메모는 `docs/private/optimizernxt-notes.md`, 커밋 안 함).
 - `crates/tweaks`: 항목은 `catalog.rs`에 데이터로. 현재 사용자(HKCU) 공식 설정만, 정책(`\Policies`)·Defender·SmartScreen·업데이트·방화벽·Run 키 등은 테스트로 금지.
-  - 적용: 지금 값을 읽어 `%LOCALAPPDATA%\RobinX	weaks\changes.json`에 **먼저** 기록 → 쓰기. 쓰다 실패하면 이번에 쓴 값을 되돌림. 다시 적용해도 첫 기록 유지.
+  - 적용: 지금 값을 읽어 `%LOCALAPPDATA%\RobinX\tweaks\changes.json`에 **먼저** 기록 → 쓰기. 쓰다 실패하면 이번에 쓴 값을 되돌림. 다시 적용해도 첫 기록 유지.
   - 되돌리기: 기록한 원래 값(종류까지)으로. 지금 값이 우리가 쓴 값과 다르면(다른 곳에서 바꿈) 덮어쓰지 않고 알림. 적용하며 만든 키는 위쪽까지 비어 있으면 지움.
   - 상태: 적용됨/일부/아님 (읽기 전용). RobinX가 바꾸지 않았는데 이미 적용된 항목은 원래 값을 모르므로 화면에서 끌 수 없게 둠.
 - 화면: 사이드바 "최적화", 묶음별 카드, 항목마다 설명·이유·"바꾸는 값 보기"(레지스트리 경로·값, 설정 앱 위치), 다시 시작 안내, "모두 되돌리기".

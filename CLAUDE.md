@@ -1,13 +1,15 @@
 # RobinX — Claude 작업 규칙
 
 Windows 올인원 관리 도구 (예전 이름 RobinUninstaller). 언인스톨러(Revo Uninstaller 같은)에서 출발해 저장공간·시작프로그램·최적화까지 넓혀 간다. Tauri 2 + React + shadcn/ui 화면, Rust 엔진.
-전체 계획과 단계별 구현 메모는 [PLAN.md](PLAN.md), 새 PC 설정과 현재 진행 상황은 [docs/HANDOFF.md](docs/HANDOFF.md).
+전체 계획과 단계별 구현 메모는 [PLAN.md](PLAN.md), 새 PC 설정과 현재 진행 상황은 [docs/HANDOFF.md](docs/HANDOFF.md), **할 일 목록과 루프 작업 방법은 [docs/LOOP.md](docs/LOOP.md)**.
 
 ## 사용자와 일하는 방식
 
 - **답변은 항상 한국어로.** 코드 주석·커밋 메시지는 지금처럼 쓰면 된다(주석 한국어, 커밋 메시지 영어).
 - **도구 설치·환경 설정은 사용자에게 시키지 말고 직접 실행한다.** 사용자가 꼭 해야 하는 것(로그인, UAC "예" 누르기 등)만 부탁한다.
 - 작업이 끝나면 이 PC에서 `pnpm check`로 검사하고, 앱을 실제로 띄워 확인한 뒤 커밋·push한다. GitHub CI는 쓰지 않는다(사용자 요청으로 제거함).
+- `/loop`으로 혼자 일할 때는 [docs/LOOP.md](docs/LOOP.md)의 순서를 따른다: 한 바퀴에 할 일 하나, 확인 후 커밋·push, 목록과 기록 갱신. 사용자 손이나 결정이 필요한 항목(🔒)은 건너뛰고 끝에 모아 보고한다.
+- 문서를 고칠 때 `\r`, `\t`, `\n`이 든 Windows 경로가 줄바꿈·탭으로 바뀌지 않게 한다 (Python 문자열로 고치다 실제로 깨진 적이 있다). 고친 뒤 `grep`으로 경로를 다시 본다.
 
 ## 안전 원칙 (반드시 지킬 것)
 
@@ -60,7 +62,7 @@ DevTools 프로토콜(`http://127.0.0.1:9223/json`)로 클릭·캡처한다. 마
 
 ## 코드 구조
 
-- `src/` React 화면 (`features/programs`, `features/leftovers`, `features/storage`, `features/startup`, `features/tracking`, `features/settings`, `features/restore`, `components/`)
+- `src/` React 화면 (`features/programs`, `features/leftovers`, `features/storage`, `features/startup`, `features/tracking`, `features/tweaks`, `features/settings`, `features/restore`, `features/updates`, `components/`)
 - `src-tauri/` Tauri command 계층(얇게 유지) + `worker.rs`(관리자 권한 작업자 모드)
 - `crates/core` 공통 모델 · `crates/discovery` 설치 목록(Store 앱 포함)·아이콘 · `crates/execution` 언인스톨러 실행
 - `crates/scanner` 잔여물 탐지(읽기 전용) · `crates/recovery` 백업·정리·복원 · `crates/fixture` 테스트 앱
@@ -69,5 +71,8 @@ DevTools 프로토콜(`http://127.0.0.1:9223/json`)로 클릭·캡처한다. 마
 - `crates/tracker` 설치 추적: 설치 전후 스냅샷 비교(읽기 전용), 기록은 잔여물 스캔의 근거로 쓴다
 - `crates/settings` 사용자 설정(백업 보관 기간, 잔여물 스캔 제외 목록)
 - `crates/tweaks` 최적화: 항목은 `catalog.rs`에 데이터로 정의(HKCU 공식 설정만, 정책·보안 키 금지는 테스트가 확인). 원래 값을 먼저 기록하고 바꾸며, 되돌릴 때 다른 곳에서 바뀐 값은 덮어쓰지 않는다. 실제 항목은 켜고 끄며 시험하지 않고 `test.fixture`(디버그 전용)로만 시험한다
+
+- `website/` 소개 사이트 (별도 프로젝트, GitHub Pages). 디자인·문구 규칙과 검사 방법은 [website/README.md](website/README.md)
+- `scripts/release.sh` 서명된 설치 파일과 `latest.json` 만들기, `scripts/ui-mock/` 가짜 응답 화면 캡처, `scripts/wine-check.sh` 클라우드용 검사
 
 프론트엔드는 경로가 아니라 ID만 넘긴다. 경로·명령은 항상 Rust 쪽이 자기 데이터에서 찾는다.
