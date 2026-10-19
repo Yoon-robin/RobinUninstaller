@@ -157,7 +157,7 @@ export function StartupPage() {
                 ? "읽지 못했어요"
                 : counts.missing > 0
                   ? "실행할 파일이 사라진 항목이에요"
-                  : "모두 정상이에요"
+                  : "실행 파일이 모두 있어요"
           }
           active={filter === "missing"}
           onClick={counts.missing > 0 || filter === "missing" ? () => toggleFilter("missing") : undefined}

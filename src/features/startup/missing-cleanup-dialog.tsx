@@ -106,9 +106,9 @@ export function MissingCleanupDialog({
               <p className="flex gap-2 border-b bg-muted/20 px-5 py-2.5 text-xs leading-relaxed text-muted-foreground">
                 <ArchiveRestore className="mt-0.5 size-3.5 shrink-0 text-primary" />
                 <span>
-                  Run 값이나 바로 가기, 꺼짐 상태 값을 <b className="text-foreground">백업한 뒤</b> 정리해요. 백업을
-                  보관하는 동안 복구 기록에서 되돌릴 수 있어요. 드라이브를 뺐거나 네트워크 위치라 잠깐 안 보이는 파일일
-                  수도 있으니 이름을 확인하세요. 모든 사용자 항목은 미리 고르지 않았어요.
+                  Run 값이나 바로 가기, 꺼짐 상태 값을 백업한 뒤 정리해요. 백업을 보관하는 동안 복구 기록에서 되돌릴 수
+                  있어요. 드라이브를 뺐거나 네트워크 위치라 잠깐 안 보이는 파일일 수도 있으니 이름을 확인하세요. 모든
+                  사용자 항목은 미리 고르지 않았어요.
                   {skippedTasks > 0 && ` 예약 작업 ${skippedTasks}개는 끄기만 할 수 있어 목록에서 뺐어요.`}
                 </span>
               </p>
