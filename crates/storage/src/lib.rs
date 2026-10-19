@@ -101,8 +101,81 @@ pub fn scan() -> Vec<Category> {
             })
         })
         .collect();
+    out.extend(downloads_category());
     out.sort_by_key(|c| std::cmp::Reverse(c.bytes));
     out
+}
+
+/// 다운로드 폴더에서 "오래된 설치·압축 파일"로 보는 확장자
+const INSTALLER_EXTS: &[&str] = &[
+    "exe",
+    "msi",
+    "msix",
+    "msixbundle",
+    "appx",
+    "zip",
+    "7z",
+    "rar",
+    "iso",
+];
+/// 이보다 오래된 것만 센다 (방금 받은 설치 파일은 아직 쓸 수 있으므로)
+const OLD_DOWNLOAD_DAYS: u64 = 30;
+
+/// `dir` 바로 아래에서 `min_age`보다 오래된 설치·압축 파일 (읽기 전용, 하위 폴더는 보지 않는다)
+pub fn old_installers_in(dir: &Path, min_age: Duration) -> Tally {
+    let mut tally = Tally::default();
+    let now = std::time::SystemTime::now();
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return tally;
+    };
+    for e in entries.flatten() {
+        let Ok(m) = e.metadata() else { continue };
+        if !m.is_file() {
+            continue;
+        }
+        let ext = e
+            .path()
+            .extension()
+            .map(|x| x.to_string_lossy().to_lowercase())
+            .unwrap_or_default();
+        let old = m
+            .modified()
+            .ok()
+            .and_then(|t| now.duration_since(t).ok())
+            .is_some_and(|age| age >= min_age);
+        if INSTALLER_EXTS.contains(&ext.as_str()) && old {
+            tally.bytes += m.len();
+            tally.files += 1;
+        }
+    }
+    tally
+}
+
+/// 다운로드 폴더의 오래된 설치·압축 파일. 사용자 파일이라 지우지 않고 크기와 위치만 알려 준다.
+/// (정리 규칙에 사용자 폴더를 넣으면 테스트가 실패하므로 규칙이 아니라 여기서 따로 계산한다)
+#[cfg(windows)]
+fn downloads_category() -> Option<Category> {
+    let dir = system::downloads_dir()?;
+    let tally = old_installers_in(&dir, Duration::from_secs(OLD_DOWNLOAD_DAYS * 24 * 3600));
+    (tally.bytes > 0).then(|| Category {
+        id: "downloads-installers".into(),
+        name: "다운로드 폴더의 오래된 설치·압축 파일".into(),
+        description: format!("한 달 넘게 지난 .exe·.msi·.zip 같은 파일 {}개", tally.files),
+        why: "이미 설치를 마쳤다면 보통 다시 필요 없지만, 내 파일이라 RobinX는 지우지 않아요.".into(),
+        risk: Risk::Irreversible,
+        kind: Kind::Info,
+        admin: false,
+        default_selected: false,
+        bytes: tally.bytes,
+        files: tally.files,
+        inaccessible: 0,
+        locations: vec![dir.display().to_string()],
+        running: Vec::new(),
+        guidance: Some(
+            "탐색기에서 열어 필요 없는 파일만 직접 지우세요. 지운 파일은 휴지통으로 가서, 비우기 전까지는 되돌릴 수 있어요."
+                .into(),
+        ),
+    })
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -468,6 +541,29 @@ pub fn analyze(dir: &Path, cancel: &AtomicBool) -> Vec<FolderEntry> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn old_installers_only_counts_old_installer_files_at_top_level() {
+        let root = std::env::temp_dir().join(format!("robin-dl-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("sub")).unwrap();
+        for (name, len) in [
+            ("setup.exe", 100),
+            ("Tool.MSI", 50),
+            ("photos.zip", 30),
+            ("report.pdf", 999),
+        ] {
+            std::fs::write(root.join(name), vec![0u8; len]).unwrap();
+        }
+        std::fs::write(root.join("sub").join("inner.exe"), vec![0u8; 500]).unwrap();
+        // 나이 0: 모두 "오래됨" → 설치·압축 파일만, 하위 폴더는 빼고
+        let t = old_installers_in(&root, Duration::ZERO);
+        assert_eq!((t.files, t.bytes), (3, 180));
+        // 방금 만든 파일은 30일 기준으로는 세지 않는다
+        let t = old_installers_in(&root, Duration::from_secs(30 * 24 * 3600));
+        assert_eq!((t.files, t.bytes), (0, 0));
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn largest_files_sorts_filters_and_limits() {

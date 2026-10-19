@@ -354,7 +354,7 @@ function InfoSection({ items }: { items: StorageCategory[] }) {
                 </p>
               )}
             </div>
-            {c.id === "windows-old" ? (
+            {c.id === "hibernation" ? null : c.id === "windows-old" ? (
               <Button size="sm" variant="outline" onClick={() => storageApi.openSettings()}>
                 <Settings2 />
                 저장소 설정 열기

@@ -8,6 +8,18 @@ use windows::Win32::UI::Shell::{
 use windows::core::{HSTRING, PCWSTR};
 
 /// 지금 프로세스가 관리자 권한으로 실행 중인지
+/// 다운로드 폴더 (사용자가 옮겼어도 따른다)
+pub fn downloads_dir() -> Option<std::path::PathBuf> {
+    use windows::Win32::System::Com::CoTaskMemFree;
+    use windows::Win32::UI::Shell::{FOLDERID_Downloads, KF_FLAG_DEFAULT, SHGetKnownFolderPath};
+    unsafe {
+        let p = SHGetKnownFolderPath(&FOLDERID_Downloads, KF_FLAG_DEFAULT, None).ok()?;
+        let s = p.to_string().ok();
+        CoTaskMemFree(Some(p.0 as *const _));
+        s.map(std::path::PathBuf::from)
+    }
+}
+
 pub fn is_elevated() -> bool {
     unsafe { IsUserAnAdmin() }.as_bool()
 }

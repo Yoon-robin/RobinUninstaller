@@ -102,9 +102,14 @@ pub fn resolve(base: Base, rel: &str, env: &impl Fn(&str) -> Option<String>) -> 
     current
         .into_iter()
         .filter(|p| {
-            // 존재하고, 그 자체가 리파스 포인트가 아니며, 기준 폴더 안에 있어야 한다
-            std::fs::symlink_metadata(p).is_ok_and(|m| !is_untouchable(attributes(&m)))
-                && p.starts_with(&root)
+            // 존재하고, 그 자체가 리파스 포인트가 아니며, 기준 폴더 안에 있어야 한다.
+            // 일반 권한으로는 열어 볼 수도 없는 곳(배달 최적화 캐시 등)은 "권한 없음"으로 남겨,
+            // 크기는 모르지만 관리자 권한 항목으로 보여 준다. 관리자 권한 작업자는 같은 함수로 다시 확인한다.
+            let ok = match std::fs::symlink_metadata(p) {
+                Ok(m) => !is_untouchable(attributes(&m)),
+                Err(e) => e.kind() == std::io::ErrorKind::PermissionDenied,
+            };
+            ok && p.starts_with(&root)
         })
         .collect()
 }
@@ -161,8 +166,11 @@ pub fn visit(
 ) -> u64 {
     let now = SystemTime::now();
     let mut inaccessible = 0;
-    let Ok(meta) = std::fs::symlink_metadata(path) else {
-        return 0;
+    let meta = match std::fs::symlink_metadata(path) {
+        Ok(m) => m,
+        // 열어 볼 권한이 없으면 "읽지 못한 폴더"로 센다 (관리자 권한 항목의 크기를 모른다고 알리기 위해)
+        Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => return 1,
+        Err(_) => return 0,
     };
     if is_untouchable(attributes(&meta)) {
         return 0;

@@ -131,6 +131,32 @@ static RULES: &[Rule] = &[
             &[],
         )
     },
+    Rule {
+        admin: true,
+        min_age_hours: 24,
+        ..regen(
+            "windows-update-cache",
+            "Windows 업데이트 다운로드 파일",
+            "Windows 업데이트가 설치하려고 받아 둔 파일",
+            "설치가 끝난 업데이트의 원본이에요. 하루 넘게 손대지 않은 파일만 지우고, 지금 쓰는 파일은 잠겨 있어 건너뛰어요. 필요하면 Windows가 다시 받아요. 관리자 권한이 필요해요.",
+            &[(Base::SystemRoot, r"SoftwareDistribution\Download")],
+            &[],
+        )
+    },
+    Rule {
+        admin: true,
+        ..regen(
+            "delivery-optimization",
+            "배달 최적화 파일",
+            "업데이트를 다른 PC와 나눠 받으려고 Windows가 모아 둔 파일",
+            "Windows가 필요하면 다시 받아요. 지우면 이 PC가 다른 PC에 업데이트를 나눠 주지 못할 뿐이에요. 관리자 권한이 필요해요.",
+            &[(
+                Base::SystemRoot,
+                r"ServiceProfiles\NetworkService\AppData\Local\Microsoft\Windows\DeliveryOptimization\Cache",
+            )],
+            &[],
+        )
+    },
     regen(
         "shader-cache",
         "그래픽 셰이더 캐시",
@@ -370,6 +396,22 @@ static RULES: &[Rule] = &[
         min_age_hours: 0,
         blocked_by: &[],
         guidance: None,
+    },
+    Rule {
+        id: "hibernation",
+        name: "최대 절전 파일 (hiberfil.sys)",
+        description: "최대 절전 모드와 빠른 시작을 위해 Windows가 메모리 크기만큼 잡아 둔 파일",
+        why: "끄면 이 파일이 사라지지만 최대 절전 모드와 빠른 시작도 함께 꺼져요.",
+        risk: Risk::Irreversible,
+        kind: Kind::Info,
+        admin: true,
+        paths: &[(Base::SystemDrive, r"\hiberfil.sys")],
+        min_age_hours: 0,
+        blocked_by: &[],
+        guidance: Some(
+            "최대 절전 모드를 쓰지 않는다면 관리자 권한 명령 프롬프트에서 powercfg /hibernate off 를 실행하면 이 파일이 사라져요. \
+             다시 켜려면 powercfg /hibernate on. 빠른 시작이 꺼져서 PC를 켜는 데 몇 초 더 걸릴 수 있어요.",
+        ),
     },
     Rule {
         id: "windows-old",
