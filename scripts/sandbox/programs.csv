@@ -1,0 +1,21 @@
+id,name,installer,why
+7zip.7zip,7-Zip,wix,MSI 설치·탐색기 오른쪽 클릭 메뉴(셸 확장)
+VideoLAN.VLC,VLC,wix,파일 연결과 AppData 설정
+Notepad++.Notepad++,Notepad++,wix,플러그인 폴더와 AppData 설정
+voidtools.Everything,Everything,wix,서비스 설치와 시작 항목
+ShareX.ShareX,ShareX,inno,문서 폴더에 사용자 파일을 만듦(지우면 안 되는 쪽 시험)
+KeePassXCTeam.KeePassXC,KeePassXC,wix,사용자가 만든 데이터베이스 파일(지우면 안 되는 쪽 시험)
+qBittorrent.qBittorrent,qBittorrent,nullsoft,NSIS 언인스톨러와 AppData·LocalAppData 둘 다
+OBSProject.OBSStudio,OBS Studio,nullsoft,큰 설치 폴더와 가상 카메라 드라이버
+Audacity.Audacity,Audacity,wix,AppData 설정과 임시 폴더
+WinSCP.WinSCP,WinSCP,inno,레지스트리에 설정을 저장(HKCU\Software)
+PuTTY.PuTTY,PuTTY,wix,레지스트리 세션 저장(HKCU\Software\SimonTatham)
+Bandisoft.Bandizip,반디집,exe,국내 압축 프로그램·셸 확장
+Kakao.KakaoTalk,카카오톡,nullsoft,국내 메신저·시작 항목·LocalAppData의 큰 데이터
+Daum.PotPlayer,팟플레이어,nullsoft,국내 동영상 플레이어·파일 연결
+Mozilla.Firefox,Firefox,nullsoft,프로필 폴더(지우면 안 되는 사용자 데이터)와 유지 관리 서비스
+IrfanSkiljan.IrfanView,IrfanView,exe,플러그인과 파일 연결
+Greenshot.Greenshot,Greenshot,inno,시작 항목
+GIMP.GIMP.3,GIMP,inno,큰 설치 폴더와 AppData 설정
+Inkscape.Inkscape,Inkscape,wix,MSI 설치·큰 설치 폴더
+HandBrake.HandBrake,HandBrake,nullsoft,.NET 앱·AppData 설정

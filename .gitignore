@@ -34,3 +34,6 @@ scripts/ui-mock/out/
 
 # 업데이트 서명 비밀 키는 절대 커밋하지 않는다 (원래 %USERPROFILE%\.tauri 에 둔다)
 *.key
+
+# Windows Sandbox 시험 준비물 (설치 파일, 빌드 결과, 캡처)
+scripts/sandbox/out/
