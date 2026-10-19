@@ -7,7 +7,7 @@ Windows용 프로그램 제거·정리 도구입니다. 프로그램을 지운 �
 소개 페이지: https://yoon-robin.github.io/RobinX/
 보안 문제는 공개 이슈 대신 [SECURITY.md](SECURITY.md)의 방법으로 알려 주세요.
 
-> 아직 정식 배포 전입니다. 기능은 테스트용 가짜 앱으로만 검증했고, 공개 설치 파일은 없습니다. 계획은 [PLAN.md](PLAN.md), 다른 PC에서 개발을 이어 가는 방법은 [docs/HANDOFF.md](docs/HANDOFF.md)에 있습니다.
+> 첫 미리보기 버전(v0.1.0)을 [GitHub Releases](https://github.com/Yoon-robin/RobinX/releases/latest)에서 내려받을 수 있습니다. 기능은 테스트용 가짜 앱으로 검증했고, 실제 프로그램을 대상으로 한 검증은 진행 중입니다. 코드 서명 인증서가 없어 처음 실행할 때 SmartScreen 경고가 나올 수 있습니다. 계획은 [PLAN.md](PLAN.md), 다른 PC에서 개발을 이어 가는 방법은 [docs/HANDOFF.md](docs/HANDOFF.md)에 있습니다.
 
 ## 기능
 

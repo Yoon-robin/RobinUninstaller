@@ -1,7 +1,7 @@
-import { ArrowRight } from "lucide-react"
+import { ArrowRight, Download } from "lucide-react"
 import { motion, useReducedMotion } from "motion/react"
 
-import { REPO_URL } from "@/lib/site"
+import { DOWNLOAD_URL, REPO_URL } from "@/lib/site"
 import { GithubIcon } from "@/components/github-icon"
 import { easeOutQuint } from "@/components/motion"
 import { LeftoverDemo } from "@/sections/leftover-demo"
@@ -33,19 +33,22 @@ export function Hero() {
           </motion.p>
           <motion.div {...rise(0.25, reduce)} className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
             <a
-              href={REPO_URL}
+              href={DOWNLOAD_URL}
               target="_blank"
               rel="noreferrer"
               className="inline-flex h-12 items-center gap-2.5 rounded-full bg-primary px-6 text-body font-semibold text-primary-foreground transition-[transform,background-color] hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97]"
             >
-              <GithubIcon className="size-[1.1rem]" />
-              GitHub에서 보기
+              <Download className="size-[1.1rem]" />
+              내려받기 (미리보기 v0.1.0)
             </a>
             <a
-              href="#status"
+              href={REPO_URL}
+              target="_blank"
+              rel="noreferrer"
               className="group inline-flex items-center gap-1.5 text-body font-medium text-primary hover:underline hover:underline-offset-4"
             >
-              설치 파일은 언제 나오나요
+              <GithubIcon className="size-4" />
+              소스 보기
               <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
           </motion.div>
