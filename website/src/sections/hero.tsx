@@ -1,182 +1,68 @@
-import { useRef } from "react"
-import { motion, useReducedMotion, useScroll, useTransform } from "motion/react"
-import { ArrowRight, Archive, ShieldCheck, Sparkles } from "lucide-react"
+import { ArrowRight } from "lucide-react"
+import { motion, useReducedMotion } from "motion/react"
 
 import { REPO_URL } from "@/lib/site"
-import { Button } from "@/components/ui/button"
 import { GithubIcon } from "@/components/github-icon"
 import { easeOutQuint } from "@/components/motion"
-import { WindowFrame, shot } from "@/components/window-frame"
+import { LeftoverDemo } from "@/sections/leftover-demo"
 
-const rise = (delay: number) => ({
-  initial: { opacity: 0, y: 22, filter: "blur(6px)" },
-  animate: { opacity: 1, y: 0, filter: "blur(0px)" },
+const rise = (delay: number, reduce: boolean | null) => ({
+  initial: reduce ? false : { opacity: 0, y: 24 },
+  animate: { opacity: 1, y: 0 },
   transition: { duration: 0.8, delay, ease: easeOutQuint },
 })
 
+/**
+ * 첫 화면: 왼쪽은 제목·한 문장·실행 하나, 오른쪽은 밝은 청록 무대 위의 실제로 움직이는 "남은 흔적" 화면 조각.
+ * 무대는 오른쪽과 아래 가장자리로 넘친다.
+ */
 export function Hero() {
-  const ref = useRef<HTMLDivElement>(null)
   const reduce = useReducedMotion()
-  const { scrollYProgress } = useScroll({ target: ref, offset: ["start start", "end start"] })
-  // 스크롤하면 눕혀 있던 창이 똑바로 선다
-  const rotateX = useTransform(scrollYProgress, [0, 0.45], reduce ? [0, 0] : [16, 0])
-  const scale = useTransform(scrollYProgress, [0, 0.45], reduce ? [1, 1] : [0.94, 1])
-  const glow = useTransform(scrollYProgress, [0, 0.5], [0.55, 0.9])
-
   return (
-    <section id="top" ref={ref} className="relative overflow-hidden pt-36 pb-24 sm:pt-44">
-      {/* 배경: 점 격자 + 청록·보라 빛 번짐 */}
-      <div
-        aria-hidden
-        className="bg-dots absolute inset-0 [mask-image:radial-gradient(ellipse_at_top,black_30%,transparent_70%)]"
-      />
-      <div
-        aria-hidden
-        className="absolute top-[-12rem] left-1/2 h-[36rem] w-[60rem] -translate-x-1/2 rounded-full bg-[radial-gradient(closest-side,oklch(0.82_0.12_190/0.22),transparent)] blur-2xl"
-      />
-      <div
-        aria-hidden
-        className="absolute top-40 left-[65%] h-[24rem] w-[30rem] rounded-full bg-[radial-gradient(closest-side,oklch(0.72_0.15_285/0.18),transparent)] blur-2xl"
-      />
-
-      <div className="relative mx-auto max-w-6xl px-6 text-center">
-        <motion.a
-          {...rise(0.05)}
-          href="#safety"
-          className="group inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1 pr-3 pl-1 text-sm text-muted-foreground backdrop-blur transition-colors hover:border-primary/40 hover:text-foreground"
-        >
-          <span className="shrink-0 rounded-full bg-primary/15 px-2 py-0.5 text-xs font-semibold whitespace-nowrap text-primary">
-            개발 중
-          </span>
-          설치 파일은 아직 없어요 · 안전 원칙 보기
-          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-        </motion.a>
-
-        <motion.h1
-          {...rise(0.12)}
-          className="mx-auto mt-7 max-w-4xl text-5xl leading-[1.08] font-extrabold tracking-tight text-balance sm:text-6xl lg:text-7xl"
-        >
-          Windows를
-          <br />
-          <span className="text-gradient">가볍고 깔끔하게.</span>
-        </motion.h1>
-
-        <motion.p
-          {...rise(0.2)}
-          className="mx-auto mt-6 max-w-2xl text-lg text-pretty text-muted-foreground sm:text-xl"
-        >
-          프로그램 제거부터 남은 흔적 찾기, 저장공간·시작프로그램 관리까지 한곳에서. 지울 항목은{" "}
-          <strong className="font-semibold text-foreground">근거를 보고 직접</strong> 고르고, 남은 흔적은 백업한 뒤
-          정리해요. 캐시처럼 되돌릴 수 없는 것은 미리 알려 드려요.
-        </motion.p>
-
-        <motion.div {...rise(0.28)} className="mt-9 flex flex-wrap items-center justify-center gap-3">
-          <Button asChild size="lg" className="h-12 rounded-xl px-6 text-base shadow-lg shadow-primary/25">
-            <a href={REPO_URL} target="_blank" rel="noreferrer">
-              <GithubIcon className="size-4.5" />
-              개발 현황 보기
+    <section id="top" className="relative overflow-hidden">
+      <div className="frame grid grid-cols-[minmax(0,1fr)] items-center gap-12 pt-10 sm:pt-16 lg:min-h-[calc(100svh-5rem)] lg:grid-cols-12 lg:gap-8 lg:pt-0">
+        <div className="lg:col-span-5 lg:pb-24">
+          <motion.h1 {...rise(0.05, reduce)} className="display">
+            지우기 전에,
+            <br />
+            근거부터.
+          </motion.h1>
+          <motion.p {...rise(0.15, reduce)} className="mt-8 max-w-[34ch] text-lead leading-snug">
+            RobinX는 프로그램을 지운 뒤 남은 파일과 레지스트리를 찾아, 근거를 보여 주고 백업한 다음 정리하는 무료
+            Windows 도구예요.
+          </motion.p>
+          <motion.div {...rise(0.25, reduce)} className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-flex h-12 items-center gap-2.5 rounded-full bg-primary px-6 text-body font-semibold text-primary-foreground transition-[transform,background-color] hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97]"
+            >
+              <GithubIcon className="size-[1.1rem]" />
+              GitHub에서 보기
             </a>
-          </Button>
-          <Button asChild size="lg" variant="outline" className="h-12 rounded-xl px-6 text-base">
-            <a href="#features">
-              기능 살펴보기
-              <ArrowRight />
+            <a
+              href="#status"
+              className="group inline-flex items-center gap-1.5 text-body font-medium text-primary hover:underline hover:underline-offset-4"
+            >
+              설치 파일은 언제 나오나요
+              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
             </a>
-          </Button>
-        </motion.div>
-        <motion.p {...rise(0.34)} className="mt-4 text-sm text-muted-foreground/80">
-          Windows 10 · 11 (x64) · 소스 공개 · 개발 버전을 테스트 앱으로 검증하는 중이에요. 첫 릴리스부터 다운로드할 수
-          있어요
-        </motion.p>
-      </div>
-
-      {/* 앱 화면 */}
-      <div className="relative mx-auto mt-16 max-w-6xl px-6 [perspective:1600px]">
-        <motion.div
-          initial={{ opacity: 0, y: 60 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.1, delay: 0.35, ease: easeOutQuint }}
-        >
-          <motion.div style={{ rotateX, scale, transformOrigin: "50% 0%" }} className="relative">
-            <motion.div
-              aria-hidden
-              style={{ opacity: glow }}
-              className="absolute -inset-x-10 -top-10 -bottom-4 -z-10 rounded-[3rem] bg-[radial-gradient(closest-side,oklch(0.82_0.12_190/0.35),transparent)] blur-3xl"
-            />
-            <WindowFrame
-              src={shot("leftovers")}
-              alt="RobinX 남은 흔적 화면: 항목마다 근거와 위험도가 붙어 있어요"
-              eager
-            />
-
-            <FloatingChip
-              className="top-[18%] -left-4 hidden sm:flex lg:-left-12"
-              delay={1.1}
-              icon={<Sparkles className="size-4 text-primary" />}
-              title="남은 흔적 7개 발견"
-              detail="근거 강함 3 · 검토 필요 4"
-            />
-            <FloatingChip
-              className="top-[46%] -right-4 hidden sm:flex lg:-right-12"
-              delay={1.3}
-              icon={<Archive className="size-4 text-chart-2" />}
-              title="백업 후 정리 완료"
-              detail="204 MB · 복구 기록에 보관"
-            />
-            <FloatingChip
-              className="bottom-[10%] left-[8%] hidden md:flex"
-              delay={1.5}
-              icon={<ShieldCheck className="size-4 text-chart-5" />}
-              title="보호 규칙으로 3개 제외"
-              detail="Windows 핵심 경로는 건드리지 않아요"
-            />
           </motion.div>
-        </motion.div>
-        {/* 아래쪽을 배경으로 자연스럽게 흐리기 */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-40 bg-gradient-to-t from-background to-transparent"
-        />
-      </div>
-      <p className="relative mx-auto mt-2 max-w-6xl px-6 text-center text-xs text-muted-foreground">
-        실제 개발 버전 화면이에요. 화면 속 프로그램 이름과 숫자는 테스트용 예시예요.
-      </p>
-    </section>
-  )
-}
+        </div>
 
-function FloatingChip({
-  className,
-  delay,
-  icon,
-  title,
-  detail,
-}: {
-  className: string
-  delay: number
-  icon: React.ReactNode
-  title: string
-  detail: string
-}) {
-  const reduce = useReducedMotion()
-  return (
-    <motion.div
-      initial={{ opacity: 0, scale: 0.9, y: 10 }}
-      animate={{ opacity: 1, scale: 1, y: 0 }}
-      transition={{ duration: 0.6, delay, ease: easeOutQuint }}
-      className={`absolute z-10 ${className}`}
-    >
-      <motion.div
-        animate={reduce ? undefined : { y: [0, -6, 0] }}
-        transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay }}
-        className="glass liquid flex items-center gap-3 rounded-2xl px-4 py-3 text-left"
-      >
-        <span className="flex size-9 items-center justify-center rounded-xl bg-white/5">{icon}</span>
-        <span>
-          <span className="block text-sm font-semibold">{title}</span>
-          <span className="block text-xs text-muted-foreground">{detail}</span>
-        </span>
-      </motion.div>
-    </motion.div>
+        {/* 무대: 오른쪽·아래로 넘친다. 좁은 화면에서는 양옆으로 넘친다 */}
+        <motion.div
+          initial={reduce ? false : { opacity: 0, y: 48 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 1, delay: 0.3, ease: easeOutQuint }}
+          className="-mx-[clamp(1.25rem,4vw,2.5rem)] min-w-0 lg:col-span-7 lg:mx-0 lg:mr-[calc(-1*(max(0px,(100vw-80rem)/2)+clamp(1.25rem,4vw,2.5rem)))] lg:self-end"
+        >
+          <div className="overflow-hidden bg-stage pt-8 pl-5 sm:pt-14 sm:pl-14 lg:rounded-tl-[1.75rem]">
+            <LeftoverDemo />
+          </div>
+        </motion.div>
+      </div>
+    </section>
   )
 }

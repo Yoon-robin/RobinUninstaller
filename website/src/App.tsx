@@ -1,30 +1,27 @@
-import { lazy, Suspense } from "react"
 import { MotionConfig } from "motion/react"
-
-import { LiquidGlassFilter } from "@/components/liquid-glass"
 
 import { Nav } from "@/sections/nav"
 import { Hero } from "@/sections/hero"
-import { ValueStrip } from "@/sections/features"
-
-const BelowFold = lazy(() => import("@/below-fold"))
-const Footer = lazy(() => import("@/sections/safety").then((m) => ({ default: m.Footer })))
+import { Evidence } from "@/sections/evidence"
+import { Tools } from "@/sections/tools"
+import { Restore } from "@/sections/restore"
+import { Status } from "@/sections/status"
+import { Faq } from "@/sections/faq"
+import { Footer } from "@/sections/footer"
 
 export default function App() {
   return (
     <MotionConfig reducedMotion="user">
-      <LiquidGlassFilter />
       <Nav />
       <main>
         <Hero />
-        <ValueStrip />
-        <Suspense fallback={<div className="min-h-screen" />}>
-          <BelowFold />
-        </Suspense>
+        <Evidence />
+        <Tools />
+        <Restore />
+        <Status />
+        <Faq />
       </main>
-      <Suspense>
-        <Footer />
-      </Suspense>
+      <Footer />
     </MotionConfig>
   )
 }
