@@ -15,7 +15,7 @@ import {
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
-import { storageApi, type CleanResult, type StorageCategory } from "@/lib/api"
+import { storageApi, type CleanEvent, type CleanResult, type StorageCategory } from "@/lib/api"
 import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
@@ -394,12 +394,15 @@ function CleanDialog({
   // 정리가 끝나면 창을 닫지 않고 항목별 결과를 보여 준다
   const [results, setResults] = useState<CleanResult[] | null>(null)
   const [adminError, setAdminError] = useState<string | null>(null)
+  // 정리하는 동안의 진행: 지금 항목, 지금까지 센 것, 끝난 항목들
+  const [live, setLive] = useState<LiveProgress | null>(null)
   // 되돌릴 수 없는 항목의 확인은 창을 열 때마다 새로 받는다
   useEffect(() => {
     if (open) {
       setUnderstood(false)
       setResults(null)
       setAdminError(null)
+      setLive(null)
     }
   }, [open])
   const irreversible = items.filter((c) => c.risk === "irreversible")
@@ -412,14 +415,49 @@ function CleanDialog({
   const run = async () => {
     setBusy(true)
     const allow = irreversible.length > 0 && understood
+    setLive({ startedAt: Date.now(), stage: "normal", current: null, done: [] })
+    const onEvent = (e: CleanEvent) =>
+      setLive((l) => {
+        if (!l) return l
+        if (e.kind === "started")
+          return {
+            ...l,
+            current: {
+              id: e.id,
+              index: e.index,
+              total: e.total,
+              freed: 0,
+              deleted: 0,
+              failed: 0,
+              file: null,
+              since: Date.now(),
+            },
+          }
+        if (e.kind === "progress" && l.current?.id === e.id)
+          return {
+            ...l,
+            current: {
+              ...l.current,
+              freed: e.freedBytes,
+              deleted: e.deletedFiles,
+              failed: e.failedFiles,
+              file: e.current,
+            },
+          }
+        if (e.kind === "finished") return { ...l, current: null, done: [...l.done, e.result] }
+        return l
+      })
     try {
       const results = await storageApi.clean(
         items.map((c) => c.id),
         allow,
+        onEvent,
       )
       const adminIds = results.filter((r) => r.needsAdmin).map((r) => r.id)
       let all = results.filter((r) => !r.needsAdmin)
       if (adminIds.length > 0) {
+        // 관리자 권한 작업자는 따로 도는 프로세스라 중간 소식이 없다. 걸린 시간만 보여 준다.
+        setLive((l) => (l ? { ...l, stage: "admin", current: null } : l))
         try {
           all = all.concat(await storageApi.cleanElevated(adminIds, allow))
         } catch (e) {
@@ -448,8 +486,10 @@ function CleanDialog({
         }
       }}
     >
-      <DialogContent className="sm:max-w-md">
-        {results ? (
+      <DialogContent className="sm:max-w-md" showCloseButton={!busy}>
+        {busy && live ? (
+          <CleanProgressView live={live} items={items} />
+        ) : results ? (
           <CleanResultView
             results={results}
             items={items}
@@ -528,6 +568,152 @@ function CleanDialog({
         )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+interface LiveProgress {
+  startedAt: number
+  /** normal: 이 앱에서 정리 중, admin: 관리자 권한 작업자가 정리 중 */
+  stage: "normal" | "admin"
+  current: {
+    id: string
+    index: number
+    total: number
+    freed: number
+    deleted: number
+    failed: number
+    /** 방금 지운 파일 */
+    file: string | null
+    since: number
+  } | null
+  done: CleanResult[]
+}
+
+function useNow(intervalMs: number) {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    const t = setInterval(() => setNow(Date.now()), intervalMs)
+    return () => clearInterval(t)
+  }, [intervalMs])
+  return now
+}
+
+function formatElapsed(ms: number) {
+  const s = Math.floor(ms / 1000)
+  return s < 60 ? `${s}초` : `${Math.floor(s / 60)}분 ${s % 60}초`
+}
+
+/** 파일 경로를 "…\폴더\파일" 정도로 줄인다 */
+function shortPath(path: string) {
+  const parts = path.split("\\")
+  return parts.length > 3 ? `…\\${parts.slice(-2).join("\\")}` : path
+}
+
+/**
+ * 정리하는 동안의 화면. 지금 항목, 지운 파일 수와 크기, 방금 지운 파일, 걸린 시간, 끝난 항목 기록을 보여 줘
+ * 오래 걸려도 멈춘 것처럼 보이지 않게 한다. 휴지통과 관리자 권한 정리는 중간 진행을 알 수 없어 시간만 센다.
+ */
+function CleanProgressView({ live, items }: { live: LiveProgress; items: StorageCategory[] }) {
+  const now = useNow(500)
+  const nameOf = (id: string) => items.find((c) => c.id === id)?.name ?? id
+  const cur = live.current
+  const curCategory = cur ? items.find((c) => c.id === cur.id) : undefined
+  const doneFreed = live.done.reduce((s, r) => s + r.freedBytes, 0) + (cur?.freed ?? 0)
+  const doneFiles = live.done.reduce((s, r) => s + r.deletedFiles, 0) + (cur?.deleted ?? 0)
+  const target = items.reduce((s, c) => s + c.bytes, 0)
+  // 스캔 때 잰 크기 기준의 대략적인 진행. 끝나기 전에는 100%를 넘기지 않는다.
+  const percent = target > 0 ? Math.min(99, Math.round((doneFreed / target) * 100)) : null
+  const quietFor = cur ? now - cur.since : 0
+
+  return (
+    <>
+      <DialogTitle className="flex items-center gap-2">
+        <Loader2 className="size-5 animate-spin text-primary" />
+        정리하는 중이에요
+      </DialogTitle>
+      <DialogDescription className="tabular-nums">
+        {formatElapsed(now - live.startedAt)} 지남 · 지금까지 파일 {doneFiles.toLocaleString()}개,{" "}
+        {formatBytes(doneFreed)}
+      </DialogDescription>
+
+      <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
+        {percent == null || live.stage === "admin" || curCategory?.kind === "recycleBin" ? (
+          <div className="scan-sweep h-full w-1/3 rounded-full bg-primary" />
+        ) : (
+          <div
+            className="h-full rounded-full bg-primary transition-[width] duration-300"
+            style={{ width: `${percent}%` }}
+          />
+        )}
+      </div>
+
+      <div className="rounded-xl border bg-muted/30 px-3.5 py-3 text-sm" role="status" aria-live="polite">
+        {live.stage === "admin" ? (
+          <>
+            <p className="font-medium">관리자 권한으로 정리하는 중</p>
+            <p className="mt-1 text-xs text-muted-foreground">
+              UAC 창에서 허용하면 따로 실행된 RobinX가 정리해요. 끝나면 결과가 여기에 나와요.
+            </p>
+          </>
+        ) : cur ? (
+          <>
+            <p className="flex items-baseline justify-between gap-3">
+              <span className="min-w-0 truncate font-medium">{nameOf(cur.id)}</span>
+              <span className="shrink-0 text-xs text-muted-foreground tabular-nums">
+                {cur.index + 1} / {cur.total}
+              </span>
+            </p>
+            {curCategory?.kind === "recycleBin" ? (
+              <p className="mt-1 text-xs text-muted-foreground">
+                Windows가 휴지통을 한 번에 비워서 중간 진행은 보이지 않아요.
+                {curCategory.bytes > 1e9 ? ` ${formatBytes(curCategory.bytes)}라 몇 분 걸릴 수 있어요.` : ""} (
+                {formatElapsed(quietFor)} 지남)
+              </p>
+            ) : (
+              <>
+                <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+                  파일 {cur.deleted.toLocaleString()}개 지움 · {formatBytes(cur.freed)}
+                  {cur.failed > 0 && ` · 사용 중 ${cur.failed.toLocaleString()}개 건너뜀`}
+                </p>
+                <p
+                  data-selectable
+                  className="mt-1 truncate font-mono text-[11px] text-muted-foreground/80"
+                  title={cur.file ?? ""}
+                >
+                  {cur.file ? shortPath(cur.file) : "파일을 찾는 중"}
+                </p>
+              </>
+            )}
+          </>
+        ) : (
+          <p className="text-muted-foreground">다음 항목을 준비하는 중</p>
+        )}
+      </div>
+
+      {live.done.length > 0 && (
+        <ul className="max-h-40 divide-y overflow-y-auto rounded-xl border text-xs" aria-label="끝난 항목">
+          {live.done.map((r) => (
+            <li key={r.id} className="flex items-center gap-2 px-3 py-2">
+              <Check
+                className={cn(
+                  "size-3.5 shrink-0",
+                  r.skipped || r.needsAdmin ? "text-muted-foreground" : "text-chart-5",
+                )}
+              />
+              <span className="min-w-0 flex-1 truncate">{nameOf(r.id)}</span>
+              <span className="shrink-0 text-muted-foreground tabular-nums">
+                {r.needsAdmin
+                  ? "관리자 권한 필요"
+                  : r.skipped
+                    ? "건너뜀"
+                    : `${r.deletedFiles.toLocaleString()}개 · ${formatBytes(r.freedBytes)}`}
+              </span>
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="text-xs text-muted-foreground">정리하는 동안에는 창을 닫을 수 없어요.</p>
+    </>
   )
 }
 

@@ -267,6 +267,12 @@ export interface CleanResult {
   needsAdmin: boolean
 }
 
+/** 정리하는 동안 오는 소식 (crates/storage 의 CleanEvent) */
+export type CleanEvent =
+  | { kind: "started"; id: string; index: number; total: number }
+  | { kind: "progress"; id: string; freedBytes: number; deletedFiles: number; failedFiles: number; current: string }
+  | { kind: "finished"; result: CleanResult }
+
 export interface DiskUsage {
   drive: string
   total: number
@@ -296,8 +302,11 @@ export interface FolderAnalysis {
 export const storageApi = {
   diskUsage: () => invoke<DiskUsage>("disk_usage"),
   scan: () => invoke<StorageCategory[]>("scan_storage"),
-  clean: (ids: string[], allowIrreversible: boolean) =>
-    invoke<CleanResult[]>("clean_storage", { ids, allowIrreversible }),
+  clean: (ids: string[], allowIrreversible: boolean, onEvent: (event: CleanEvent) => void) => {
+    const channel = new Channel<CleanEvent>()
+    channel.onmessage = onEvent
+    return invoke<CleanResult[]>("clean_storage", { ids, allowIrreversible, onEvent: channel })
+  },
   cleanElevated: (ids: string[], allowIrreversible: boolean) =>
     invoke<CleanResult[]>("clean_storage_elevated", { ids, allowIrreversible }),
   revealCategory: (id: string) => invoke<void>("reveal_storage_category", { id }),

@@ -132,86 +132,161 @@ impl CleanResult {
     }
 }
 
+/// 정리하는 동안 화면에 보내는 소식. 오래 걸려도 멈춘 것처럼 보이지 않게 한다.
+#[derive(Debug, Clone, Serialize)]
+#[serde(
+    tag = "kind",
+    rename_all = "camelCase",
+    rename_all_fields = "camelCase"
+)]
+pub enum CleanEvent {
+    /// 항목 하나를 시작한다. `index`는 0부터.
+    Started {
+        id: String,
+        index: usize,
+        total: usize,
+    },
+    /// 지금까지의 진행 (자주 보내지 않는다: 약 0.1초마다)
+    Progress {
+        id: String,
+        freed_bytes: u64,
+        deleted_files: u64,
+        failed_files: u64,
+        /// 방금 지운(또는 지우려던) 파일
+        current: String,
+    },
+    /// 항목 하나가 끝났다
+    Finished { result: CleanResult },
+}
+
+/// 진행 소식을 보내는 간격
+const PROGRESS_EVERY: Duration = Duration::from_millis(100);
+
 /// 고른 항목을 정리한다. 되돌릴 수 없는 항목은 `allow_irreversible`이 켜져 있을 때만 지운다.
 #[cfg(windows)]
 pub fn clean(ids: &[String], allow_irreversible: bool) -> Vec<CleanResult> {
+    clean_with_progress(ids, allow_irreversible, &mut |_| {})
+}
+
+/// [`clean`]과 같고, 항목을 시작·진행·끝낼 때마다 `on_event`를 부른다.
+#[cfg(windows)]
+pub fn clean_with_progress(
+    ids: &[String],
+    allow_irreversible: bool,
+    on_event: &mut dyn FnMut(CleanEvent),
+) -> Vec<CleanResult> {
     let running = robin_execution::running_exe_names();
     let elevated = system::is_elevated();
+    let total = ids.len();
 
-    ids.iter()
-        .map(|id| {
-            let Some(rule) = rules::find(id) else {
-                return CleanResult::skipped(id, "알 수 없는 항목이에요");
-            };
-            if rule.kind == Kind::Info {
-                return CleanResult::skipped(id, "직접 정리하는 항목이에요");
-            }
-            if rule.risk == Risk::Irreversible && !allow_irreversible {
-                return CleanResult::skipped(id, "되돌릴 수 없는 항목은 따로 확인해야 지워요");
-            }
-            let blockers = running_blockers(rule, &running);
-            if !blockers.is_empty() {
-                return CleanResult::skipped(
-                    id,
-                    format!("{} 실행 중이라 건너뛰었어요", blockers.join(", ")),
-                );
-            }
-            if rule.admin && !elevated {
-                return CleanResult {
-                    needs_admin: true,
-                    ..CleanResult::skipped(id, "관리자 권한이 필요해요")
-                };
-            }
+    let mut results = Vec::with_capacity(total);
+    for (index, id) in ids.iter().enumerate() {
+        on_event(CleanEvent::Started {
+            id: id.clone(),
+            index,
+            total,
+        });
+        let result = clean_one(id, allow_irreversible, &running, elevated, on_event);
+        on_event(CleanEvent::Finished {
+            result: result.clone(),
+        });
+        results.push(result);
+    }
+    results
+}
 
-            if rule.kind == Kind::RecycleBin {
-                let (bytes, items) = system::recycle_bin_size();
-                // 이미 비어 있으면 Windows가 오류를 돌려주므로 비울 것이 없으면 그대로 끝낸다
-                if items == 0 {
-                    return CleanResult {
-                        skipped: None,
-                        ..CleanResult::skipped(id, "")
-                    };
-                }
-                return match system::empty_recycle_bin() {
-                    Ok(()) => CleanResult {
-                        freed_bytes: bytes,
-                        deleted_files: items,
-                        skipped: None,
-                        ..CleanResult::skipped(id, "")
-                    },
-                    Err(e) => CleanResult::skipped(id, format!("휴지통을 비우지 못했어요: {e}")),
-                };
-            }
+#[cfg(windows)]
+fn clean_one(
+    id: &str,
+    allow_irreversible: bool,
+    running: &std::collections::HashSet<String>,
+    elevated: bool,
+    on_event: &mut dyn FnMut(CleanEvent),
+) -> CleanResult {
+    let Some(rule) = rules::find(id) else {
+        return CleanResult::skipped(id, "알 수 없는 항목이에요");
+    };
+    if rule.kind == Kind::Info {
+        return CleanResult::skipped(id, "직접 정리하는 항목이에요");
+    }
+    if rule.risk == Risk::Irreversible && !allow_irreversible {
+        return CleanResult::skipped(id, "되돌릴 수 없는 항목은 따로 확인해야 지워요");
+    }
+    let blockers = running_blockers(rule, running);
+    if !blockers.is_empty() {
+        return CleanResult::skipped(
+            id,
+            format!("{} 실행 중이라 건너뛰었어요", blockers.join(", ")),
+        );
+    }
+    if rule.admin && !elevated {
+        return CleanResult {
+            needs_admin: true,
+            ..CleanResult::skipped(id, "관리자 권한이 필요해요")
+        };
+    }
 
-            let mut result = CleanResult {
+    if rule.kind == Kind::RecycleBin {
+        let (bytes, items) = system::recycle_bin_size();
+        // 이미 비어 있으면 Windows가 오류를 돌려주므로 비울 것이 없으면 그대로 끝낸다
+        if items == 0 {
+            return CleanResult {
                 skipped: None,
                 ..CleanResult::skipped(id, "")
             };
-            for path in walk::rule_paths(rule, &env) {
-                // 지우는 파일의 실제 위치가 이 폴더 안인지 핸들로 확인한다 (정션 바꿔치기 방지)
-                let Ok(root) = std::fs::canonicalize(&path) else {
-                    continue;
-                };
-                walk::visit(
-                    &path,
-                    min_age(rule),
-                    &mut |file, len| match system::delete_file_within(file, &root) {
-                        Ok(()) => {
-                            result.freed_bytes += len;
-                            result.deleted_files += 1;
-                        }
-                        // 실행 중인 프로그램이 쥐고 있는 파일 등은 건너뛴다
-                        Err(_) => result.failed_files += 1,
-                    },
-                    // 비게 된 하위 폴더만 지운다 (비어 있지 않으면 실패하고 그대로 남는다)
-                    &mut |dir| {
-                        let _ = std::fs::remove_dir(dir);
-                    },
-                );
-            }
-            result
-        })
-        .collect()
+        }
+        // Windows가 한 번에 비우므로 중간 진행은 알 수 없다. 화면은 걸린 시간을 보여 준다.
+        return match system::empty_recycle_bin() {
+            Ok(()) => CleanResult {
+                freed_bytes: bytes,
+                deleted_files: items,
+                skipped: None,
+                ..CleanResult::skipped(id, "")
+            },
+            Err(e) => CleanResult::skipped(id, format!("휴지통을 비우지 못했어요: {e}")),
+        };
+    }
+
+    let mut result = CleanResult {
+        skipped: None,
+        ..CleanResult::skipped(id, "")
+    };
+    let mut last_sent = std::time::Instant::now();
+    for path in walk::rule_paths(rule, &env) {
+        // 지우는 파일의 실제 위치가 이 폴더 안인지 핸들로 확인한다 (정션 바꿔치기 방지)
+        let Ok(root) = std::fs::canonicalize(&path) else {
+            continue;
+        };
+        walk::visit(
+            &path,
+            min_age(rule),
+            &mut |file, len| {
+                match system::delete_file_within(file, &root) {
+                    Ok(()) => {
+                        result.freed_bytes += len;
+                        result.deleted_files += 1;
+                    }
+                    // 실행 중인 프로그램이 쥐고 있는 파일 등은 건너뛴다
+                    Err(_) => result.failed_files += 1,
+                }
+                if last_sent.elapsed() >= PROGRESS_EVERY {
+                    last_sent = std::time::Instant::now();
+                    on_event(CleanEvent::Progress {
+                        id: id.to_string(),
+                        freed_bytes: result.freed_bytes,
+                        deleted_files: result.deleted_files,
+                        failed_files: result.failed_files,
+                        current: file.to_string_lossy().into_owned(),
+                    });
+                }
+            },
+            // 비게 된 하위 폴더만 지운다 (비어 있지 않으면 실패하고 그대로 남는다)
+            &mut |dir| {
+                let _ = std::fs::remove_dir(dir);
+            },
+        );
+    }
+    result
 }
 
 /// 폴더 분석 결과 한 줄

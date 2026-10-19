@@ -815,10 +815,16 @@ async fn scan_storage(cache: State<'_, AppCache>) -> Result<Vec<robin_storage::C
 async fn clean_storage(
     ids: Vec<String>,
     allow_irreversible: bool,
+    on_event: Channel<robin_storage::CleanEvent>,
 ) -> Result<Vec<robin_storage::CleanResult>, String> {
-    tauri::async_runtime::spawn_blocking(move || robin_storage::clean(&ids, allow_irreversible))
-        .await
-        .map_err(|e| e.to_string())
+    tauri::async_runtime::spawn_blocking(move || {
+        // 화면이 닫혀 소식을 못 받아도 정리는 끝까지 한다
+        robin_storage::clean_with_progress(&ids, allow_irreversible, &mut |event| {
+            let _ = on_event.send(event);
+        })
+    })
+    .await
+    .map_err(|e| e.to_string())
 }
 
 /// 관리자 권한 작업자를 띄워(UAC) 정리한다. 작업자는 규칙 ID만 받고 결과를 파일로 남긴다.
