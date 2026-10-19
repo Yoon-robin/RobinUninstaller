@@ -24,6 +24,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { rovingKeyDown } from "@/features/programs/segmented"
+import { ErrorState } from "@/components/error-state"
 
 const groups: { key: TweakGroup; title: string; description: string; icon: typeof ShieldCheck }[] = [
   {
@@ -161,9 +162,14 @@ export function TweaksPage() {
         </FadeUp>
       ) : tweaks.isError ? (
         <FadeUp>
-          <p className="rounded-2xl border border-dashed p-8 text-center text-sm text-muted-foreground">
-            최적화 항목을 읽지 못했어요: {String(tweaks.error)}
-          </p>
+          <ErrorState
+            className="rounded-2xl border border-dashed"
+            title="최적화 항목을 읽지 못했어요"
+            hint="아무것도 바꾸지 않았어요."
+            error={tweaks.error}
+            onRetry={() => tweaks.refetch()}
+            retrying={tweaks.isFetching}
+          />
         </FadeUp>
       ) : (
         groups.map((g) => {

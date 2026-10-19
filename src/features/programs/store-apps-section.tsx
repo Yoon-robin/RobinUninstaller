@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AppIcon } from "./app-icon"
+import { ErrorState } from "@/components/error-state"
 
 const STORE_GRID = "grid grid-cols-[minmax(0,1fr)_minmax(0,10rem)_6.5rem_5.75rem_7rem] items-center gap-4"
 
@@ -109,9 +110,12 @@ export function StoreAppsSection() {
       </div>
 
       {apps.isError ? (
-        <p className="px-5 py-16 text-center text-sm text-destructive">
-          목록을 불러오지 못했어요: {String(apps.error)}
-        </p>
+        <ErrorState
+          title="Store 앱 목록을 읽지 못했어요"
+          error={apps.error}
+          onRetry={() => apps.refetch()}
+          retrying={apps.isFetching}
+        />
       ) : apps.isLoading ? (
         <div className="divide-y">
           {Array.from({ length: 6 }, (_, i) => (

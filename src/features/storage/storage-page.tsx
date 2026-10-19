@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
+  Check,
   ChevronRight,
   FolderOpen,
   Info,
@@ -25,6 +26,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Skeleton } from "@/components/ui/skeleton"
 
 import { FolderAnalysisCard } from "./folder-analysis"
+import { ErrorState } from "@/components/error-state"
 
 const SCAN_KEY = ["storage-scan"]
 const DISK_KEY = ["disk-usage"]
@@ -85,7 +87,12 @@ export function StoragePage() {
           </div>
 
           {scan.isError ? (
-            <p className="px-5 py-12 text-center text-sm text-destructive">찾지 못했어요: {String(scan.error)}</p>
+            <ErrorState
+              title="정리할 수 있는 항목을 찾지 못했어요"
+              error={scan.error}
+              onRetry={() => scan.refetch()}
+              retrying={scan.isFetching}
+            />
           ) : scan.isLoading ? (
             <div className="divide-y">
               {Array.from({ length: 5 }, (_, i) => (
@@ -177,7 +184,9 @@ function DriveCard({
           {formatBytes(disk.total)} 중 <b className="text-foreground tabular-nums">{formatBytes(disk.free)}</b> 남음
         </p>
         {plan > 0 && (
-          <p className="ml-auto text-sm text-primary tabular-nums">정리하면 {formatBytes(disk.free + plan)} 남음</p>
+          <p className="ml-auto text-sm text-primary tabular-nums">
+            다 정리되면 약 {formatBytes(disk.free + plan)} 남음
+          </p>
         )}
       </div>
       <div className="relative mt-3 h-3 overflow-hidden rounded-full bg-muted">
@@ -382,9 +391,16 @@ function CleanDialog({
 }) {
   const [busy, setBusy] = useState(false)
   const [understood, setUnderstood] = useState(false)
+  // 정리가 끝나면 창을 닫지 않고 항목별 결과를 보여 준다
+  const [results, setResults] = useState<CleanResult[] | null>(null)
+  const [adminError, setAdminError] = useState<string | null>(null)
   // 되돌릴 수 없는 항목의 확인은 창을 열 때마다 새로 받는다
   useEffect(() => {
-    if (open) setUnderstood(false)
+    if (open) {
+      setUnderstood(false)
+      setResults(null)
+      setAdminError(null)
+    }
   }, [open])
   const irreversible = items.filter((c) => c.risk === "irreversible")
   const needsAdmin = items.some((c) => c.admin)
@@ -407,22 +423,13 @@ function CleanDialog({
         try {
           all = all.concat(await storageApi.cleanElevated(adminIds, allow))
         } catch (e) {
-          toast.error(String(e))
+          setAdminError(String(e))
+          // 관리자 권한을 받지 못한 항목도 결과 목록에 "건너뜀"으로 남긴다
+          all = all.concat(results.filter((r) => r.needsAdmin))
         }
       }
-      const { freed, failed, skipped } = summarize(all)
-      const notify = freed > 0 ? toast.success : toast.warning
-      notify(freed > 0 ? `${formatBytes(freed)}를 확보했어요` : "확보한 공간이 없어요", {
-        description:
-          [
-            failed > 0 ? `사용 중인 파일 ${failed.toLocaleString()}개는 건너뛰었어요` : null,
-            ...skipped.map((r) => `${items.find((c) => c.id === r.id)?.name ?? r.id}: ${r.skipped}`),
-          ]
-            .filter(Boolean)
-            .join(" · ") || undefined,
-      })
+      setResults(all)
       onDone()
-      onClose()
     } catch (e) {
       toast.error(String(e))
     } finally {
@@ -442,70 +449,155 @@ function CleanDialog({
       }}
     >
       <DialogContent className="sm:max-w-md">
-        <DialogTitle>{formatBytes(total)}를 정리할까요?</DialogTitle>
-        <DialogDescription className="leading-relaxed">
-          아래 항목의 파일을 바로 지워요. 지금 쓰고 있는 파일은 건너뛰어요.
-        </DialogDescription>
-        <ul className="max-h-56 divide-y overflow-y-auto rounded-xl border text-sm">
-          {items.map((c) => (
-            <li
-              key={c.id}
-              className={cn(
-                "flex items-center gap-2 px-3 py-2",
-                c.risk === "irreversible" && !understood && "text-muted-foreground",
-              )}
-            >
-              <span
-                className={cn(
-                  "min-w-0 flex-1 truncate",
-                  c.risk === "irreversible" && !understood && "line-through decoration-muted-foreground/60",
-                )}
-              >
-                {c.name}
-              </span>
-              <RiskBadge category={c} />
-              <span className="w-16 shrink-0 text-right tabular-nums">{formatBytes(c.bytes)}</span>
-            </li>
-          ))}
-        </ul>
-        {irreversible.length > 0 && (
-          <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-destructive/40 bg-destructive/8 p-3 text-sm">
-            <Checkbox checked={understood} onCheckedChange={(v) => setUnderstood(v === true)} className="mt-0.5" />
-            <span>
-              <span className="flex items-center gap-1.5 font-medium text-destructive">
-                <TriangleAlert className="size-4" />
-                되돌릴 수 없는 항목이 있어요
-              </span>
-              <span className="mt-1 block text-muted-foreground">
-                지우면 복구할 수 없어요: {irreversible.map((c) => c.name).join(", ")}. 확인했으면 체크해 주세요.{" "}
-                {onlyIrreversible ? "체크해야 정리할 수 있어요." : "체크하지 않으면 이 항목만 빼고 정리해요."}
-              </span>
-            </span>
-          </label>
-        )}
-        {needsAdmin && (
-          <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-            <ShieldAlert className="size-3.5 text-chart-3" />
-            관리자 권한이 필요한 항목이 있어 UAC 창이 떠요.
-          </p>
-        )}
-        <div className="mt-1 flex justify-end gap-2">
-          <Button
-            variant="outline"
-            onClick={() => {
+        {results ? (
+          <CleanResultView
+            results={results}
+            items={items}
+            adminError={adminError}
+            onClose={() => {
               setUnderstood(false)
               onClose()
             }}
-            disabled={busy}
-          >
-            취소
-          </Button>
-          <Button onClick={run} disabled={busy || (onlyIrreversible && !understood)}>
-            {busy ? <Loader2 className="animate-spin" /> : <Sparkles />}
-            정리하기
-          </Button>
-        </div>
+          />
+        ) : (
+          <>
+            <DialogTitle>{formatBytes(total)}를 정리할까요?</DialogTitle>
+            <DialogDescription className="leading-relaxed">
+              아래 항목의 파일을 바로 지워요. 지금 쓰고 있는 파일은 건너뛰어요.
+            </DialogDescription>
+            <ul className="max-h-56 divide-y overflow-y-auto rounded-xl border text-sm">
+              {items.map((c) => (
+                <li
+                  key={c.id}
+                  className={cn(
+                    "flex items-center gap-2 px-3 py-2",
+                    c.risk === "irreversible" && !understood && "text-muted-foreground",
+                  )}
+                >
+                  <span
+                    className={cn(
+                      "min-w-0 flex-1 truncate",
+                      c.risk === "irreversible" && !understood && "line-through decoration-muted-foreground/60",
+                    )}
+                  >
+                    {c.name}
+                  </span>
+                  <RiskBadge category={c} />
+                  <span className="w-16 shrink-0 text-right tabular-nums">{formatBytes(c.bytes)}</span>
+                </li>
+              ))}
+            </ul>
+            {irreversible.length > 0 && (
+              <label className="flex cursor-pointer items-start gap-2.5 rounded-xl border border-destructive/40 bg-destructive/8 p-3 text-sm">
+                <Checkbox checked={understood} onCheckedChange={(v) => setUnderstood(v === true)} className="mt-0.5" />
+                <span>
+                  <span className="flex items-center gap-1.5 font-medium text-destructive">
+                    <TriangleAlert className="size-4" />
+                    되돌릴 수 없는 항목이 있어요
+                  </span>
+                  <span className="mt-1 block text-muted-foreground">
+                    지우면 복구할 수 없어요: {irreversible.map((c) => c.name).join(", ")}. 확인했으면 체크해 주세요.{" "}
+                    {onlyIrreversible ? "체크해야 정리할 수 있어요." : "체크하지 않으면 이 항목만 빼고 정리해요."}
+                  </span>
+                </span>
+              </label>
+            )}
+            {needsAdmin && (
+              <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                <ShieldAlert className="size-3.5 text-chart-3" />
+                관리자 권한이 필요한 항목이 있어 UAC 창이 떠요. "아니요"를 누르면 그 항목만 빼고 정리해요.
+              </p>
+            )}
+            <div className="mt-1 flex justify-end gap-2">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setUnderstood(false)
+                  onClose()
+                }}
+                disabled={busy}
+              >
+                취소
+              </Button>
+              <Button onClick={run} disabled={busy || (onlyIrreversible && !understood)}>
+                {busy ? <Loader2 className="animate-spin" /> : <Sparkles />}
+                정리하기
+              </Button>
+            </div>
+          </>
+        )}
       </DialogContent>
     </Dialog>
+  )
+}
+
+/** 정리 결과: 항목마다 확보한 공간, 지운 파일 수, 사용 중이라 건너뛴 파일, 건너뛴 이유 */
+function CleanResultView({
+  results,
+  items,
+  adminError,
+  onClose,
+}: {
+  results: CleanResult[]
+  items: StorageCategory[]
+  adminError: string | null
+  onClose: () => void
+}) {
+  const { freed, failed } = summarize(results)
+  return (
+    <>
+      <DialogTitle className="flex items-center gap-2">
+        {freed > 0 ? (
+          <>
+            <Check className="size-5 text-chart-5" />
+            {formatBytes(freed)}를 확보했어요
+          </>
+        ) : (
+          "확보한 공간이 없어요"
+        )}
+      </DialogTitle>
+      <DialogDescription className="leading-relaxed">
+        {failed > 0
+          ? `지금 쓰고 있는 파일 ${failed.toLocaleString()}개는 건너뛰었어요. 해당 프로그램을 닫고 다시 정리하면 더 비울 수 있어요.`
+          : "고른 항목을 정리했어요. 캐시는 프로그램이 필요할 때 다시 만들어요."}
+      </DialogDescription>
+      <ul className="max-h-64 divide-y overflow-y-auto rounded-xl border text-sm">
+        {results.map((r) => {
+          const name = items.find((c) => c.id === r.id)?.name ?? r.id
+          return (
+            <li key={r.id} className="px-3 py-2.5">
+              <div className="flex items-center gap-2">
+                <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
+                <span
+                  className={cn("shrink-0 tabular-nums", r.freedBytes > 0 ? "text-chart-5" : "text-muted-foreground")}
+                >
+                  {r.freedBytes > 0 ? formatBytes(r.freedBytes) : "—"}
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {r.skipped
+                  ? `건너뜀: ${r.skipped}`
+                  : r.needsAdmin
+                    ? "관리자 권한을 받지 못해 건너뛰었어요"
+                    : [
+                        `파일 ${r.deletedFiles.toLocaleString()}개 지움`,
+                        r.failedFiles > 0 ? `사용 중 ${r.failedFiles.toLocaleString()}개 건너뜀` : null,
+                      ]
+                        .filter(Boolean)
+                        .join(" · ")}
+              </p>
+            </li>
+          )
+        })}
+      </ul>
+      {adminError && (
+        <p className="rounded-lg bg-chart-3/10 px-3 py-2 text-xs text-chart-3">
+          관리자 권한 항목은 정리하지 못했어요: {adminError}
+        </p>
+      )}
+      <div className="mt-1 flex justify-end">
+        <Button onClick={onClose}>닫기</Button>
+      </div>
+    </>
   )
 }

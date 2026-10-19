@@ -42,6 +42,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { describeEvidence, kindLabels } from "./evidence"
+import { ErrorState } from "@/components/error-state"
 
 /** `force`: 언인스톨러가 없는 프로그램의 강제 제거. 등록 정보와 파일을 같은 백업 흐름으로 정리한다. */
 export type LeftoverTarget = { id: string; name: string; removed: boolean; force?: boolean }
@@ -123,8 +124,14 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
               ) : scan.isFetching ? (
                 <Scanning key="scanning" />
               ) : scan.isError ? (
-                <div key="error" className="flex flex-1 items-center justify-center p-8 text-sm text-destructive">
-                  찾지 못했어요: {String(scan.error)}
+                <div key="error" className="flex flex-1 items-center justify-center">
+                  <ErrorState
+                    title="남은 흔적을 찾지 못했어요"
+                    hint="아무것도 지우지 않았어요. 다시 찾아보거나 창을 닫아 주세요."
+                    error={scan.error}
+                    onRetry={() => scan.refetch()}
+                    retrying={scan.isFetching}
+                  />
                 </div>
               ) : scan.data ? (
                 <Results
@@ -364,7 +371,9 @@ function Results({
           <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-5 py-2.5 text-xs">
             <SummaryChip tone="primary" label="연결 정보 일치" value={strong.length} />
             <SummaryChip tone="warn" label="직접 확인 필요" value={review.length} />
-            <span className="text-muted-foreground">· {report.durationMs}ms</span>
+            <span className="text-muted-foreground" title={`찾는 데 ${report.durationMs}ms 걸렸어요`}>
+              · {report.durationMs < 1000 ? "1초 안에 찾음" : `${Math.round(report.durationMs / 1000)}초 걸림`}
+            </span>
             {report.protectedSkipped > 0 && (
               <IconTooltip label="Windows 폴더, 여러 프로그램이 함께 쓰는 폴더 등은 점수와 상관없이 건드리지 않아요">
                 <span className="ml-auto flex cursor-default items-center gap-1 text-muted-foreground">

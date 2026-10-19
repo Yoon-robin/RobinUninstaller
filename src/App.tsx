@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ChevronRight } from "lucide-react"
 import { AnimatePresence, MotionConfig, motion } from "motion/react"
@@ -6,6 +6,7 @@ import { AnimatePresence, MotionConfig, motion } from "motion/react"
 import { AppSidebar, type Page } from "@/components/app-sidebar"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { LiquidGlassFilter } from "@/components/liquid-glass"
+import { StartupSplash } from "@/components/startup-splash"
 import { ThemeProvider, ThemeToggle } from "@/components/theme"
 import { WindowControls } from "@/components/window-controls"
 import { LeftoversPage } from "@/features/leftovers/leftovers-page"
@@ -41,6 +42,21 @@ export default function App() {
   // 내용이 제목 표시줄 밑으로 지나가기 시작하면 표시줄을 유리처럼 만든다.
   const [scrolled, setScrolled] = useState(false)
   useEffect(() => setScrolled(false), [page])
+  // 페이지를 옮기면 새 페이지 제목에 포커스를 둔다 (처음 열 때는 건드리지 않는다)
+  const firstPage = useRef(true)
+  useEffect(() => {
+    if (firstPage.current) {
+      firstPage.current = false
+      return
+    }
+    requestAnimationFrame(() => {
+      // 프로그램 목록은 숨겨 둔 채 남아 있으므로 보이는 제목을 고른다
+      const h1 = [...document.querySelectorAll<HTMLElement>("main main h1")].find((el) => el.offsetParent !== null)
+      if (!h1) return
+      h1.tabIndex = -1
+      h1.focus({ preventScroll: true })
+    })
+  }, [page])
 
   // 다른 화면에서 보낸 이동 요청 (예: 정리 완료 → 복구 기록)
   useEffect(() => {
@@ -119,6 +135,7 @@ export default function App() {
               </SidebarInset>
             </SidebarProvider>
             <Toaster position="bottom-right" />
+            <StartupSplash />
           </TooltipProvider>
         </MotionConfig>
       </ThemeProvider>

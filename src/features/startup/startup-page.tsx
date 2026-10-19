@@ -29,6 +29,7 @@ import { Switch } from "@/components/ui/switch"
 import { FilterChips } from "@/features/programs/segmented"
 import { StatCard } from "@/features/programs/stat-card"
 import { MissingCleanupDialog } from "./missing-cleanup-dialog"
+import { ErrorState } from "@/components/error-state"
 
 const QUERY_KEY = ["startup-items"]
 
@@ -127,7 +128,7 @@ export function StartupPage() {
           icon={Power}
           tone="chart-1"
           label="켜진 항목"
-          value={loading ? null : <CountUp value={counts.on} />}
+          value={loading ? null : items.isError ? "—" : <CountUp value={counts.on} />}
           unit="개"
           hint={filter === "on" ? "필터 적용 중 · 다시 누르면 해제" : "로그인할 때 실행돼요"}
           active={filter === "on"}
@@ -137,7 +138,7 @@ export function StartupPage() {
           icon={PowerOff}
           tone="chart-2"
           label="꺼진 항목"
-          value={loading ? null : <CountUp value={counts.off} />}
+          value={loading ? null : items.isError ? "—" : <CountUp value={counts.off} />}
           unit="개"
           hint={filter === "off" ? "필터 적용 중 · 다시 누르면 해제" : "다시 켜면 원래대로 돌아가요"}
           active={filter === "off"}
@@ -147,14 +148,16 @@ export function StartupPage() {
           icon={FileWarning}
           tone={counts.missing > 0 ? "chart-3" : "chart-5"}
           label="파일 없음"
-          value={loading ? null : <CountUp value={counts.missing} />}
+          value={loading ? null : items.isError ? "—" : <CountUp value={counts.missing} />}
           unit="개"
           hint={
             filter === "missing"
               ? "필터 적용 중 · 다시 누르면 해제"
-              : counts.missing > 0
-                ? "실행할 파일이 사라진 항목이에요"
-                : "모두 정상이에요"
+              : items.isError
+                ? "읽지 못했어요"
+                : counts.missing > 0
+                  ? "실행할 파일이 사라진 항목이에요"
+                  : "모두 정상이에요"
           }
           active={filter === "missing"}
           onClick={counts.missing > 0 || filter === "missing" ? () => toggleFilter("missing") : undefined}
@@ -239,9 +242,12 @@ export function StartupPage() {
           </div>
 
           {items.isError ? (
-            <p className="px-5 py-16 text-center text-sm text-destructive">
-              시작 항목을 읽지 못했어요: {String(items.error)}
-            </p>
+            <ErrorState
+              title="시작 항목을 읽지 못했어요"
+              error={items.error}
+              onRetry={() => items.refetch()}
+              retrying={items.isFetching}
+            />
           ) : loading ? (
             <div className="divide-y">
               {Array.from({ length: 6 }, (_, i) => (

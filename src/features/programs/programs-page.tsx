@@ -46,6 +46,7 @@ import { UninstallDialog } from "./uninstall-dialog"
 import { BatchUninstallDialog } from "./batch-uninstall-dialog"
 import { StoreAppsSection } from "./store-apps-section"
 import { LeftoversDialog, type LeftoverTarget } from "@/features/leftovers/leftovers-dialog"
+import { ErrorState } from "@/components/error-state"
 
 type ViewMode = "list" | "grid"
 
@@ -267,7 +268,7 @@ export function ProgramsPage() {
               icon={Package}
               tone="chart-1"
               label="설치된 프로그램"
-              value={loading ? null : <CountUp value={stats.total} />}
+              value={loading ? null : apps.isError ? "—" : <CountUp value={stats.total} />}
               unit="개"
               hint={loading ? undefined : `EXE ${stats.total - stats.msi} · MSI ${stats.msi}`}
             />
@@ -275,7 +276,7 @@ export function ProgramsPage() {
               icon={HardDrive}
               tone="chart-2"
               label="전체 예상 용량"
-              value={loading ? null : <CountUp value={stats.totalKb} format={formatSize} />}
+              value={loading ? null : apps.isError ? "—" : <CountUp value={stats.totalKb} format={formatSize} />}
               hint={
                 sizes.isFetching
                   ? "기록이 없는 프로그램의 크기를 재는 중…"
@@ -288,7 +289,7 @@ export function ProgramsPage() {
               icon={TriangleAlert}
               tone={stats.broken > 0 ? "chart-3" : "chart-5"}
               label="언인스톨러 없음"
-              value={loading ? null : <CountUp value={stats.broken} />}
+              value={loading ? null : apps.isError ? "—" : <CountUp value={stats.broken} />}
               unit="개"
               hint={
                 filter === "broken"
@@ -426,9 +427,12 @@ export function ProgramsPage() {
               </div>
 
               {apps.isError ? (
-                <p className="px-5 py-16 text-center text-sm text-destructive">
-                  목록을 불러오지 못했어요: {String(apps.error)}
-                </p>
+                <ErrorState
+                  title="설치된 프로그램 목록을 읽지 못했어요"
+                  error={apps.error}
+                  onRetry={() => apps.refetch()}
+                  retrying={apps.isFetching}
+                />
               ) : loading ? (
                 <div className="divide-y">
                   {Array.from({ length: 8 }, (_, i) => (

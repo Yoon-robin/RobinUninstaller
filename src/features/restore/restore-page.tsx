@@ -20,6 +20,7 @@ import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
 import { Button } from "@/components/ui/button"
+import { ErrorState } from "@/components/error-state"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 
@@ -72,21 +73,14 @@ export function RestorePage() {
         </FadeUp>
       ) : backups.isError ? (
         <FadeUp>
-          <div
-            role="alert"
-            className="flex flex-col items-center gap-3 rounded-2xl border border-destructive/40 px-6 py-12 text-center"
-          >
-            <p className="font-medium">복구 기록을 읽지 못했어요</p>
-            <p className="max-w-md text-sm text-muted-foreground">
-              기록이 없어진 게 아니라 지금 읽지 못한 거예요. 백업 폴더(%LOCALAPPDATA%\RobinX\backups)는 그대로 있어요.
-            </p>
-            <p data-selectable className="max-w-md font-mono text-xs break-all text-muted-foreground">
-              {String(backups.error)}
-            </p>
-            <Button variant="outline" onClick={() => backups.refetch()} disabled={backups.isFetching}>
-              다시 시도
-            </Button>
-          </div>
+          <ErrorState
+            className="rounded-2xl border border-destructive/40"
+            title="복구 기록을 읽지 못했어요"
+            hint="기록이 없어진 게 아니라 지금 읽지 못한 거예요. 백업 폴더(%LOCALAPPDATA%\RobinX\backups)는 그대로 있어요."
+            error={backups.error}
+            onRetry={() => backups.refetch()}
+            retrying={backups.isFetching}
+          />
         </FadeUp>
       ) : (backups.data ?? []).length === 0 ? (
         <FadeUp>
