@@ -1,21 +1,11 @@
 import { useSyncExternalStore } from "react"
-import {
-  FileArchive,
-  FileVideo,
-  File,
-  FolderOpen,
-  Disc3,
-  Package,
-  Loader2,
-  ScanSearch,
-  Square,
-  RefreshCw,
-} from "lucide-react"
+import { FileArchive, FileVideo, File, FolderOpen, Disc3, Package, ScanSearch, Square, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 
-import { storageApi, type LargeFiles } from "@/lib/api"
+import { storageApi, type LargeFiles, type ScanProgress } from "@/lib/api"
 import { formatBytes } from "@/lib/format"
 import { IconTooltip } from "@/components/icon-tooltip"
+import { ScanProgressView } from "@/components/scan-progress"
 import { Button } from "@/components/ui/button"
 
 /**
@@ -23,8 +13,8 @@ import { Button } from "@/components/ui/button"
  * 사용자 파일은 자동으로 지우지 않는다는 원칙(CLAUDE.md "삭제 원칙")에 따라, 지울지는 사용자가 탐색기에서 정한다.
  * 결과는 화면 밖(모듈)에 둬서 다른 탭에 다녀와도 남는다.
  */
-type State = { result: LargeFiles | null; loading: boolean }
-let state: State = { result: null, loading: false }
+type State = { result: LargeFiles | null; loading: boolean; progress: ScanProgress | null }
+let state: State = { result: null, loading: false, progress: null }
 const listeners = new Set<() => void>()
 function set(patch: Partial<State>) {
   state = { ...state, ...patch }
@@ -36,9 +26,9 @@ function subscribe(listener: () => void) {
 }
 
 async function find() {
-  set({ loading: true })
+  set({ loading: true, progress: null })
   try {
-    const next = await storageApi.findLargeFiles()
+    const next = await storageApi.findLargeFiles((progress) => set({ progress }))
     if (!next.cancelled) set({ result: next })
   } catch (e) {
     toast.error(String(e))
@@ -69,7 +59,7 @@ function folderOf(path: string) {
 }
 
 export function LargeFilesCard() {
-  const { result, loading } = useSyncExternalStore(subscribe, () => state)
+  const { result, loading, progress } = useSyncExternalStore(subscribe, () => state)
   const max = result?.items[0]?.bytes ?? 0
   const total = result?.items.reduce((s, f) => s + f.bytes, 0) ?? 0
 
@@ -103,9 +93,12 @@ export function LargeFilesCard() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 px-5 py-14 text-sm text-muted-foreground" role="status">
-          <Loader2 className="size-4 animate-spin" />C 드라이브를 훑는 중이에요. 파일이 많으면 1~2분 걸릴 수 있어요.
-        </div>
+        <ScanProgressView
+          className="px-5 py-6"
+          label="C 드라이브에서 큰 파일을 찾는 중이에요"
+          progress={progress}
+          hint="파일이 많으면 1~2분 걸릴 수 있어요. 언제든 멈출 수 있어요."
+        />
       ) : !result ? (
         <p className="px-5 py-10 text-center text-sm text-muted-foreground">
           "찾기"를 누르면 Windows 폴더를 뺀 C 드라이브 전체에서 큰 파일을 찾아요.

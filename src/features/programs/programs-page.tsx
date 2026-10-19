@@ -42,6 +42,7 @@ import { ProgramGrid } from "./program-grid"
 import { LIST_GRID, ProgramRow, WIDE_ONLY } from "./program-row"
 import { FilterChips, IconSegmented, TextTabs } from "./segmented"
 import { StatCard } from "./stat-card"
+import { measureAppSizes, sizeProgressText, useAppSizeProgress } from "./app-sizes"
 import { UninstallDialog } from "./uninstall-dialog"
 import { BatchUninstallDialog } from "./batch-uninstall-dialog"
 import { StoreAppsSection } from "./store-apps-section"
@@ -104,10 +105,11 @@ export function ProgramsPage() {
   // 크기 기록이 없는 프로그램은 설치 폴더를 직접 잰다 (목록을 다시 읽을 때마다)
   const sizes = useQuery({
     queryKey: ["app-sizes", apps.dataUpdatedAt],
-    queryFn: api.measureAppSizes,
+    queryFn: measureAppSizes,
     enabled: apps.data != null,
     staleTime: Infinity,
   })
+  const sizeProgress = useAppSizeProgress()
 
   const setView = (next: ViewMode) => {
     setViewState(next)
@@ -279,7 +281,7 @@ export function ProgramsPage() {
               value={loading ? null : apps.isError ? "—" : <CountUp value={stats.totalKb} format={formatSize} />}
               hint={
                 sizes.isFetching
-                  ? "기록이 없는 프로그램의 크기를 재는 중…"
+                  ? `기록이 없는 프로그램의 크기를 재는 중…${sizeProgressText(sizeProgress)}`
                   : stats.measured > 0
                     ? `기록한 크기 + 직접 잰 ${stats.measured}개`
                     : "설치 프로그램이 기록한 크기 기준"

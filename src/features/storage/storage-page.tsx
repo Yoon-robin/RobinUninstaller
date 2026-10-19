@@ -15,7 +15,7 @@ import {
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
-import { storageApi, type CleanEvent, type CleanResult, type StorageCategory } from "@/lib/api"
+import { storageApi, type CleanEvent, type CleanResult, type ScanProgress, type StorageCategory } from "@/lib/api"
 import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
+import { ScanProgressView } from "@/components/scan-progress"
 
 import { FolderAnalysisCard } from "./folder-analysis"
 import { LargeFilesCard } from "./large-files"
@@ -63,11 +64,14 @@ export function StoragePage() {
   const queryClient = useQueryClient()
   // 처음 찾을 때는 다 셀 때까지 기다리지 않고, 찾은 항목부터 크기 순으로 보여 준다
   const [partial, setPartial] = useState<StorageCategory[]>([])
+  // 지금 재는 항목과 센 파일 수 (멈춘 것처럼 보이지 않게)
+  const [progress, setProgress] = useState<ScanProgress | null>(null)
   const scan = useQuery({
     queryKey: SCAN_KEY,
     queryFn: () => {
       setPartial([])
-      return storageApi.scan((item) => setPartial((p) => [...p, item].sort((a, b) => b.bytes - a.bytes)))
+      setProgress(null)
+      return storageApi.scan((item) => setPartial((p) => [...p, item].sort((a, b) => b.bytes - a.bytes)), setProgress)
     },
   })
   const data = scan.data ?? (partial.length > 0 ? partial : undefined)
@@ -129,15 +133,12 @@ export function StoragePage() {
               retrying={scan.isFetching}
             />
           ) : finding && items.length === 0 ? (
-            <div className="divide-y">
-              {Array.from({ length: 5 }, (_, i) => (
-                <div key={i} className="flex items-center gap-4 px-5 py-4">
-                  <Skeleton className="size-4 rounded" />
-                  <Skeleton className="h-4 w-48" />
-                  <Skeleton className="ml-auto h-4 w-16" />
-                </div>
-              ))}
-            </div>
+            <ScanProgressView
+              className="px-5 py-6"
+              label="정리할 수 있는 항목을 찾는 중이에요"
+              progress={progress}
+              showBytes={false}
+            />
           ) : items.length === 0 ? (
             <div className="flex flex-col items-center gap-2 px-5 py-14 text-center">
               <div className="mb-1 flex size-12 items-center justify-center rounded-2xl bg-muted">
@@ -148,6 +149,16 @@ export function StoragePage() {
             </div>
           ) : (
             <ul className="divide-y">
+              {/* 찾은 항목이 계속 늘어나므로 진행 표시는 목록 위에 둔다 (아래에 두면 화면 밖으로 밀려난다) */}
+              {scan.isFetching && (
+                <li className="bg-muted/20 px-5 py-4">
+                  <ScanProgressView
+                    label={finding ? "나머지 항목을 찾는 중이에요" : "다시 찾는 중이에요"}
+                    progress={progress}
+                    showBytes={false}
+                  />
+                </li>
+              )}
               {items.map((c) => (
                 <CategoryRow
                   key={c.id}
@@ -158,12 +169,6 @@ export function StoragePage() {
                   rechecking={scan.isFetching}
                 />
               ))}
-              {finding && (
-                <li className="flex items-center gap-2 px-5 py-3 text-xs text-muted-foreground" role="status">
-                  <Loader2 className="size-3.5 animate-spin" />
-                  나머지 항목을 찾는 중이에요
-                </li>
-              )}
             </ul>
           )}
 

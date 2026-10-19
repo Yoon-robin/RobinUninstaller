@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex};
 
+use robin_core::progress::{Progress, ProgressSnapshot};
 use robin_core::{InstalledApplication, StoreApp};
 use robin_execution::{UninstallEvent, UninstallOutcome};
 use robin_recovery::{Guard, Operation, Store};
@@ -117,21 +118,27 @@ async fn get_app_icon(id: String, cache: State<'_, AppCache>) -> Result<Option<S
 /// 크기 기록이 없는 프로그램의 설치 폴더 크기 (앱 ID → KB, 읽기 전용).
 /// 보호 경로와 여러 프로그램이 같이 쓰는 폴더는 재지 않는다.
 #[tauri::command]
-async fn measure_app_sizes(cache: State<'_, AppCache>) -> Result<HashMap<String, u64>, String> {
+async fn measure_app_sizes(
+    on_progress: Channel<ProgressSnapshot>,
+    cache: State<'_, AppCache>,
+) -> Result<HashMap<String, u64>, String> {
     let apps: Vec<InstalledApplication> = cache
         .apps
         .lock()
         .map(|m| m.values().cloned().collect())
         .unwrap_or_default();
+    let progress = Arc::new(Progress::new());
+    let _ticker = ProgressTicker::start(progress.clone(), on_progress);
     let sizes = tauri::async_runtime::spawn_blocking(move || {
         #[cfg(windows)]
-        return robin_scanner::install_size::install_sizes(
+        return robin_scanner::install_size::install_sizes_with(
             &apps,
             &robin_scanner::protect::KnownFolders::from_env(),
+            &progress,
         );
         #[cfg(not(windows))]
         {
-            let _ = apps;
+            let _ = (apps, progress);
             HashMap::new()
         }
     })
@@ -805,13 +812,19 @@ fn disk_usage() -> Result<DiskUsage, String> {
 #[tauri::command]
 async fn scan_storage(
     on_item: Channel<robin_storage::Category>,
+    on_progress: Channel<ProgressSnapshot>,
     cache: State<'_, AppCache>,
 ) -> Result<Vec<robin_storage::Category>, String> {
-    // 항목을 다 세는 데 몇 초 걸리므로, 찾는 대로 화면에 먼저 보낸다
+    // 항목을 다 세는 데 몇 초 걸리므로, 찾는 대로 화면에 먼저 보내고 지금 재는 항목도 알린다
+    let progress = Arc::new(Progress::new());
+    let _ticker = ProgressTicker::start(progress.clone(), on_progress);
     let items = tauri::async_runtime::spawn_blocking(move || {
-        robin_storage::scan_with(&|c| {
-            let _ = on_item.send(c.clone());
-        })
+        robin_storage::scan_with(
+            &|c| {
+                let _ = on_item.send(c.clone());
+            },
+            &progress,
+        )
     })
     .await
     .map_err(|e| e.to_string())?;
@@ -958,10 +971,51 @@ impl AppCache {
     }
 }
 
+/// 오래 걸리는 작업 동안 [`Progress`]를 짧은 간격으로 화면에 보낸다 (멈춘 것처럼 보이지 않게).
+/// 값이 바뀔 때만 보내고, 버리면(drop) 마지막 상태를 한 번 더 보낸 뒤 멈춘다.
+struct ProgressTicker {
+    stop: Arc<AtomicBool>,
+}
+
+impl ProgressTicker {
+    const INTERVAL: std::time::Duration = std::time::Duration::from_millis(150);
+
+    fn start(progress: Arc<Progress>, channel: Channel<ProgressSnapshot>) -> Self {
+        let stop = Arc::new(AtomicBool::new(false));
+        let flag = stop.clone();
+        std::thread::spawn(move || {
+            let mut last: Option<ProgressSnapshot> = None;
+            loop {
+                let stopping = flag.load(Ordering::Relaxed);
+                let snap = progress.snapshot();
+                if last.as_ref() != Some(&snap) {
+                    // 화면이 닫혀 받을 곳이 없으면 그만 보낸다
+                    if channel.send(snap.clone()).is_err() {
+                        break;
+                    }
+                    last = Some(snap);
+                }
+                if stopping {
+                    break;
+                }
+                std::thread::sleep(Self::INTERVAL);
+            }
+        });
+        Self { stop }
+    }
+}
+
+impl Drop for ProgressTicker {
+    fn drop(&mut self) {
+        self.stop.store(true, Ordering::Relaxed);
+    }
+}
+
 /// 폴더 바로 아래 항목의 크기 (읽기 전용). `id`가 없으면 시스템 드라이브.
 #[tauri::command]
 async fn analyze_folder(
     id: Option<String>,
+    on_progress: Channel<ProgressSnapshot>,
     cache: State<'_, AppCache>,
 ) -> Result<FolderAnalysis, String> {
     let path = match &id {
@@ -979,11 +1033,13 @@ async fn analyze_folder(
         previous.store(true, Ordering::Relaxed);
     }
 
+    let progress = Arc::new(Progress::new());
+    let _ticker = ProgressTicker::start(progress.clone(), on_progress);
     let (entries, cancelled) = {
         let path = path.clone();
         let cancel = cancel.clone();
         tauri::async_runtime::spawn_blocking(move || {
-            let entries = robin_storage::analyze(&path, &cancel);
+            let entries = robin_storage::analyze(&path, &cancel, &progress);
             (entries, cancel.load(Ordering::Relaxed))
         })
         .await
@@ -1036,7 +1092,10 @@ struct LargeFiles {
 /// 시스템 드라이브에서 큰 파일을 찾는다 (읽기 전용). Windows 폴더는 건너뛴다.
 /// 화면은 경로 대신 ID만 받아 [`reveal_folder_item`]으로 탐색기에서 연다.
 #[tauri::command]
-async fn find_large_files(cache: State<'_, AppCache>) -> Result<LargeFiles, String> {
+async fn find_large_files(
+    on_progress: Channel<ProgressSnapshot>,
+    cache: State<'_, AppCache>,
+) -> Result<LargeFiles, String> {
     const MIN_BYTES: u64 = 200 * 1024 * 1024;
     const LIMIT: usize = 40;
     let root = PathBuf::from(system_drive());
@@ -1046,11 +1105,13 @@ async fn find_large_files(cache: State<'_, AppCache>) -> Result<LargeFiles, Stri
     {
         previous.store(true, Ordering::Relaxed);
     }
+    let progress = Arc::new(Progress::new());
+    let _ticker = ProgressTicker::start(progress.clone(), on_progress);
     let (files, cancelled) = {
         let root = root.clone();
         let cancel = cancel.clone();
         tauri::async_runtime::spawn_blocking(move || {
-            let files = robin_storage::largest_files(&root, MIN_BYTES, LIMIT, &cancel);
+            let files = robin_storage::largest_files(&root, MIN_BYTES, LIMIT, &cancel, &progress);
             (files, cancel.load(Ordering::Relaxed))
         })
         .await

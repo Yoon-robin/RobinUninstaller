@@ -83,8 +83,18 @@ pub fn measure_dir(dir: &Path) -> Option<u64> {
 
 /// 크기 기록이 없는 프로그램의 설치 폴더 크기 (앱 ID → KB, 올림). 여러 폴더를 동시에 잰다.
 pub fn install_sizes(apps: &[InstalledApplication], known: &KnownFolders) -> HashMap<String, u64> {
+    install_sizes_with(apps, known, &robin_core::progress::Progress::new())
+}
+
+/// [`install_sizes`]와 같고, 폴더 하나를 다 잴 때마다 `progress`를 올린다 (단위: 프로그램 하나).
+pub fn install_sizes_with(
+    apps: &[InstalledApplication],
+    known: &KnownFolders,
+    progress: &robin_core::progress::Progress,
+) -> HashMap<String, u64> {
     const WORKERS: usize = 4;
     let targets = size_targets(apps, known);
+    progress.set_total(targets.len() as u64);
     if targets.is_empty() {
         return HashMap::new();
     }
@@ -96,7 +106,11 @@ pub fn install_sizes(apps: &[InstalledApplication], known: &KnownFolders) -> Has
                 s.spawn(move || {
                     part.iter()
                         .filter_map(|(id, loc)| {
-                            let bytes = measure_dir(Path::new(loc))?;
+                            progress.set_current(loc);
+                            let bytes = measure_dir(Path::new(loc));
+                            progress.unit_done();
+                            let bytes = bytes?;
+                            progress.add_files(0, bytes);
                             (bytes > 0).then(|| (id.clone(), bytes.div_ceil(1024)))
                         })
                         .collect::<Vec<_>>()

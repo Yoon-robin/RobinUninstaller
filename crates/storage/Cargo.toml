@@ -6,6 +6,7 @@ edition.workspace = true
 license.workspace = true
 
 [dependencies]
+robin-core.workspace = true
 serde.workspace = true
 rayon = "1"
 

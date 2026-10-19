@@ -1,19 +1,20 @@
 import { useSyncExternalStore } from "react"
-import { ArrowUp, File, Folder, FolderOpen, Loader2, Package, Radar, RefreshCw, Square } from "lucide-react"
+import { ArrowUp, File, Folder, FolderOpen, Package, Radar, RefreshCw, Square } from "lucide-react"
 import { toast } from "sonner"
 
-import { navigate, storageApi, type FolderAnalysis } from "@/lib/api"
+import { navigate, storageApi, type FolderAnalysis, type ScanProgress } from "@/lib/api"
 import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { IconTooltip } from "@/components/icon-tooltip"
+import { ScanProgressView } from "@/components/scan-progress"
 import { Button } from "@/components/ui/button"
 
 /**
  * 분석 결과와 진행 상태는 화면 밖(모듈)에 둔다. 다른 탭으로 갔다 와도 결과가 남고, 분석 중이었다면 이어서 보인다.
  * (예전에는 탭을 바꾸면 컴포넌트와 함께 사라져서, 뒤에서 끝난 분석 결과를 버리고 처음 화면으로 돌아갔다)
  */
-type AnalysisState = { result: FolderAnalysis | null; loading: string | null }
-let analysisState: AnalysisState = { result: null, loading: null }
+type AnalysisState = { result: FolderAnalysis | null; loading: string | null; progress: ScanProgress | null }
+let analysisState: AnalysisState = { result: null, loading: null, progress: null }
 const listeners = new Set<() => void>()
 function setAnalysis(patch: Partial<AnalysisState>) {
   analysisState = { ...analysisState, ...patch }
@@ -25,9 +26,9 @@ function subscribe(listener: () => void) {
 }
 
 async function load(id?: string, label?: string) {
-  setAnalysis({ loading: label ?? "드라이브" })
+  setAnalysis({ loading: label ?? "C 드라이브", progress: null })
   try {
-    const next = await storageApi.analyze(id)
+    const next = await storageApi.analyze(id, (progress) => setAnalysis({ progress }))
     // 다른 분석을 시작해 멈춘 결과는 버린다
     if (!next.cancelled) setAnalysis({ result: next })
   } catch (e) {
@@ -39,7 +40,7 @@ async function load(id?: string, label?: string) {
 
 /** 큰 폴더 찾기. 크기를 보여 주고 탐색기로 열어 주기만 한다 (사용자 파일은 지우지 않는다). */
 export function FolderAnalysisCard() {
-  const { result, loading } = useSyncExternalStore(subscribe, () => analysisState)
+  const { result, loading, progress } = useSyncExternalStore(subscribe, () => analysisState)
 
   const max = result?.items[0]?.bytes ?? 0
 
@@ -105,10 +106,12 @@ export function FolderAnalysisCard() {
       )}
 
       {loading ? (
-        <div className="flex items-center justify-center gap-2 px-5 py-14 text-sm text-muted-foreground">
-          <Loader2 className="size-4 animate-spin" />
-          {loading} 크기를 세는 중이에요. 파일이 많으면 1~2분 걸릴 수 있어요.
-        </div>
+        <ScanProgressView
+          className="px-5 py-6"
+          label={`${loading} 크기를 세는 중이에요`}
+          progress={progress}
+          hint="파일이 많으면 1~2분 걸릴 수 있어요. 언제든 멈출 수 있어요."
+        />
       ) : !result ? (
         <p className="px-5 py-10 text-center text-sm text-muted-foreground">
           "분석 시작"을 누르면 C 드라이브부터 폴더별 크기를 세요.

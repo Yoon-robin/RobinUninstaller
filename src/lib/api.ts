@@ -67,7 +67,8 @@ export const api = {
   },
   stopWaitingUninstall: () => invoke<void>("stop_waiting_uninstall"),
   /** 크기 기록이 없는 프로그램의 설치 폴더 크기 (앱 ID → KB) */
-  measureAppSizes: () => invoke<Record<string, number>>("measure_app_sizes"),
+  measureAppSizes: (onProgress?: (p: ScanProgress) => void) =>
+    invoke<Record<string, number>>("measure_app_sizes", { onProgress: progressChannel(onProgress) }),
   /** 프로그램 목록(데스크톱 + Store 앱)을 CSV로 저장. 저장 창을 취소하면 null, 저장하면 파일 이름. */
   exportAppList: () => invoke<string | null>("export_app_list"),
   /** 프로그램 이름으로 웹 검색 (기본 브라우저) */
@@ -315,13 +316,31 @@ export interface FolderAnalysis {
   cancelled: boolean
 }
 
+/** 오래 걸리는 탐색의 진행 상황 (Rust `ProgressSnapshot`). 0.15초마다, 바뀐 것만 온다. */
+export interface ScanProgress {
+  /** 지금까지 살펴본 파일 수와 크기 */
+  files: number
+  bytes: number
+  /** 끝낸 단위(항목·폴더) 수와 전체 수. 전체를 모르면 0 */
+  done: number
+  total: number
+  /** 지금 살펴보는 곳 (항목 이름이나 폴더 경로) */
+  current: string
+}
+
+function progressChannel(onProgress?: (p: ScanProgress) => void) {
+  const channel = new Channel<ScanProgress>()
+  if (onProgress) channel.onmessage = onProgress
+  return channel
+}
+
 export const storageApi = {
   diskUsage: () => invoke<DiskUsage>("disk_usage"),
   /** 정리할 수 있는 항목. `onItem`은 항목을 하나 찾을 때마다 (다 찾기 전에 먼저 보여 주려고) */
-  scan: (onItem?: (item: StorageCategory) => void) => {
+  scan: (onItem?: (item: StorageCategory) => void, onProgress?: (p: ScanProgress) => void) => {
     const channel = new Channel<StorageCategory>()
     if (onItem) channel.onmessage = onItem
-    return invoke<StorageCategory[]>("scan_storage", { onItem: channel })
+    return invoke<StorageCategory[]>("scan_storage", { onItem: channel, onProgress: progressChannel(onProgress) })
   },
   clean: (ids: string[], allowIrreversible: boolean, onEvent: (event: CleanEvent) => void) => {
     const channel = new Channel<CleanEvent>()
@@ -332,11 +351,13 @@ export const storageApi = {
     invoke<CleanResult[]>("clean_storage_elevated", { ids, allowIrreversible }),
   revealCategory: (id: string) => invoke<void>("reveal_storage_category", { id }),
   openSettings: () => invoke<void>("open_storage_settings"),
-  analyze: (id?: string) => invoke<FolderAnalysis>("analyze_folder", { id: id ?? null }),
+  analyze: (id?: string, onProgress?: (p: ScanProgress) => void) =>
+    invoke<FolderAnalysis>("analyze_folder", { id: id ?? null, onProgress: progressChannel(onProgress) }),
   cancelAnalysis: () => invoke<void>("cancel_folder_analysis"),
   revealFolderItem: (id: string) => invoke<void>("reveal_folder_item", { id }),
   /** 시스템 드라이브의 큰 파일 (읽기 전용) */
-  findLargeFiles: () => invoke<LargeFiles>("find_large_files"),
+  findLargeFiles: (onProgress?: (p: ScanProgress) => void) =>
+    invoke<LargeFiles>("find_large_files", { onProgress: progressChannel(onProgress) }),
   cancelLargeFiles: () => invoke<void>("cancel_large_files"),
 }
 

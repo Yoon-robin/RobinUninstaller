@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { Package, Trash2 } from "lucide-react"
+import { Loader2, Package, Trash2 } from "lucide-react"
 
 import { api, canUninstall, navigate, type InstalledApplication } from "@/lib/api"
 import { formatSize } from "@/lib/format"
@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button"
 import { AppIcon } from "@/features/programs/app-icon"
 import { UninstallDialog } from "@/features/programs/uninstall-dialog"
 import { LeftoversDialog, type LeftoverTarget } from "@/features/leftovers/leftovers-dialog"
+import { measureAppSizes, sizeProgressText, useAppSizeProgress } from "@/features/programs/app-sizes"
 
 const TOP = 5
 /** 이보다 작은 프로그램은 공간 확보 추천에 넣지 않는다 (1 GB) */
@@ -23,10 +24,11 @@ export function BigProgramsCard() {
   const apps = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
   const sizes = useQuery({
     queryKey: ["app-sizes", apps.dataUpdatedAt],
-    queryFn: api.measureAppSizes,
+    queryFn: measureAppSizes,
     enabled: apps.data != null,
     staleTime: Infinity,
   })
+  const sizeProgress = useAppSizeProgress()
   const [target, setTarget] = useState<InstalledApplication | null>(null)
   const [leftovers, setLeftovers] = useState<LeftoverTarget | null>(null)
 
@@ -89,6 +91,12 @@ export function BigProgramsCard() {
           )
         })}
       </ul>
+      {sizes.isFetching && (
+        <p className="flex items-center gap-2 border-t px-5 py-2.5 text-xs text-muted-foreground" role="status">
+          <Loader2 className="size-3.5 animate-spin" />
+          크기 기록이 없는 프로그램을 재는 중이에요{sizeProgressText(sizeProgress)}. 순서가 바뀔 수 있어요.
+        </p>
+      )}
 
       <UninstallDialog
         app={target}

@@ -4,6 +4,8 @@
 
 use serde::Serialize;
 
+pub mod progress;
+
 /// 앱 데이터 폴더 이름: `%LOCALAPPDATA%\RobinX`.
 pub const APP_DIR: &str = "RobinX";
 

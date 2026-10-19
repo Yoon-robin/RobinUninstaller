@@ -2830,6 +2830,7 @@ name = "robin-storage"
 version = "0.1.3"
 dependencies = [
  "rayon",
+ "robin-core",
  "robin-execution",
  "serde",
  "windows",

@@ -217,6 +217,15 @@ pub fn visit(
 
 /// 크기만 센다 (읽기 전용)
 pub fn measure(path: &Path, min_age: Duration) -> Tally {
+    measure_with(path, min_age, None)
+}
+
+/// [`measure`]와 같고, 센 파일을 `progress`에도 올린다
+pub fn measure_with(
+    path: &Path,
+    min_age: Duration,
+    progress: Option<&robin_core::progress::Progress>,
+) -> Tally {
     let mut tally = Tally::default();
     tally.inaccessible = visit(
         path,
@@ -224,6 +233,9 @@ pub fn measure(path: &Path, min_age: Duration) -> Tally {
         &mut |_, len| {
             tally.bytes += len;
             tally.files += 1;
+            if let Some(p) = progress {
+                p.add_file(len);
+            }
         },
         &mut |_| {},
     );

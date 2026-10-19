@@ -16,6 +16,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use rayon::prelude::*;
+pub use robin_core::progress::{Progress, ProgressSnapshot};
 use serde::{Deserialize, Serialize};
 
 pub use rules::{Kind, Risk, Rule};
@@ -62,18 +63,30 @@ fn running_blockers(rule: &Rule, running: &std::collections::HashSet<String>) ->
 /// 정리할 수 있는 항목을 찾는다 (읽기 전용). 크기가 0인 항목은 뺀다.
 #[cfg(windows)]
 pub fn scan() -> Vec<Category> {
-    scan_with(&|_| {})
+    scan_with(&|_| {}, &Progress::new())
 }
 
 /// [`scan`]과 같고, 항목 하나를 다 셀 때마다 `on_item`을 부른다 (화면이 찾는 대로 보여 주도록).
-/// 여러 스레드에서 동시에 불릴 수 있다.
+/// 여러 스레드에서 동시에 불릴 수 있다. `progress`에는 끝낸 항목 수, 지금 재는 항목 이름, 센 파일 수가 올라간다.
 #[cfg(windows)]
-pub fn scan_with(on_item: &(dyn Fn(&Category) + Sync)) -> Vec<Category> {
+pub fn scan_with(on_item: &(dyn Fn(&Category) + Sync), progress: &Progress) -> Vec<Category> {
+    let rules: Vec<&Rule> = rules::all().collect();
+    // 규칙들 + 다운로드 폴더
+    progress.set_total(rules.len() as u64 + 1);
+    progress.set_current("실행 중인 프로그램");
     let running = robin_execution::running_exe_names();
-    let mut out: Vec<Category> = rules::all()
-        .collect::<Vec<_>>()
+    // 지금 재고 있는 항목들. 여러 항목을 동시에 재므로, 마지막에 시작한 것 하나가 아니라 아직 안 끝난 것을 모두 보여 준다
+    let active: std::sync::Mutex<Vec<&str>> = std::sync::Mutex::new(Vec::new());
+    let show_active = |change: &dyn Fn(&mut Vec<&'static str>)| {
+        if let Ok(mut a) = active.lock() {
+            change(&mut a);
+            progress.set_current(a.join(", "));
+        }
+    };
+    let mut out: Vec<Category> = rules
         .par_iter()
         .filter_map(|rule| {
+            show_active(&|a| a.push(rule.name));
             let paths = walk::rule_paths(rule, &env);
             let mut tally = Tally::default();
             match rule.kind {
@@ -81,13 +94,16 @@ pub fn scan_with(on_item: &(dyn Fn(&Category) + Sync)) -> Vec<Category> {
                     let (bytes, items) = system::recycle_bin_size();
                     tally.bytes = bytes;
                     tally.files = items;
+                    progress.add_files(items, bytes);
                 }
                 Kind::Files | Kind::Info => {
                     for p in &paths {
-                        tally.add(walk::measure(p, min_age(rule)));
+                        tally.add(walk::measure_with(p, min_age(rule), Some(progress)));
                     }
                 }
             }
+            show_active(&|a| a.retain(|n| *n != rule.name));
+            progress.unit_done();
             // 관리자 항목은 크기를 못 세도(권한 없음) 보여 준다
             let visible = tally.bytes > 0 || (rule.admin && tally.inaccessible > 0);
             visible.then(|| {
@@ -112,10 +128,12 @@ pub fn scan_with(on_item: &(dyn Fn(&Category) + Sync)) -> Vec<Category> {
             })
         })
         .collect();
+    progress.set_current("다운로드 폴더");
     if let Some(downloads) = downloads_category() {
         on_item(&downloads);
         out.push(downloads);
     }
+    progress.unit_done();
     out.sort_by_key(|c| std::cmp::Reverse(c.bytes));
     out
 }
@@ -394,17 +412,24 @@ pub fn largest_files(
     min_bytes: u64,
     limit: usize,
     cancel: &AtomicBool,
+    progress: &Progress,
 ) -> Vec<LargeFile> {
-    let mut out = collect_large(root, min_bytes, cancel);
+    let mut out = collect_large(root, min_bytes, cancel, progress);
     out.sort_by(|a, b| b.bytes.cmp(&a.bytes).then_with(|| a.path.cmp(&b.path)));
     out.truncate(limit);
     out
 }
 
-fn collect_large(dir: &Path, min_bytes: u64, cancel: &AtomicBool) -> Vec<LargeFile> {
+fn collect_large(
+    dir: &Path,
+    min_bytes: u64,
+    cancel: &AtomicBool,
+    progress: &Progress,
+) -> Vec<LargeFile> {
     if cancel.load(Ordering::Relaxed) || in_windows_dir(dir) {
         return Vec::new();
     }
+    progress.set_current(dir.display());
     let Ok(entries) = std::fs::read_dir(dir) else {
         return Vec::new();
     };
@@ -421,7 +446,10 @@ fn collect_large(dir: &Path, min_bytes: u64, cancel: &AtomicBool) -> Vec<LargeFi
         }
         if m.is_dir() {
             dirs.push(e.path());
-        } else if m.len() >= min_bytes {
+            continue;
+        }
+        progress.add_file(m.len());
+        if m.len() >= min_bytes {
             found.push(LargeFile {
                 name: e.file_name().to_string_lossy().into_owned(),
                 path: e.path().to_string_lossy().into_owned(),
@@ -436,7 +464,7 @@ fn collect_large(dir: &Path, min_bytes: u64, cancel: &AtomicBool) -> Vec<LargeFi
     }
     let sub: Vec<LargeFile> = dirs
         .par_iter()
-        .flat_map_iter(|d| collect_large(d, min_bytes, cancel))
+        .flat_map_iter(|d| collect_large(d, min_bytes, cancel, progress))
         .collect();
     found.extend(sub);
     found
@@ -466,10 +494,11 @@ fn in_windows_dir(path: &Path) -> bool {
     })
 }
 
-fn dir_size(path: &Path, cancel: &AtomicBool) -> Tally {
+fn dir_size(path: &Path, cancel: &AtomicBool, progress: &Progress) -> Tally {
     if cancel.load(Ordering::Relaxed) {
         return Tally::default();
     }
+    progress.set_current(path.display());
     let Ok(entries) = std::fs::read_dir(path) else {
         return Tally {
             inaccessible: 1,
@@ -492,11 +521,12 @@ fn dir_size(path: &Path, cancel: &AtomicBool) -> Tally {
         } else {
             tally.bytes += m.len();
             tally.files += 1;
+            progress.add_file(m.len());
         }
     }
     let sub = dirs
         .par_iter()
-        .map(|d| dir_size(d, cancel))
+        .map(|d| dir_size(d, cancel, progress))
         .reduce(Tally::default, |mut a, b| {
             a.add(b);
             a
@@ -506,7 +536,8 @@ fn dir_size(path: &Path, cancel: &AtomicBool) -> Tally {
 }
 
 /// 폴더 바로 아래 항목들의 크기 (큰 것부터). 읽기 전용. `cancel`이 켜지면 중간에 멈춘다.
-pub fn analyze(dir: &Path, cancel: &AtomicBool) -> Vec<FolderEntry> {
+/// `progress`의 단위는 바로 아래 항목 하나다.
+pub fn analyze(dir: &Path, cancel: &AtomicBool, progress: &Progress) -> Vec<FolderEntry> {
     let Ok(entries) = std::fs::read_dir(dir) else {
         return Vec::new();
     };
@@ -514,6 +545,7 @@ pub fn analyze(dir: &Path, cancel: &AtomicBool) -> Vec<FolderEntry> {
         .flatten()
         .filter_map(|e| Some((e.path(), e.metadata().ok()?)))
         .collect();
+    progress.set_total(children.len() as u64);
 
     let mut out: Vec<FolderEntry> = children
         .par_iter()
@@ -526,14 +558,16 @@ pub fn analyze(dir: &Path, cancel: &AtomicBool) -> Vec<FolderEntry> {
                 return None;
             }
             let tally = if m.is_dir() {
-                dir_size(path, cancel)
+                dir_size(path, cancel, progress)
             } else {
+                progress.add_file(m.len());
                 Tally {
                     bytes: m.len(),
                     files: 1,
                     inaccessible: 0,
                 }
             };
+            progress.unit_done();
             Some(FolderEntry {
                 name: path
                     .file_name()
@@ -592,19 +626,19 @@ mod tests {
         write("edge.zip", 2000);
 
         let cancel = AtomicBool::new(false);
-        let found = largest_files(&root, 2000, 3, &cancel);
+        let found = largest_files(&root, 2000, 3, &cancel, &Progress::new());
         let names: Vec<_> = found.iter().map(|f| f.name.as_str()).collect();
         assert_eq!(names, ["bigger.mkv", "big.iso", "mid.bin"]);
         assert!(found.iter().all(|f| f.modified.is_some()));
 
         // 기준보다 작은 파일은 나오지 않는다
-        let all = largest_files(&root, 2000, 100, &cancel);
+        let all = largest_files(&root, 2000, 100, &cancel, &Progress::new());
         assert_eq!(all.len(), 4);
         assert!(all.iter().all(|f| f.bytes >= 2000));
 
         // 멈추면 아무것도 찾지 않는다
         cancel.store(true, Ordering::Relaxed);
-        assert!(largest_files(&root, 1, 100, &cancel).is_empty());
+        assert!(largest_files(&root, 1, 100, &cancel, &Progress::new()).is_empty());
         let _ = std::fs::remove_dir_all(&root);
     }
 }
