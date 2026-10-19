@@ -2804,6 +2804,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "robin-setup"
+version = "0.1.0"
+dependencies = [
+ "serde",
+ "serde_json",
+ "windows",
+ "winreg 0.55.0",
+]
+
+[[package]]
 name = "robin-startup"
 version = "0.1.0"
 dependencies = [
