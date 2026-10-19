@@ -78,7 +78,7 @@ export function RestorePage() {
           <ErrorState
             className="rounded-2xl border border-destructive/40"
             title="복구 기록을 읽지 못했어요"
-            hint="기록이 없어진 게 아니라 지금 읽지 못한 거예요. 백업 폴더(%LOCALAPPDATA%\RobinX\backups)는 그대로 있어요."
+            hint="백업은 지워지지 않았어요. 백업 폴더(%LOCALAPPDATA%\RobinX\backups)에 그대로 있으니 다시 시도해 보세요."
             error={backups.error}
             onRetry={() => backups.refetch()}
             retrying={backups.isFetching}
