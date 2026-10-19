@@ -28,8 +28,7 @@ export function Hero() {
             근거부터.
           </motion.h1>
           <motion.p {...rise(0.15, reduce)} className="mt-8 max-w-[34ch] text-lead leading-snug">
-            RobinX는 프로그램을 지운 뒤 남은 파일과 레지스트리를 찾아, 근거를 보여 주고 백업한 다음 정리하는 무료
-            Windows 도구예요.
+            프로그램을 지워도 남는 파일과 설정 찌꺼기를 찾아 주는 무료 Windows 앱이에요. 지우기 전에 백업해 둬요.
           </motion.p>
           <motion.div {...rise(0.25, reduce)} className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
             <a

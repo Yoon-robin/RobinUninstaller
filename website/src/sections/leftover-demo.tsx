@@ -155,7 +155,7 @@ export function LeftoverDemo() {
                 <div className="min-w-0 flex-1">
                   <p className="font-medium">{cleaned.length}개를 백업하고 정리했어요</p>
                   <p className="mt-0.5 text-[0.8125rem] text-[oklch(0.72_0.006_260)]">
-                    파일은 격리 폴더로, 레지스트리는 내보낸 파일로 복구 기록에 남아 있어요.
+                    지운 항목은 복구 기록에 백업돼 있어요.
                   </p>
                 </div>
                 <button

@@ -2,22 +2,22 @@ import { shot } from "@/lib/site"
 import { Reveal } from "@/components/motion"
 import { cn } from "@/lib/utils"
 
-type Level = "가능" | "조건부" | "불가"
+type Level = "가능" | "백업 있으면" | "불가"
 
 const tone: Record<Level, string> = {
   가능: "text-primary",
-  조건부: "text-[oklch(0.5_0.12_60)]",
+  "백업 있으면": "text-[oklch(0.5_0.12_60)]",
   불가: "text-muted-foreground",
 }
 
 /** 작업별로 무엇을 되돌릴 수 있는지. 사이트에서 가장 정확해야 하는 부분이라 앱의 동작과 똑같이 쓴다. */
 const rows: { task: string; level: Level; note: string }[] = [
-  { task: "시작프로그램 끄기", level: "가능", note: "등록 정보는 그대로 두고 끄기만 해요" },
-  { task: "남은 흔적 정리", level: "조건부", note: "백업을 보관하는 동안 복구 기록에서" },
-  { task: "강제 제거", level: "조건부", note: "백업한 흔적만 돌아와요" },
+  { task: "시작프로그램 끄기", level: "가능", note: "꺼 두기만 하고 지우지 않아요" },
+  { task: "남은 흔적 정리", level: "백업 있으면", note: "백업이 남아 있는 동안 되돌릴 수 있어요" },
+  { task: "강제 제거", level: "백업 있으면", note: "백업해 둔 파일만 돌아와요" },
   { task: "프로그램 제거", level: "불가", note: "프로그램은 다시 설치해야 해요" },
-  { task: "캐시·임시 파일 정리", level: "불가", note: "다시 만들어지는 것만 지워요" },
-  { task: "백업 삭제·기간 만료", level: "불가", note: "그 백업으로는 더 복원할 수 없어요" },
+  { task: "임시 파일 정리", level: "불가", note: "프로그램이 다시 만드는 것만 지워요" },
+  { task: "백업을 지운 뒤", level: "불가", note: "그 백업으로는 더 되돌릴 수 없어요" },
 ]
 
 export function Restore() {
@@ -33,7 +33,7 @@ export function Restore() {
         </Reveal>
         <Reveal delay={0.08}>
           <p className="mt-8 max-w-[36ch] text-lead leading-snug">
-            조건부는 백업이 남아 있고 원래 자리에 같은 이름이 새로 생기지 않았을 때만 되돌린다는 뜻이에요.
+            '백업 있으면'은 백업을 지우기 전까지 되돌릴 수 있다는 뜻이에요.
           </p>
         </Reveal>
         <ul className="mt-12 flex flex-col">
@@ -60,8 +60,8 @@ export function Restore() {
             className="w-full rounded-[1.25rem] bg-night"
           />
           <p className="mt-5 max-w-[52ch] text-body text-muted-foreground">
-            복구 기록. 원래 자리에 같은 이름이 새로 생겼으면 덮어쓰지 않고 알려 줘요. 백업은 직접 지우거나 정해 둔 보관
-            기간이 지나야 사라져요.
+            복구 기록 화면. 되돌릴 자리에 같은 이름의 파일이 새로 생겼으면 덮어쓰지 않고 알려 줘요. 백업은 직접 지우거나
+            30일이 지나면 사라져요.
           </p>
         </div>
       </Reveal>
