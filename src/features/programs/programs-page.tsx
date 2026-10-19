@@ -243,10 +243,10 @@ export function ProgramsPage() {
               1
             </span>
             <div className="min-w-0 flex-1">
-              <p className="font-medium">이렇게 시작해 보세요</p>
+              <p className="font-medium">제거는 오른쪽 클릭 메뉴에서 시작해요</p>
               <p className="mt-1 text-muted-foreground">
-                지울 프로그램을 오른쪽 클릭해 <b className="text-foreground">제거</b>를 고르세요. 제거가 끝나면 남은
-                흔적을 찾아 백업한 뒤 정리할 수 있어요. 지우지 않고 무엇이 남을지 먼저 보려면{" "}
+                지울 프로그램을 오른쪽 클릭해 <b className="text-foreground">제거</b>를 고르면, 끝난 뒤 남은 흔적을 찾아
+                백업하고 정리할 수 있어요. 지우기 전에 무엇이 남을지 보려면{" "}
                 <b className="text-foreground">흔적 미리 보기</b>를 고르세요.
               </p>
             </div>
@@ -296,7 +296,7 @@ export function ProgramsPage() {
                   ? "필터 적용 중 · 다시 누르면 해제"
                   : stats.broken > 0
                     ? "눌러서 해당 항목만 보기"
-                    : "모두 정상이에요"
+                    : "모든 프로그램에 언인스톨러가 있어요"
               }
               active={filter === "broken"}
               onClick={

@@ -117,7 +117,7 @@ function ConfirmBody({
   return (
     <div className="flex flex-col gap-4 p-5">
       <p className="text-sm leading-relaxed">
-        이 프로그램의 <b>기본 언인스톨러</b>를 실행해요. 언인스톨러 창이 열리면 안내에 따라 제거를 진행해 주세요.
+        이 프로그램에 들어 있는 언인스톨러를 실행해요. 언인스톨러 창이 열리면 안내에 따라 진행해 주세요.
       </p>
       <ul className="flex flex-col gap-2 rounded-xl border bg-muted/30 p-3.5 text-xs text-muted-foreground">
         {needsAdmin && (
@@ -127,12 +127,11 @@ function ConfirmBody({
           </li>
         )}
         <li className="flex gap-2">
-          <Check className="size-4 shrink-0 text-primary" />
-          RobinX는 파일이나 레지스트리를 직접 지우지 않아요.
+          <Check className="size-4 shrink-0 text-primary" />이 단계에서 RobinX는 파일이나 레지스트리를 지우지 않아요.
         </li>
         <li className="flex gap-2">
           <Check className="size-4 shrink-0 text-primary" />
-          끝나면 정말 제거됐는지 다시 확인해요.
+          끝나면 설치 정보를 다시 읽어 제거됐는지 확인해요.
         </li>
       </ul>
       <CommandPreview command={uninstallCommandPreview(app)} />
@@ -345,7 +344,7 @@ function describe(outcome: UninstallOutcome) {
       return {
         icon: CircleAlert,
         toneClass: "bg-chart-3/15 text-chart-3",
-        title: "아직 설치되어 있어요",
+        title: "아직 설치돼 있어요",
         body:
           outcome.exitCode === 1602
             ? "언인스톨러에서 취소한 것 같아요."
