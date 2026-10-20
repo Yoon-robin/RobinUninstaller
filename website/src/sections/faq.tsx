@@ -1,40 +1,62 @@
 import { REPO_URL } from "@/lib/site"
 import { Reveal } from "@/components/motion"
 
-const faqs = [
+type Faq = { q: string; a: string }
+
+/** 받기 전에 가장 많이 궁금한 것 (안전·되돌리기·받기·인터넷) */
+const core: Faq[] = [
   {
-    q: "어디서 내려받나요?",
-    a: "위의 '내려받기'를 누르면 GitHub에서 설치 파일을 받을 수 있어요. 처음 실행할 때 'Windows의 PC 보호' 창이 뜰 수 있는데, 아직 Microsoft의 유료 게시자 인증을 받지 않은 새 앱이라 그래요. '추가 정보'를 누르고 '실행'을 누르면 설치돼요. 그 뒤로는 새 버전이 나오면 앱이 알려 줘요.",
+    q: "어디서 받고, 어떻게 확인하나요?",
+    a: "GitHub 공식 릴리스에서만 받으세요(이 사이트의 다운로드 단추도 그 파일로 연결돼요). 아직 Microsoft 게시자 서명이 없어 처음 실행할 때 Windows가 경고 창을 띄울 수 있어요. 실행하기 전에 릴리스 페이지의 SHA-256과 받은 파일의 값(PowerShell의 Get-FileHash)이 같은지 확인하고, 출처를 확인할 수 없는 파일은 실행하지 마세요.",
   },
   {
     q: "지운 건 다 되돌릴 수 있나요?",
-    a: "남은 흔적은 지우기 전에 백업해 두므로, 백업이 남아 있는 동안 되돌릴 수 있어요. 임시 파일은 프로그램이 다시 만드는 것만 지우고, 지운 뒤에는 되돌릴 수 없어요.",
+    a: "아니요. 남은 흔적은 지우기 전에 백업하므로, 백업이 남아 있는 동안 되돌릴 수 있어요. 프로그램 자체의 제거와 임시 파일·휴지통 정리는 되돌릴 수 없어요.",
   },
   {
-    q: "정리하면 공간이 바로 늘어나나요?",
-    a: "임시 파일을 지우면 바로 늘어나요. 남은 흔적은 되돌릴 수 있게 백업해 두기 때문에, 백업을 지우거나 30일이 지나 자동으로 지워질 때 공간이 생겨요.",
-  },
-  {
-    q: "백업은 어디에 있나요?",
-    a: "이 PC 안, 내 계정의 RobinX 폴더에만 보관돼요. 다른 곳으로 보내지 않아요.",
+    q: "내 파일이 지워지지는 않나요?",
+    a: "바탕 화면·문서·다운로드 안의 파일은 미리 고르지 않고, 그 폴더 자체는 목록에 넣지 않아요. 고른 항목도 백업한 뒤에 정리해요.",
   },
   {
     q: "인터넷으로 무엇이 나가나요?",
-    a: "RobinX가 인터넷에 연결하는 건 새 버전이 나왔는지 확인할 때뿐이에요. 설정에서 끌 수 있어요. 내 PC의 프로그램 목록이나 사용 기록은 보내지 않아요.",
-  },
-  {
-    q: "관리자 권한이 필요한가요?",
-    a: "평소에는 그냥 실행돼요. 이 PC의 모든 사용자용으로 설치된 프로그램을 정리할 때만 Windows가 '이 앱이 디바이스를 변경하도록 허용하시겠어요?'라고 물어요.",
-  },
-  {
-    q: "소스 코드를 볼 수 있나요?",
-    a: "네, 누구나 볼 수 있게 GitHub에 공개돼 있어요. 무엇을 어떻게 지우는지 직접 확인할 수 있고, 자유롭게 쓰고 고칠 수 있어요(Apache 2.0 라이선스).",
+    a: "저절로 하는 건 새 버전이 있는지 확인하는 것뿐이에요(설정에서 끌 수 있어요). 프로그램 메뉴의 '웹에서 검색'을 직접 누르면 그 프로그램 이름과 게시자가 기본 브라우저의 검색어로 들어가요. 설치된 프로그램 목록이나 정리 기록은 어디로도 보내지 않아요.",
   },
 ]
 
+const more: Faq[] = [
+  {
+    q: "정리하면 공간이 바로 늘어나나요?",
+    a: "임시 파일은 바로 늘어나요. 남은 흔적은 백업으로 옮겨 두기 때문에, 백업을 지우거나 보관 기간이 지나 지워질 때 공간이 생겨요.",
+  },
+  {
+    q: "백업은 어디에 있나요?",
+    a: "이 PC 안, 내 계정의 RobinX 폴더(%LOCALAPPDATA%\\RobinX\\backups)에만 있어요.",
+  },
+  {
+    q: "관리자 권한이 필요한가요?",
+    a: "평소에는 필요 없어요. 모든 사용자용으로 설치된 프로그램을 정리할 때만 Windows가 권한을 허용할지 물어요.",
+  },
+  {
+    q: "소스 코드를 볼 수 있나요?",
+    a: "네, GitHub에 공개돼 있어요(Apache 2.0). 무엇을 어떻게 지우는지 직접 확인할 수 있어요.",
+  },
+]
+
+function List({ items }: { items: Faq[] }) {
+  return (
+    <dl className="grid gap-x-12 gap-y-10 sm:grid-cols-2">
+      {items.map((f) => (
+        <div key={f.q}>
+          <dt className="text-lead leading-snug font-semibold tracking-tight">{f.q}</dt>
+          <dd className="mt-3 text-body leading-relaxed text-muted-foreground">{f.a}</dd>
+        </div>
+      ))}
+    </dl>
+  )
+}
+
 /**
- * 질문과 답을 모두 펼쳐 둔다. 하나씩 골라 보는 방식은 큰 화면에서 오른쪽 아래가 비어 보였고,
- * 답을 보려면 질문마다 눌러야 했다. 제목은 왼쪽에 붙어 있고 목록이 옆에서 지나간다.
+ * 질문과 답은 모두 펼쳐 둔다 (눌러야 보이면 찾기 어렵다). 받기 전에 궁금한 네 가지를 먼저, 나머지는 아래에.
  */
 export function Faq() {
   return (
@@ -48,7 +70,7 @@ export function Faq() {
               질문
             </h2>
           </Reveal>
-          <Reveal delay={0.08}>
+          <Reveal>
             <a
               href={`${REPO_URL}/issues`}
               target="_blank"
@@ -61,14 +83,15 @@ export function Faq() {
         </div>
       </div>
 
-      <dl className="grid gap-x-12 gap-y-12 sm:grid-cols-2 lg:col-span-8">
-        {faqs.map((f, i) => (
-          <Reveal key={f.q} delay={0.06 + (i % 2) * 0.06} y={12}>
-            <dt className="text-lead leading-snug font-semibold tracking-tight">{f.q}</dt>
-            <dd className="mt-3 text-body leading-relaxed text-muted-foreground">{f.a}</dd>
-          </Reveal>
-        ))}
-      </dl>
+      <div className="flex flex-col gap-14 lg:col-span-8">
+        <Reveal>
+          <List items={core} />
+        </Reveal>
+        <Reveal>
+          <h3 className="mb-8 text-body font-semibold text-muted-foreground">그 밖의 질문</h3>
+          <List items={more} />
+        </Reveal>
+      </div>
     </section>
   )
 }

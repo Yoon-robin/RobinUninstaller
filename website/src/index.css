@@ -65,7 +65,7 @@
   --secondary: oklch(0.972 0.002 286);
   --secondary-foreground: oklch(0.2 0.006 260);
   --muted: oklch(0.972 0.002 286);
-  --muted-foreground: oklch(0.47 0.008 286);
+  --muted-foreground: oklch(0.43 0.008 286); /* 흰 바탕에서 7:1 이상 */
   --accent: oklch(0.972 0.002 286);
   --accent-foreground: oklch(0.2 0.006 260);
   --destructive: oklch(0.55 0.2 25);
@@ -115,14 +115,14 @@
   }
   .display {
     font-size: var(--text-display);
-    line-height: 1.02;
+    line-height: 1.08;
     letter-spacing: -0.035em;
     font-weight: 700;
     text-wrap: balance;
   }
   .section-title {
     font-size: var(--text-section);
-    line-height: 1.08;
+    line-height: 1.13;
     letter-spacing: -0.03em;
     font-weight: 700;
     text-wrap: balance;

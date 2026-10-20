@@ -1,13 +1,13 @@
 import { useRef, useState } from "react"
-import { Menu } from "lucide-react"
+import { Download, Menu } from "lucide-react"
 
-import { LOGO, REPO_URL } from "@/lib/site"
+import { LOGO, RELEASE, REPO_URL } from "@/lib/site"
 import { GithubIcon } from "@/components/github-icon"
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 export const links = [
-  { href: "#features", label: "기능" },
   { href: "#evidence", label: "남은 흔적" },
+  { href: "#features", label: "기능" },
   { href: "#restore", label: "되돌리기" },
   { href: "#status", label: "개발 현황" },
   { href: "#faq", label: "FAQ" },
@@ -23,7 +23,7 @@ function goTo(href: string) {
   el.focus({ preventScroll: true })
 }
 
-/** 평범한 막대: 이름, 링크 몇 개, 실행 하나. 떠 있거나 흐린 유리는 쓰지 않는다. */
+/** 평범한 막대: 이름, 링크 몇 개, 내려받기 하나. GitHub는 아이콘 링크로 둔다. 떠 있거나 흐린 유리는 쓰지 않는다. */
 export function Nav() {
   const [menuOpen, setMenuOpen] = useState(false)
   const pendingTarget = useRef<string | null>(null)
@@ -49,11 +49,17 @@ export function Nav() {
         href={REPO_URL}
         target="_blank"
         rel="noreferrer"
-        aria-label="GitHub에서 보기"
-        className="ml-auto inline-flex h-10 items-center gap-2 rounded-full bg-foreground px-4 text-body font-medium text-background transition-[transform,background-color] hover:bg-foreground/85 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97] md:ml-0"
+        aria-label="GitHub에서 소스 보기"
+        className="ml-auto hidden size-11 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:inline-flex md:ml-0"
       >
-        <GithubIcon className="size-4" />
-        <span className="hidden sm:inline">GitHub</span>
+        <GithubIcon className="size-5" />
+      </a>
+      <a
+        href={RELEASE.downloadUrl}
+        className="ml-auto inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-body font-semibold text-primary-foreground transition-[transform,background-color] hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97] sm:ml-0"
+      >
+        <Download className="size-4" />
+        다운로드
       </a>
 
       {/* 좁은 화면: 메뉴 버튼 → 옆에서 나오는 패널 */}
@@ -62,7 +68,7 @@ export function Nav() {
           <button
             type="button"
             aria-label="메뉴 열기"
-            className="-mr-2 inline-flex size-10 items-center justify-center rounded-full transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:hidden"
+            className="-mr-2 inline-flex size-11 items-center justify-center rounded-full transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:hidden"
           >
             <Menu className="size-5" />
           </button>
@@ -96,6 +102,15 @@ export function Nav() {
                 {l.label}
               </a>
             ))}
+            <a
+              href={REPO_URL}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-4 flex items-center gap-2.5 rounded-xl px-3 py-3 text-lead font-medium transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            >
+              <GithubIcon className="size-5" />
+              GitHub
+            </a>
           </nav>
         </SheetContent>
       </Sheet>

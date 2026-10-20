@@ -5,35 +5,39 @@ import { shot } from "@/lib/site"
 import { Reveal } from "@/components/motion"
 
 /**
- * 앱의 기능을 Apple 제품 페이지의 타일(벤토)로 보여 준다. 회색 구역 위에 흰 타일.
- * 그림은 앱 화면의 오른쪽 내용 부분만 확대해 잘라 보여 준다 (사이드바는 빼고).
+ * 남은 흔적 말고 앱에 있는 도구. 흰 구역 위에 회색 타일.
+ * 중요한 순서대로 크기를 다르게 한다: 제거(넓게)와 복구 기록(옆), 저장공간·시작프로그램(반반), 그림 없는 두 기능은 한 줄.
  */
 type Tile = {
   name: string
   text: string
-  /** 타일 넓이 (큰 화면에서 6칸 중) */
+  /** 큰 화면에서 6칸 중 넓이 */
   span: string
-  shot?: string
-  alt?: string
-  /** 그림을 얼마나 확대하고 어디서부터 보여 줄지 */
-  crop?: CSSProperties
+  shot: string
+  alt: string
+  /** 그림 틀의 높이 (기본: 고정 높이). 넓고 낮게 자른 그림은 비율로 정해 아래가 비지 않게 한다 */
+  frame?: string
+  /** 앱 화면에서 보여 줄 부분: 사이드바를 빼고 내용만 확대한다 (그림 너비 대비 비율이라 화면 너비가 바뀌어도 같은 부분이 보인다) */
+  crop: CSSProperties
 }
 
 const tiles: Tile[] = [
   {
-    name: "남은 흔적 정리",
-    text: "제거한 뒤 남은 파일과 레지스트리를 찾아요. 확실한 것은 미리 고르고, 애매한 것은 직접 보고 고르게 나눠요. 고른 것만 백업한 뒤 지워요.",
+    name: "프로그램 제거",
+    text: "설치된 프로그램과 크기를 보고, 원래 언인스톨러로 지워요. 끝나면 바로 남은 흔적을 찾아 줘요.",
     span: "lg:col-span-4",
-    shot: "leftovers",
-    alt: "남은 흔적 화면: 미리 고른 항목과 직접 확인할 항목이 나뉘어 있어요",
-    crop: { width: "160%", marginLeft: "-32%", marginTop: "-6%" },
+    shot: "programs",
+    alt: "설치된 프로그램 화면: 프로그램 수, 전체 용량, 언인스톨러가 없는 프로그램 수와 목록",
+    // 안내·요약 카드 아래의 목록 부분 (이름·게시자·크기·설치일)
+    crop: { width: "128%", marginLeft: "-27%", marginTop: "-41%" },
+    frame: "aspect-[5/2]",
   },
   {
     name: "복구 기록",
-    text: "정리할 때마다 백업이 남아서, 원래 자리로 되돌릴 수 있어요.",
+    text: "정리할 때마다 백업이 남아요. 보관하는 동안 원래 자리로 되돌릴 수 있어요.",
     span: "lg:col-span-2",
     shot: "restore",
-    alt: "복구 기록 화면",
+    alt: "복구 기록 화면: 정리한 작업마다 되돌리기 단추가 있어요",
     crop: { width: "210%", marginLeft: "-56%", marginTop: "-8%" },
   },
   {
@@ -52,55 +56,73 @@ const tiles: Tile[] = [
     alt: "시작프로그램 화면",
     crop: { width: "150%", marginLeft: "-30%", marginTop: "-6%" },
   },
+]
+
+/** 그림 없이 설명하는 두 기능: 한 타일 안에서 반씩 */
+const pairs = [
   {
     name: "강제 제거",
-    text: "제거 기능이 없거나 고장 난 프로그램도 남은 파일을 찾아 백업한 뒤 정리해요. 백신 같은 보안 프로그램과 장치 드라이버는 다루지 않아요.",
-    span: "lg:col-span-3",
+    text: "언인스톨러가 없거나 고장 난 프로그램도 등록 정보와 남은 파일을 찾아 백업한 뒤 정리해요. 백신·VPN 같은 보안 프로그램과 장치 드라이버는 다루지 않아요.",
   },
   {
     name: "설치 추적",
-    text: "새 프로그램을 설치할 때 무엇이 새로 생겼는지 기록해 둬요. 나중에 지울 때 그 기록으로 남은 흔적을 더 정확히 찾아요.",
-    span: "lg:col-span-3",
+    text: "새 프로그램을 설치하는 동안 무엇이 새로 생겼는지 기록해 둬요. 나중에 지울 때 그 기록을 남은 흔적을 찾는 근거로 써요.",
   },
 ]
 
+function Shot({ t }: { t: Tile }) {
+  return (
+    <div
+      className={cn("mt-auto ml-7 overflow-hidden rounded-tl-[1rem] bg-background sm:ml-8", t.frame ?? "h-56 sm:h-72")}
+    >
+      <img
+        src={shot(t.shot)}
+        alt={t.alt}
+        width={1280}
+        height={800}
+        loading="lazy"
+        decoding="async"
+        className="block max-w-none"
+        style={t.crop}
+      />
+    </div>
+  )
+}
+
 export function Features() {
   return (
-    <section id="features" className="bg-muted py-20 sm:py-28 lg:py-32">
+    <section id="features" className="py-20 sm:py-28 lg:py-32">
       <div className="frame">
         <Reveal className="mx-auto max-w-3xl text-center">
           <h2 className="section-title">RobinX로 할 수 있는 일</h2>
-          <p className="mx-auto mt-5 max-w-[40ch] text-lead leading-snug text-balance text-muted-foreground">
-            프로그램 제거 말고도 PC를 정리할 때 쓰는 도구가 들어 있어요.
+          <p className="mx-auto mt-5 max-w-[38ch] text-lead leading-snug text-balance text-muted-foreground">
+            프로그램 제거에서 시작해, PC를 정리할 때 쓰는 도구가 들어 있어요.
           </p>
         </Reveal>
 
-        <div className="mt-14 grid gap-4 sm:mt-16 sm:gap-5 lg:grid-cols-6">
+        <div className="mt-12 grid gap-4 sm:mt-14 sm:gap-5 lg:grid-cols-6">
           {tiles.map((t, i) => (
             <Reveal
               key={t.name}
-              delay={0.04 * (i % 3)}
-              className={cn("flex flex-col overflow-hidden rounded-[1.75rem] bg-background", t.span)}
+              delay={0.04 * (i % 2)}
+              className={cn("flex flex-col overflow-hidden rounded-[1.75rem] bg-muted", t.span)}
             >
               <div className="p-7 sm:p-8">
-                <h3 className="text-lead leading-snug text-balance font-semibold tracking-tight">{t.name}</h3>
-                <p className="mt-2 max-w-[46ch] text-body text-muted-foreground">{t.text}</p>
+                <h3 className="text-lead leading-snug font-semibold tracking-tight">{t.name}</h3>
+                <p className="mt-2 max-w-[42ch] text-body text-muted-foreground">{t.text}</p>
               </div>
-              {t.shot && (
-                <div className="mt-auto ml-7 h-56 overflow-hidden rounded-tl-[1rem] bg-muted sm:ml-8 sm:h-72">
-                  <img
-                    src={shot(t.shot)}
-                    alt={t.alt}
-                    width={1280}
-                    height={800}
-                    loading="lazy"
-                    className="block max-w-none"
-                    style={t.crop}
-                  />
-                </div>
-              )}
+              <Shot t={t} />
             </Reveal>
           ))}
+
+          <Reveal className="grid gap-8 rounded-[1.75rem] bg-muted p-7 sm:p-8 md:grid-cols-2 md:gap-12 lg:col-span-6">
+            {pairs.map((p) => (
+              <div key={p.name}>
+                <h3 className="text-lead leading-snug font-semibold tracking-tight">{p.name}</h3>
+                <p className="mt-2 max-w-[46ch] text-body text-muted-foreground">{p.text}</p>
+              </div>
+            ))}
+          </Reveal>
         </div>
       </div>
     </section>

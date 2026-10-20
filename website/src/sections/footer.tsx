@@ -1,32 +1,31 @@
-import { REPO_URL } from "@/lib/site"
+import { RELEASES_URL, REPO_URL } from "@/lib/site"
 
-/** 조용한 한 줄. 위에서 이미 할 말을 다 했으니 마무리만 한다. */
+const links = [
+  { href: REPO_URL, label: "소스" },
+  { href: RELEASES_URL, label: "릴리스" },
+  { href: `${REPO_URL}/blob/main/SECURITY.md`, label: "보안 문제 알리기" },
+  { href: `${REPO_URL}/blob/main/LICENSE`, label: "Apache-2.0" },
+  { href: `${REPO_URL}/issues`, label: "의견 남기기" },
+]
+
+/** 조용한 마무리. 받기·소스·보안 신고·라이선스를 한 줄에. */
 export function Footer() {
   return (
-    <footer className="frame grid gap-2 py-8 text-fine sm:grid-cols-[1fr_auto_1fr] sm:items-baseline sm:gap-6">
-      <p className="text-muted-foreground">RobinX · Windows 정리 도구</p>
+    <footer className="frame grid gap-3 py-8 text-fine sm:grid-cols-[1fr_auto] sm:items-baseline sm:gap-6">
+      <p className="text-muted-foreground">RobinX · Windows 정리 도구 · 화면 속 프로그램과 숫자는 예시예요</p>
       <nav aria-label="바닥 링크" className="flex flex-wrap gap-x-6 gap-y-1">
-        <a href={REPO_URL} target="_blank" rel="noreferrer" className="hover:underline hover:underline-offset-4">
-          GitHub
-        </a>
-        <a
-          href={`${REPO_URL}/issues`}
-          target="_blank"
-          rel="noreferrer"
-          className="hover:underline hover:underline-offset-4"
-        >
-          의견 남기기
-        </a>
-        <a
-          href={`${REPO_URL}/blob/main/LICENSE`}
-          target="_blank"
-          rel="noreferrer"
-          className="hover:underline hover:underline-offset-4"
-        >
-          Apache-2.0
-        </a>
+        {links.map((l) => (
+          <a
+            key={l.label}
+            href={l.href}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex min-h-11 items-center hover:underline hover:underline-offset-4 sm:min-h-0"
+          >
+            {l.label}
+          </a>
+        ))}
       </nav>
-      <p className="text-muted-foreground sm:text-right">화면 속 프로그램과 숫자는 설명을 위한 예시예요</p>
     </footer>
   )
 }

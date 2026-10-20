@@ -17,8 +17,8 @@ export default function App() {
       <Nav />
       <main>
         <Hero />
-        <Features />
         <Evidence />
+        <Features />
         <Walkthrough />
         <Restore />
         <Status />
