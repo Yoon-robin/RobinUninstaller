@@ -43,6 +43,16 @@ pnpm exec vite --port 1420 --strictPort        # 앱 개발 서버 (pnpm tauri d
 node website/scripts/capture.mjs               # 서버가 localhost(::1)에만 열리면 UI_MOCK_URL=http://localhost:1420/
 ```
 
+## 앱 녹화 (public/demo)
+
+"제거한 뒤 정리하는 장면" 영상(소리 없음, 반복)과 포스터. 가짜 응답(테스트 앱 Fixture Notes)으로만 찍는다.
+
+```bash
+pnpm exec vite --port 1420 --strictPort                      # 앱 개발 서버
+node node_modules/playwright-core/cli.js install ffmpeg      # 처음 한 번
+CHROMIUM_PATH=<chrome.exe> node scripts/ui-mock/record-demo.mjs   # 앞부분을 잘라 VP9로 다시 인코딩
+```
+
 ## 공유 이미지 (public/og.png)
 
 첫 화면과 같은 구성의 1200×630 그림. 바꾸면 `index.html`의 `og:image` 주소 뒤 `?v=` 숫자를 올려 SNS가 다시 받게 한다.
