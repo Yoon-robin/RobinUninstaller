@@ -75,7 +75,7 @@ export default function App() {
         <MotionConfig reducedMotion="user">
           {/* 첫 툴팁은 잠깐 기다렸다가, 이어서 옮겨 다닐 때는 바로 뜬다. */}
           <TooltipProvider delayDuration={400} skipDelayDuration={300}>
-            <UpdatesProvider>
+            <UpdatesProvider ready={ready}>
               <motion.div
                 className="h-svh"
                 initial={reduce ? false : { opacity: 0, scale: 0.985 }}

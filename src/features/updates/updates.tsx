@@ -13,15 +13,14 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
  * 자동 업데이트 (Tauri updater).
  * - GitHub Releases의 latest.json을 읽어 새 버전이 있는지 본다. 업데이트 파일은 서명을 확인한 뒤에만 설치한다
  *   (공개 키는 tauri.conf.json, 비밀 키는 배포하는 사람의 PC에만 있다).
- * - 앱을 켜고 잠시 뒤 확인하고, 새 버전이 있으면 업데이트 창을 바로 띄운다. 나중에로 닫아도 사이드바에 계속 남는다.
+ * - 앱 코드를 읽자마자(시작 화면이 보이는 동안) 확인을 시작하고, 새 버전이 있으면 시작 화면이 걷히자마자 업데이트 창을
+ *   띄운다. 나중에로 닫아도 사이드바에 계속 남는다.
  *   켜 둔 채로 오래 쓰면 몇 시간마다 다시 확인한다 (이때는 작업을 가리지 않게 사이드바에만 알린다).
  * - 설치는 사용자가 "지금 업데이트"를 누를 때만 한다. 설치하면 앱이 닫혔다 다시 열리므로, 정리 도중에 저절로 닫히면 안 된다.
  */
 
 const AUTO_KEY = "robin.updates.autoCheck"
 const LAST_KEY = "robin.updates.lastChecked"
-/** 시작 화면과 첫 목록 읽기가 끝난 뒤에 확인한다 */
-const STARTUP_DELAY_MS = 6000
 /** 켜 둔 채로 쓰는 동안 다시 확인하는 간격 */
 const RECHECK_MS = 6 * 60 * 60 * 1000
 
@@ -82,13 +81,18 @@ async function runCheck(): Promise<CheckResult> {
   }
 }
 
-export function UpdatesProvider({ children }: { children: ReactNode }) {
+// 켤 때 확인은 화면을 그리기 전에 바로 시작한다. 시작 화면이 보이는 동안 받아 오므로 기다리는 시간이 거의 없다.
+let startupCheck: Promise<CheckResult> | null = readBool(AUTO_KEY, true) ? runCheck() : null
+
+/** `ready`: 시작 화면이 걷혔는지. 그 전에 새 버전을 찾으면 창은 걷힌 뒤에 띄운다. */
+export function UpdatesProvider({ ready, children }: { ready: boolean; children: ReactNode }) {
   const [version, setVersion] = useState<string | null>(null)
   const [autoCheck, setAutoCheckState] = useState(() => readBool(AUTO_KEY, true))
   const [lastChecked, setLastChecked] = useState<number | null>(() => readNumber(LAST_KEY))
   const [checking, setChecking] = useState(false)
   const [pending, setPending] = useState<Update | null>(null)
   const [open, setOpen] = useState(false)
+  const [popupWanted, setPopupWanted] = useState(false)
   // 한 번 띄운 창을 다시 확인할 때마다 또 띄우지 않는다
   const shownRef = useRef<string | null>(null)
 
@@ -107,10 +111,7 @@ export function UpdatesProvider({ children }: { children: ReactNode }) {
     }
   }
 
-  const checkNow = useCallback(async (manual: boolean, popup = manual) => {
-    setChecking(true)
-    const result = await runCheck()
-    setChecking(false)
+  const applyResult = useCallback((result: CheckResult, manual: boolean, popup: boolean) => {
     const now = Date.now()
     setLastChecked(now)
     try {
@@ -122,7 +123,7 @@ export function UpdatesProvider({ children }: { children: ReactNode }) {
       setPending(result.update)
       if (manual || (popup && shownRef.current !== result.update.version)) {
         shownRef.current = result.update.version
-        setOpen(true)
+        setPopupWanted(true)
       }
     } else if (manual) {
       if (result.kind === "latest") toast.success("최신 버전을 쓰고 있어요")
@@ -130,17 +131,43 @@ export function UpdatesProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // 앱을 켜고 잠시 뒤 확인하고(새 버전이면 창을 띄운다), 그 뒤로는 몇 시간마다 사이드바에만 알린다.
-  // 정리(cleanup)에서 타이머를 지우므로 개발 모드에서 효과가 두 번 돌아도 확인은 한 번만 한다.
+  const checkNow = useCallback(
+    async (manual: boolean, popup = manual) => {
+      setChecking(true)
+      const result = await runCheck()
+      setChecking(false)
+      applyResult(result, manual, popup)
+    },
+    [applyResult],
+  )
+
+  // 켤 때 확인 결과를 받고(새 버전이면 창을 띄운다), 그 뒤로는 몇 시간마다 사이드바에만 알린다.
+  // 켤 때 확인은 모듈을 읽을 때 한 번만 시작하므로 개발 모드에서 효과가 두 번 돌아도 한 번만 확인한다.
+  // 설정에서 자동 확인을 나중에 켜면 그때 새로 확인한다.
   useEffect(() => {
     if (!autoCheck) return
-    const first = setTimeout(() => void checkNow(false, true), STARTUP_DELAY_MS)
+    let alive = true
+    startupCheck ??= runCheck()
+    const first = startupCheck
+    void first.then((result) => {
+      if (!alive) return
+      if (startupCheck === first) startupCheck = null
+      applyResult(result, false, true)
+    })
     const again = setInterval(() => void checkNow(false, false), RECHECK_MS)
     return () => {
-      clearTimeout(first)
+      alive = false
       clearInterval(again)
     }
-  }, [autoCheck, checkNow])
+  }, [autoCheck, applyResult, checkNow])
+
+  // 시작 화면이 걷힌 뒤에 창을 띄운다
+  useEffect(() => {
+    if (ready && popupWanted) {
+      setPopupWanted(false)
+      setOpen(true)
+    }
+  }, [ready, popupWanted])
 
   return (
     <UpdatesContext.Provider
