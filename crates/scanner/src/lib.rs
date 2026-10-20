@@ -12,6 +12,7 @@ pub mod model;
 pub mod msi_guid;
 pub mod names;
 pub mod protect;
+mod walk;
 
 #[cfg(windows)]
 mod files;

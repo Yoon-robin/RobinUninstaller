@@ -9,12 +9,6 @@ use crate::model::{Evidence, Leftover, LeftoverKind};
 use crate::names::{NameMatch, match_name, matches_publisher};
 use crate::protect::{is_within, protected_path_reason};
 
-/// 사용자가 만든 문서로 보는 확장자. 이런 파일이 있으면 감점하고 경고한다.
-const DOCUMENT_EXTENSIONS: &[&str] = &[
-    "doc", "docx", "xls", "xlsx", "ppt", "pptx", "pdf", "hwp", "hwpx", "odt", "ods", "psd", "ai",
-    "indd", "prproj", "aep", "blend", "flp", "als", "kra", "xcf", "cr2", "nef", "arw", "dng",
-];
-
 const WALK_LIMIT: usize = 50_000;
 
 pub fn scan(ctx: &ScanContext, out: &mut Vec<Leftover>, protected: &mut usize) {
@@ -195,47 +189,13 @@ fn push(
     out.push(item);
 }
 
-/// 폴더 크기와 문서 파일 수, 끝까지 셌는지 (최대 WALK_LIMIT개까지만 센다).
-/// 사용자가 만든 문서 파일로 보이는지 (확장자 기준)
+/// 사용자가 만든 문서로 보이는지 (확장자 기준)
 pub(crate) fn is_document(path: &Path) -> bool {
-    path.extension()
-        .map(|e| e.to_string_lossy().to_lowercase())
-        .is_some_and(|ext| DOCUMENT_EXTENSIONS.contains(&ext.as_str()))
+    path.file_name().is_some_and(crate::walk::is_document_name)
 }
 
+/// 폴더 크기와 문서 파일 수, 끝까지 셌는지 (최대 WALK_LIMIT개까지만 센다). 여러 스레드로 읽는다.
 pub(crate) fn measure(dir: &Path) -> (u64, usize, bool) {
-    let mut size = 0u64;
-    let mut docs = 0usize;
-    let mut stack = vec![dir.to_path_buf()];
-    let mut visited = 0usize;
-    while let Some(d) = stack.pop() {
-        let Ok(entries) = std::fs::read_dir(&d) else {
-            continue;
-        };
-        for entry in entries.flatten() {
-            visited += 1;
-            if visited > WALK_LIMIT {
-                return (size, docs, false);
-            }
-            let Ok(ft) = entry.file_type() else { continue };
-            // 심볼릭 링크·정션은 따라가지 않는다 (다른 위치를 잘못 세거나 지우는 것 방지)
-            if ft.is_symlink() {
-                continue;
-            }
-            if ft.is_dir() {
-                stack.push(entry.path());
-            } else {
-                size += entry.metadata().map(|m| m.len()).unwrap_or(0);
-                let ext = entry
-                    .path()
-                    .extension()
-                    .map(|e| e.to_string_lossy().to_lowercase())
-                    .unwrap_or_default();
-                if DOCUMENT_EXTENSIONS.contains(&ext.as_str()) {
-                    docs += 1;
-                }
-            }
-        }
-    }
-    (size, docs, true)
+    let t = crate::walk::tally(dir, WALK_LIMIT);
+    (t.size, t.docs, t.complete)
 }

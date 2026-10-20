@@ -4,7 +4,7 @@
 //! 공유 폴더)와 다른 프로그램과 같이 쓰거나 다른 프로그램 폴더를 품은 위치는 재지 않는다.
 
 use std::collections::HashMap;
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use robin_core::InstalledApplication;
 
@@ -55,30 +55,8 @@ pub fn measure_dir(dir: &Path) -> Option<u64> {
     if !std::fs::symlink_metadata(dir).ok()?.is_dir() {
         return None;
     }
-    let mut size = 0u64;
-    let mut visited = 0usize;
-    let mut stack: Vec<PathBuf> = vec![dir.to_path_buf()];
-    while let Some(d) = stack.pop() {
-        let Ok(entries) = std::fs::read_dir(&d) else {
-            continue;
-        };
-        for entry in entries.flatten() {
-            visited += 1;
-            if visited > ENTRY_LIMIT {
-                return None;
-            }
-            let Ok(ft) = entry.file_type() else { continue };
-            if ft.is_symlink() {
-                continue;
-            }
-            if ft.is_dir() {
-                stack.push(entry.path());
-            } else {
-                size += entry.metadata().map(|m| m.len()).unwrap_or(0);
-            }
-        }
-    }
-    Some(size)
+    let t = crate::walk::tally(dir, ENTRY_LIMIT);
+    t.complete.then_some(t.size)
 }
 
 /// 크기 기록이 없는 프로그램의 설치 폴더 크기 (앱 ID → KB, 올림). 여러 폴더를 동시에 잰다.
@@ -92,37 +70,21 @@ pub fn install_sizes_with(
     known: &KnownFolders,
     progress: &robin_core::progress::Progress,
 ) -> HashMap<String, u64> {
-    const WORKERS: usize = 4;
+    // 폴더 하나를 여러 스레드로 읽으므로(walk.rs) 폴더는 차례로 잰다. 폴더를 스레드에 나눠 주면
+    // 큰 폴더 하나를 맡은 스레드만 오래 걸린다.
     let targets = size_targets(apps, known);
     progress.set_total(targets.len() as u64);
-    if targets.is_empty() {
-        return HashMap::new();
-    }
-    let chunk = targets.len().div_ceil(WORKERS);
-    std::thread::scope(|s| {
-        let handles: Vec<_> = targets
-            .chunks(chunk)
-            .map(|part| {
-                s.spawn(move || {
-                    part.iter()
-                        .filter_map(|(id, loc)| {
-                            progress.set_current(loc);
-                            let bytes = measure_dir(Path::new(loc));
-                            progress.unit_done();
-                            let bytes = bytes?;
-                            progress.add_files(0, bytes);
-                            (bytes > 0).then(|| (id.clone(), bytes.div_ceil(1024)))
-                        })
-                        .collect::<Vec<_>>()
-                })
-            })
-            .collect();
-        handles
-            .into_iter()
-            .filter_map(|h| h.join().ok())
-            .flatten()
-            .collect()
-    })
+    targets
+        .iter()
+        .filter_map(|(id, loc)| {
+            progress.set_current(loc);
+            let bytes = measure_dir(Path::new(loc));
+            progress.unit_done();
+            let bytes = bytes?;
+            progress.add_files(0, bytes);
+            (bytes > 0).then(|| (id.clone(), bytes.div_ceil(1024)))
+        })
+        .collect()
 }
 
 #[cfg(test)]
