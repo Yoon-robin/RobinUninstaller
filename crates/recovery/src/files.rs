@@ -106,28 +106,74 @@ pub fn move_item(src: &Path, dest: &Path, direction: Direction) -> Result<(), Fs
                     "옮길 드라이브에 빈 공간이 모자라요".to_string(),
                 ));
             }
+            // 맨 위 폴더는 새로 만든다. 그 사이에 같은 이름의 폴더가 생겼으면(다시 설치 등) 그 폴더를 쓰지 않는다:
+            // 복사하다 실패하면 아래에서 복사본을 통째로 지우는데, 남의 폴더면 그 안의 파일까지 지우게 된다.
+            if std::fs::symlink_metadata(src)?.is_dir() {
+                std::fs::create_dir(dest).map_err(|e| match e.kind() {
+                    std::io::ErrorKind::AlreadyExists => FsError::Conflict,
+                    _ => e.into(),
+                })?;
+            }
             if let Err(copy_err) = copy_tree(src, dest) {
                 // 원본은 아직 그대로라 미완성 복사본만 치운다
                 let _ = remove_tree(dest);
                 return Err(copy_err);
             }
-            match remove_tree(src) {
-                Ok(()) => Ok(()),
-                Err(_) if direction == Direction::Restore => Ok(()),
-                Err(e) => Err(FsError::Partial(format!(
-                    "다른 드라이브로 복사는 끝났지만 원래 자리의 일부를 지우지 못했어요 ({e:?})"
-                ))),
+            if direction == Direction::Restore {
+                // 데이터는 원래 자리에 다 돌아갔다. 백업 쪽은 지우지 못해도 괜찮다.
+                let _ = remove_tree(src);
+                return Ok(());
             }
+            // 복사본과 같은 것만 지운다. 복사하는 동안 새로 생겼거나 바뀐 파일은 백업에 없으므로 남긴다.
+            remove_copied(src, dest).map_err(|e| {
+                FsError::Partial(format!(
+                    "다른 드라이브로 복사는 끝났지만 원래 자리의 일부를 지우지 못했어요 ({e:?})"
+                ))
+            })
         }
         Err(e) => Err(e.into()),
     }
 }
 
 /// 원본의 남은 부분만 지운다 (`Partial` 뒤 다시 시도할 때. 복사본은 이미 온전하다).
-pub fn remove_rest(src: &Path) -> Result<(), FsError> {
+/// 백업과 같은 파일만 지우고, 그 뒤에 새로 생기거나 바뀐 파일은 남긴다 (백업에 없으므로).
+pub fn remove_rest(src: &Path, backup: &Path) -> Result<(), FsError> {
     check(src)?;
     ensure_deletable(src)?;
-    remove_tree(src)
+    remove_copied(src, backup)
+}
+
+/// `src`에서 복사본 `copy`와 같은 파일(크기·수정 시각)만 지우고, 빈 폴더를 정리한다.
+/// 지울 수 있는 것은 끝까지 지우고, 남긴 것이 있으면 첫 오류를 돌려준다.
+fn remove_copied(src: &Path, copy: &Path) -> Result<(), FsError> {
+    let meta = std::fs::symlink_metadata(src)?;
+    if meta.file_attributes() & FILE_ATTRIBUTE_REPARSE_POINT != 0 {
+        return Err(FsError::ReparsePoint);
+    }
+    if meta.is_dir() {
+        let mut first_err = None;
+        for entry in std::fs::read_dir(src)? {
+            let entry = entry?;
+            if let Err(e) = remove_copied(&entry.path(), &copy.join(entry.file_name())) {
+                first_err.get_or_insert(e);
+            }
+        }
+        if let Some(e) = first_err {
+            return Err(e);
+        }
+        std::fs::remove_dir(src)?;
+        return Ok(());
+    }
+    let same = std::fs::symlink_metadata(copy)
+        .is_ok_and(|c| c.len() == meta.len() && c.modified().ok() == meta.modified().ok());
+    if !same {
+        return Err(FsError::Other(format!(
+            "복사한 뒤 새로 생기거나 바뀐 파일이라 남겨 두었어요: {}",
+            src.display()
+        )));
+    }
+    std::fs::remove_file(src)?;
+    Ok(())
 }
 
 /// 폴더 안 모든 파일을 지울 수 있는지(다른 프로그램이 지우기를 막고 열어 두지 않았는지) 미리 확인한다.

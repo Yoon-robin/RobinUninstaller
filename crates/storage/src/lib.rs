@@ -44,7 +44,24 @@ pub struct Category {
     pub guidance: Option<String>,
 }
 
+/// 규칙의 기준 폴더. Windows·ProgramData는 환경 변수 대신 Windows에 직접 묻는다: 사용자 환경 변수
+/// (`HKCU\Environment`)로 바꿔 둘 수 있고, 관리자 권한 작업자에도 그대로 넘어가 엉뚱한 곳을 관리자 권한으로 지우게 된다.
 fn env(name: &str) -> Option<String> {
+    #[cfg(windows)]
+    {
+        let dir = match name {
+            "SystemRoot" => Some(system::windows_dir()),
+            "ProgramData" => Some(system::program_data_dir()),
+            "SystemDrive" => Some(system::windows_dir().and_then(|w| {
+                let s = w.to_string_lossy().into_owned();
+                (s.len() >= 2 && s.as_bytes()[1] == b':').then(|| std::path::PathBuf::from(&s[..2]))
+            })),
+            _ => None,
+        };
+        if let Some(dir) = dir {
+            return dir.map(|d| d.to_string_lossy().into_owned());
+        }
+    }
     std::env::var(name).ok()
 }
 
@@ -358,9 +375,18 @@ fn clean_one(
     };
     let mut last_sent = std::time::Instant::now();
     for path in walk::rule_paths(rule, &env) {
-        // 지우는 파일의 실제 위치가 이 폴더 안인지 핸들로 확인한다 (정션 바꿔치기 방지)
+        // 지우는 파일의 실제 위치가 이 폴더 안인지 핸들로 확인한다 (정션 바꿔치기 방지).
+        // 규칙이 파일 하나를 가리키면(MEMORY.DMP) 그 파일이 든 폴더를 기준으로 본다.
         let Ok(root) = std::fs::canonicalize(&path) else {
             continue;
+        };
+        let root = if root.is_dir() {
+            root
+        } else {
+            match root.parent() {
+                Some(parent) => parent.to_path_buf(),
+                None => continue,
+            }
         };
         walk::visit(
             &path,

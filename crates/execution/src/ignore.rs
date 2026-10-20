@@ -11,6 +11,12 @@ const BROWSERS: &[(&str, &[&str])] = &[
     ("opera.exe", &["opera"]),
     ("brave.exe", &["brave"]),
     ("whale.exe", &["whale"]),
+    ("vivaldi.exe", &["vivaldi"]),
+    ("browser.exe", &["yandex"]),
+    ("arc.exe", &["arc"]),
+    ("librewolf.exe", &["librewolf"]),
+    ("waterfox.exe", &["waterfox"]),
+    ("floorp.exe", &["floorp"]),
     ("iexplore.exe", &["internet explorer"]),
 ];
 

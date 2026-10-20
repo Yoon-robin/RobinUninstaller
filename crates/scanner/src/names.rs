@@ -283,7 +283,8 @@ pub fn matches_publisher(candidate: &str, publisher: &str) -> bool {
     let cand = compact(candidate);
     let full = compact(publisher);
     let core: String = significant_tokens(publisher).concat();
-    !cand.is_empty() && (cand == full || (!core.is_empty() && cand == core))
+    let cand_core: String = significant_tokens(candidate).concat();
+    !cand.is_empty() && (cand == full || (!core.is_empty() && (cand == core || cand_core == core)))
 }
 
 #[cfg(test)]
@@ -405,5 +406,9 @@ mod tests {
         assert!(matches_publisher("Adobe", "Adobe Inc."));
         assert!(matches_publisher("Robin Test Labs", "Robin Test Labs"));
         assert!(!matches_publisher("Adobe Systems", "Autodesk, Inc."));
+        // 꼬리표 단어는 양쪽에서 똑같이 뗀다
+        assert!(matches_publisher("Epic Games", "Epic Games, Inc."));
+        assert!(matches_publisher("Riot Games", "Riot Games, Inc."));
+        assert!(!matches_publisher("Games", "Epic Games, Inc."));
     }
 }

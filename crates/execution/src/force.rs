@@ -26,7 +26,8 @@ pub struct ForceCheck {
 }
 
 /// 이름·게시자에 이 말이 들어 있으면 강제 제거하지 않는다 (소문자로 비교).
-const SENSITIVE_NAMES: [&str; 22] = [
+/// 서비스·드라이버를 남기는 프로그램: 보안, VPN·원격 접속, 안티치트, 가상화·패킷 캡처·디스크 암호화, 은행 보안 모듈.
+const SENSITIVE_NAMES: &[&str] = &[
     "antivirus",
     "anti-virus",
     "anti-malware",
@@ -49,9 +50,31 @@ const SENSITIVE_NAMES: [&str; 22] = [
     "알약",
     "백신",
     "보안",
+    "security",
+    "anyconnect",
+    "secure client",
+    "globalprotect",
+    "forticlient",
+    "zscaler",
+    "tailscale",
+    "zerotier",
+    "hamachi",
+    "xigncode",
+    "faceit",
+    "punkbuster",
+    "virtualbox",
+    "vmware",
+    "npcap",
+    "winpcap",
+    "veracrypt",
+    "inisafe",
+    "ipinside",
+    "magicline",
+    "anysign",
+    "xecure",
 ];
 
-const SENSITIVE_PUBLISHERS: [&str; 22] = [
+const SENSITIVE_PUBLISHERS: &[&str] = &[
     "kaspersky",
     "eset",
     "avast",
@@ -74,6 +97,16 @@ const SENSITIVE_PUBLISHERS: [&str; 22] = [
     "raonsecure",
     "wizvera",
     "nprotect",
+    "avira",
+    "g data",
+    "emsisoft",
+    "trellix",
+    "check point",
+    "cylance",
+    "carbon black",
+    "interezen",
+    "initech",
+    "dreamsecurity",
 ];
 
 /// 강제 제거 대상에서 빼야 하는 프로그램이면 그 이유. 순수 함수.
@@ -232,6 +265,13 @@ mod tests {
         assert!(sensitive_reason(&app("Realtek Audio Driver", None)).is_some());
         assert!(sensitive_reason(&app("AhnLab Safe Transaction", Some("AhnLab, Inc."))).is_some());
         assert!(sensitive_reason(&app("알약", Some("ESTsoft"))).is_some());
+        assert!(
+            sensitive_reason(&app("Cisco Secure Client", Some("Cisco Systems, Inc."))).is_some()
+        );
+        assert!(
+            sensitive_reason(&app("Oracle VirtualBox 7.1", Some("Oracle Corporation"))).is_some()
+        );
+        assert!(sensitive_reason(&app("IPinside LWS Agent", Some("interezen"))).is_some());
     }
 
     #[test]

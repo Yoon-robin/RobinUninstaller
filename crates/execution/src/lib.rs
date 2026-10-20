@@ -57,6 +57,16 @@ pub fn run_elevated_and_wait(file: &str, args: &str) -> Result<Option<u32>, Opti
     }
 }
 
+/// `C:\Windows\System32` (환경 변수가 아니라 Windows에 직접 묻는다)
+#[cfg(windows)]
+fn system_dir() -> Option<std::path::PathBuf> {
+    use windows::Win32::System::SystemInformation::GetSystemDirectoryW;
+    let mut buf = [0u16; 260];
+    let len = unsafe { GetSystemDirectoryW(Some(&mut buf)) } as usize;
+    (len > 0 && len < buf.len())
+        .then(|| std::path::PathBuf::from(String::from_utf16_lossy(&buf[..len])))
+}
+
 /// MSI 종료 코드 중 의미가 분명한 것.
 const MSI_REBOOT_REQUIRED: u32 = 3010;
 const MSI_REBOOT_INITIATED: u32 = 1641;
@@ -92,6 +102,14 @@ pub fn run_uninstaller(
         }
     };
     let (file, args) = plan.file_and_args();
+    // msiexec는 이름만으로 찾지 않고 System32의 것을 쓴다 (작업 폴더 등에 같은 이름의 파일이 있어도 그걸 실행하지 않게)
+    let file = if file.eq_ignore_ascii_case("msiexec.exe") {
+        system_dir()
+            .map(|d| d.join("msiexec.exe").to_string_lossy().into_owned())
+            .unwrap_or(file)
+    } else {
+        file
+    };
 
     on_event(UninstallEvent::Launching { file: file.clone() });
     let working_dir = match &plan {

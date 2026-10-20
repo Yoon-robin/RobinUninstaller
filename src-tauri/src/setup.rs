@@ -6,6 +6,7 @@
 
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use robin_setup::{Env, InstallOptions, UninstallOptions};
@@ -24,6 +25,38 @@ pub enum Mode {
 }
 
 static MODE: OnceLock<Mode> = OnceLock::new();
+/// 설치·제거 중. 이때 창을 닫으면 등록 정보만 남거나 데이터 폴더가 반쯤 지워진 채로 끝나므로 닫지 않는다.
+static WORKING: AtomicBool = AtomicBool::new(false);
+
+/// 설치·제거하는 동안 켜 두고, 끝나면(오류·패닉 포함) 끈다
+struct Working;
+
+impl Working {
+    fn start() -> Result<Working, String> {
+        if WORKING.swap(true, Ordering::SeqCst) {
+            return Err("이미 진행 중이에요".into());
+        }
+        Ok(Working)
+    }
+}
+
+impl Drop for Working {
+    fn drop(&mut self) {
+        WORKING.store(false, Ordering::SeqCst);
+    }
+}
+
+/// 설치·제거 화면 창을 닫으려 할 때 (닫기 단추, Alt+F4). 진행 중이면 막고, 제거를 마쳤으면 임시 복사본을 지우게 해 둔다.
+/// 닫아도 되면 true.
+pub fn on_close_requested() -> bool {
+    if WORKING.load(Ordering::SeqCst) {
+        return false;
+    }
+    if mode() == Mode::Uninstall {
+        schedule_self_delete();
+    }
+    true
+}
 
 pub fn mode() -> Mode {
     *MODE.get().unwrap_or(&Mode::App)
@@ -94,6 +127,9 @@ fn spawn_detached(exe: &Path, args: &[String]) -> std::io::Result<()> {
     const DETACHED_PROCESS: u32 = 0x0000_0008;
     std::process::Command::new(exe)
         .args(args)
+        // 설치 화면이 쓴 임시 WebView 위치를 앱에 물려주지 않는다 (물려주면 앱 설정이 초기화된 것처럼 보이고,
+        // 그 뒤 업데이트로 다시 띄울 때마다 계속 이어진다)
+        .env_remove("WEBVIEW2_USER_DATA_FOLDER")
         .creation_flags(DETACHED_PROCESS)
         .spawn()
         .map(|_| ())
@@ -271,6 +307,13 @@ fn quiet_install(args: &Args, exe: &Path) -> i32 {
         }
         Err(e) => {
             log(&format!("설치 실패: {e}"));
+            // 업데이트하느라 앱을 닫았으니, 설치가 안 됐어도 있는 RobinX를 다시 띄운다 (창 없이 사라지지 않게)
+            if args.has("/R")
+                && let Some(existing) = installed_exes(&env).into_iter().find(|p| p.is_file())
+                && let Err(e) = spawn_detached(&existing, &args.relaunch_args())
+            {
+                log(&format!("다시 실행하지 못했어요: {e}"));
+            }
             1
         }
     }
@@ -328,7 +371,9 @@ pub async fn run_install(desktop_shortcut: bool) -> Result<robin_setup::InstallR
     if mode() != Mode::Setup {
         return Err("설치 모드가 아니에요".into());
     }
+    let working = Working::start()?;
     tauri::async_runtime::spawn_blocking(move || {
+        let _working = working;
         let env = Env::from_system().ok_or("사용자 폴더 위치를 찾지 못했어요")?;
         let exe = current_exe().ok_or("설치 파일 위치를 찾지 못했어요")?;
         // 화면에서 이미 알렸으므로 실행 중인 RobinX는 잠깐 기다렸다가 끝낸다
@@ -353,7 +398,9 @@ pub async fn run_uninstall(delete_data: bool) -> Result<robin_setup::UninstallRe
     if mode() != Mode::Uninstall {
         return Err("제거 모드가 아니에요".into());
     }
+    let working = Working::start()?;
     tauri::async_runtime::spawn_blocking(move || {
+        let _working = working;
         let env = Env::from_system().ok_or("사용자 폴더 위치를 찾지 못했어요")?;
         robin_setup::close_running(&installed_exes(&env), Duration::from_secs(3));
         robin_setup::uninstall(&env, &UninstallOptions { delete_data })
@@ -372,8 +419,7 @@ pub fn launch_installed() -> Result<(), String> {
 /// 설치·제거 화면을 닫는다 (제거였다면 임시 복사본을 지우게 해 둔다)
 #[tauri::command]
 pub fn finish_setup(app: tauri::AppHandle) {
-    if mode() == Mode::Uninstall {
-        schedule_self_delete();
+    if on_close_requested() {
+        app.exit(0);
     }
-    app.exit(0);
 }

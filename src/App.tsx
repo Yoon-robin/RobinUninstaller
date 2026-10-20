@@ -22,8 +22,10 @@ import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT } from "@/components/motion"
 
+// retry: false — 모두 이 PC를 읽는 작업이라 다시 해도 결과가 같다. 기본값(3번 다시)이면 실패한 스캔을
+// 오류를 보여 주기 전에 몇 초씩 세 번 더 돈다.
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { refetchOnWindowFocus: false, staleTime: 60_000 } },
+  defaultOptions: { queries: { refetchOnWindowFocus: false, staleTime: 60_000, retry: false } },
 })
 
 const titles: Record<Page, string> = {

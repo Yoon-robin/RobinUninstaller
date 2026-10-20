@@ -160,7 +160,14 @@ export function CleanResult({
       setElevating(false)
       onBusyChange?.(false)
       // 잔여물·강제 제거·시작 항목 정리가 모두 이 화면을 쓴다
-      for (const key of ["backups", "installed-apps", "recently-removed", "startup-items"]) {
+      for (const key of [
+        "backups",
+        "backup-usage",
+        "old-backups",
+        "installed-apps",
+        "recently-removed",
+        "startup-items",
+      ]) {
         queryClient.invalidateQueries({ queryKey: [key] })
       }
     }

@@ -84,16 +84,20 @@ fn tracked_item(
                 evidence.push(Evidence::SharedWithOtherApp { app_name: other });
             }
             let is_dir = path.is_dir();
-            let (size, docs) = if is_dir {
+            let (size, docs, complete) = if is_dir {
                 measure(path)
             } else {
                 (
                     std::fs::metadata(path).map(|m| m.len()).unwrap_or(0),
                     usize::from(crate::files::is_document(path)),
+                    true,
                 )
             };
             if docs > 0 {
                 evidence.push(Evidence::ContainsUserDocuments { count: docs });
+            }
+            if !complete {
+                evidence.push(Evidence::TooLargeToCheck);
             }
             let kind = if is_dir {
                 LeftoverKind::Folder

@@ -10,10 +10,24 @@ use windows::core::{HSTRING, PCWSTR};
 /// 지금 프로세스가 관리자 권한으로 실행 중인지
 /// 다운로드 폴더 (사용자가 옮겼어도 따른다)
 pub fn downloads_dir() -> Option<std::path::PathBuf> {
+    known_folder(&windows::Win32::UI::Shell::FOLDERID_Downloads)
+}
+
+/// Windows 폴더 (`C:\Windows`). 환경 변수가 아니라 Windows에 직접 묻는다.
+pub fn windows_dir() -> Option<std::path::PathBuf> {
+    known_folder(&windows::Win32::UI::Shell::FOLDERID_Windows)
+}
+
+/// `C:\ProgramData`. 환경 변수가 아니라 Windows에 직접 묻는다.
+pub fn program_data_dir() -> Option<std::path::PathBuf> {
+    known_folder(&windows::Win32::UI::Shell::FOLDERID_ProgramData)
+}
+
+fn known_folder(id: &windows::core::GUID) -> Option<std::path::PathBuf> {
     use windows::Win32::System::Com::CoTaskMemFree;
-    use windows::Win32::UI::Shell::{FOLDERID_Downloads, KF_FLAG_DEFAULT, SHGetKnownFolderPath};
+    use windows::Win32::UI::Shell::{KF_FLAG_DEFAULT, SHGetKnownFolderPath};
     unsafe {
-        let p = SHGetKnownFolderPath(&FOLDERID_Downloads, KF_FLAG_DEFAULT, None).ok()?;
+        let p = SHGetKnownFolderPath(id, KF_FLAG_DEFAULT, None).ok()?;
         let s = p.to_string().ok();
         CoTaskMemFree(Some(p.0 as *const _));
         s.map(std::path::PathBuf::from)

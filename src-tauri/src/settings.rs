@@ -61,10 +61,7 @@ pub async fn add_exclusion(item_id: String, cache: State<'_, AppCache>) -> Resul
         .last_scan
         .lock()
         .map_err(|e| e.to_string())?
-        .items
-        .iter()
-        .find(|i| i.id == item_id)
-        .cloned()
+        .find(&item_id)
         .ok_or("스캔 결과에 없는 항목이에요")?;
     let kind = match item.kind {
         robin_scanner::LeftoverKind::Folder | robin_scanner::LeftoverKind::File => {
@@ -85,12 +82,17 @@ pub async fn add_exclusion(item_id: String, cache: State<'_, AppCache>) -> Resul
     .await
 }
 
+/// 제외 목록에서 `index`번째를 뺀다. `location`은 화면이 본 그 항목의 위치로, 그사이 목록이 바뀌었으면(두 번 누름 등)
+/// 다른 항목을 빼지 않도록 확인만 한다.
 #[tauri::command]
-pub async fn remove_exclusion(index: usize) -> Result<(), String> {
+pub async fn remove_exclusion(index: usize, location: String) -> Result<(), String> {
     blocking(move || {
         robin_settings::update(&settings_store()?, |s| {
-            if index >= s.exclusions.len() {
-                return Err("목록에 없는 항목이에요".into());
+            if s.exclusions
+                .get(index)
+                .is_none_or(|e| e.location != location)
+            {
+                return Err("목록이 바뀌었어요. 다시 확인해 주세요".into());
             }
             s.exclusions.remove(index);
             Ok(())
@@ -148,6 +150,11 @@ pub fn prune_expired() -> Result<PruneResult, String> {
     robin_recovery::progress::report_total(ids.len() as u64);
     let (mut deleted, mut failed) = (0, 0);
     for id in ids {
+        // 사용자가 지금 되돌리거나 지우는 백업은 건너뛴다 (다음에 켤 때 다시 본다)
+        let Ok(_lock) = crate::BackupLock::acquire(&id) else {
+            robin_recovery::progress::report_unit_done();
+            continue;
+        };
         match store.delete(&id) {
             Ok(()) => deleted += 1,
             Err(_) => failed += 1,
@@ -216,6 +223,12 @@ pub async fn delete_old_backups(
         progress.set_total(ids.len() as u64);
         let (mut deleted, mut failed) = (0, 0);
         for id in ids {
+            // 지금 되돌리거나 지우는 중인 백업은 건드리지 않고 "지우지 못함"으로 센다
+            let Ok(_lock) = crate::BackupLock::acquire(&id) else {
+                failed += 1;
+                progress.unit_done();
+                continue;
+            };
             match robin_recovery::progress::with(progress.clone(), || store.delete(&id)) {
                 Ok(()) => deleted += 1,
                 Err(_) => failed += 1,

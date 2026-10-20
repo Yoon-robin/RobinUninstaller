@@ -332,6 +332,19 @@ pub fn matches_backup(backup: &RegistryBackup) -> bool {
     }
 }
 
+/// 백업이 가리키는 키(또는 값)가 지금 원래 자리에 있는지. 읽을 수 없으면 있다고 본다(되돌리지 않는 쪽).
+pub fn target_exists(backup: &RegistryBackup) -> bool {
+    match backup {
+        RegistryBackup::Key { location, .. } => match split_location(location) {
+            Some((root, path)) => !matches!(open(&root, path, KEY_READ), Err(RegError::NotFound)),
+            None => true,
+        },
+        RegistryBackup::Value { location, value } => {
+            !matches!(backup_value(location, &value.name), Err(RegError::NotFound))
+        }
+    }
+}
+
 impl RegistryBackup {
     /// 이 백업이 가리키는 위치 (키, 값 이름)
     pub fn target(&self) -> (&str, Option<&str>) {

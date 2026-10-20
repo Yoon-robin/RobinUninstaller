@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useQuery } from "@tanstack/react-query"
+import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import {
   ArrowDownWideNarrow,
   Check,
@@ -108,6 +108,8 @@ export function ProgramsPage() {
     queryFn: measureAppSizes,
     enabled: apps.data != null,
     staleTime: Infinity,
+    // 목록을 다시 읽어 다시 재는 동안 앞서 잰 크기를 그대로 보여 준다 (크기·정렬이 잠깐 사라지지 않게)
+    placeholderData: keepPreviousData,
   })
   const sizeProgress = useAppSizeProgress()
 
@@ -132,6 +134,8 @@ export function ProgramsPage() {
     () => all.filter((a) => matchesFilter(a, filter) && matchesQuery(a, query)).sort((a, b) => compareApps(a, b, sort)),
     [all, query, sort, filter],
   )
+  // 여러 개 제거로 고른 프로그램 중 아직 목록에 있는 것 (새로고침으로 사라진 것은 수에서도 뺀다)
+  const pickedApps = useMemo(() => (picked ? all.filter((a) => picked.has(a.id)) : []), [all, picked])
 
   const stats = useMemo(
     () => ({
@@ -162,7 +166,8 @@ export function ProgramsPage() {
   // Ctrl+F: 검색창으로. 키보드 동작이라 애니메이션 없이 바로.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f") {
+      // 다른 화면에서는 이 화면이 숨겨진 채 남아 있으므로, 검색창이 보일 때만 가로챈다
+      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f" && searchRef.current?.offsetParent) {
         e.preventDefault()
         searchRef.current?.focus()
         searchRef.current?.select()
@@ -542,7 +547,7 @@ export function ProgramsPage() {
             className="sticky bottom-4 z-20 mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border bg-popover px-4 py-3 shadow-[var(--shadow-floating)]"
           >
             <p className="mr-auto text-sm tabular-nums">
-              {picked.size > 0 ? `${picked.size}개 선택` : "제거할 프로그램을 눌러 고르세요"}
+              {pickedApps.length > 0 ? `${pickedApps.length}개 선택` : "제거할 프로그램을 눌러 고르세요"}
             </p>
             <Button
               variant="ghost"
@@ -552,15 +557,15 @@ export function ProgramsPage() {
             >
               보이는 것 모두
             </Button>
-            <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())} disabled={picked.size === 0}>
+            <Button variant="ghost" size="sm" onClick={() => setPicked(new Set())} disabled={pickedApps.length === 0}>
               선택 해제
             </Button>
             <Button
               variant="destructive"
               size="sm"
-              disabled={picked.size === 0}
+              disabled={pickedApps.length === 0}
               onClick={() => {
-                setBatch(all.filter((a) => picked.has(a.id)))
+                setBatch(pickedApps)
                 setPicked(null)
               }}
             >

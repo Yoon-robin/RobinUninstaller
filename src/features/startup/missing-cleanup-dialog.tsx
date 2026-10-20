@@ -1,4 +1,4 @@
-import { useLayoutEffect, useState } from "react"
+import { useLayoutEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { ArchiveRestore, FileWarning, Trash2 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
@@ -50,7 +50,11 @@ export function MissingCleanupDialog({
       return next
     })
 
+  // 사라지는 중인 화면의 단추도 잠깐 눌리므로, 두 번 눌러도 한 번만 정리한다
+  const cleaning = useRef(false)
   const run = async () => {
+    if (cleaning.current) return
+    cleaning.current = true
     setStage({ step: "cleaning" })
     setError(null)
     try {
@@ -62,6 +66,7 @@ export function MissingCleanupDialog({
       setError(String(e))
       setStage({ step: "select" })
     } finally {
+      cleaning.current = false
       queryClient.invalidateQueries({ queryKey: ["startup-items"] })
       queryClient.invalidateQueries({ queryKey: ["backups"] })
     }

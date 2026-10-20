@@ -35,27 +35,80 @@ pub struct KnownFolders {
     pub user_profile: String,
     pub app_data: String,
     pub local_app_data: String,
-    /// 그 밖에 폴더 자체를 지우면 안 되는 곳 (바탕 화면, 문서, 시작 메뉴, Temp 등)
+    /// 그 밖에 폴더 자체를 지우면 안 되는 곳 (시작 메뉴, Temp 등)
     pub others: Vec<String>,
+    /// 사용자가 직접 파일을 두는 폴더 (바탕 화면, 문서, 다운로드 등). 폴더 자체도 지우지 않고, 그 아래는 자동 선택하지 않는다.
+    /// 이름이 아니라 Windows가 알려 주는 실제 위치로 정한다 (문서를 `D:\내 문서`로 옮긴 경우 등).
+    pub user_content: Vec<String>,
+}
+
+/// Windows가 알려 주는 폴더 위치 (사용자가 옮겼으면 옮긴 곳). 환경 변수와 달리 다른 프로그램이 바꿔 둘 수 없다.
+#[cfg(windows)]
+fn known_folder(id: &windows::core::GUID) -> Option<String> {
+    use windows::Win32::System::Com::CoTaskMemFree;
+    use windows::Win32::UI::Shell::{KF_FLAG_DEFAULT, SHGetKnownFolderPath};
+    unsafe {
+        let p = SHGetKnownFolderPath(id, KF_FLAG_DEFAULT, None).ok()?;
+        let s = p.to_string().ok();
+        CoTaskMemFree(Some(p.0 as *const _));
+        s.filter(|s| !s.is_empty())
+    }
 }
 
 impl KnownFolders {
     #[cfg(windows)]
     pub fn from_env() -> Self {
+        use windows::Win32::UI::Shell::*;
         let env = |k: &str| std::env::var(k).unwrap_or_default();
-        let user = env("USERPROFILE");
-        let app_data = env("APPDATA");
-        let program_data = env("ProgramData");
-        let local = env("LOCALAPPDATA");
+        // 위치는 Windows에 먼저 묻고, 안 되면 환경 변수 (관리자 작업자에도 쓰이므로 사용자 환경 변수를 그대로 믿지 않는다)
+        let folder = |id, var: &str| known_folder(id).unwrap_or_else(|| env(var));
+        let user = folder(&FOLDERID_Profile, "USERPROFILE");
+        let app_data = folder(&FOLDERID_RoamingAppData, "APPDATA");
+        let program_data = folder(&FOLDERID_ProgramData, "ProgramData");
+        let local = folder(&FOLDERID_LocalAppData, "LOCALAPPDATA");
         let mut program_files = vec![
-            env("ProgramFiles"),
-            env("ProgramFiles(x86)"),
+            folder(&FOLDERID_ProgramFiles, "ProgramFiles"),
+            folder(&FOLDERID_ProgramFilesX86, "ProgramFiles(x86)"),
             env("ProgramW6432"),
         ];
         program_files.retain(|p| !p.is_empty());
+        program_files.sort();
         program_files.dedup();
+
+        // 사용자 파일 폴더: 실제 위치(옮겼거나 "문서"처럼 다른 이름일 수 있다)와 기본 이름 둘 다
+        let mut user_content: Vec<String> = [
+            &FOLDERID_Desktop,
+            &FOLDERID_Documents,
+            &FOLDERID_Downloads,
+            &FOLDERID_Pictures,
+            &FOLDERID_Music,
+            &FOLDERID_Videos,
+            &FOLDERID_SavedGames,
+        ]
+        .into_iter()
+        .filter_map(known_folder)
+        .chain(
+            [
+                "Desktop",
+                "Documents",
+                "Downloads",
+                "Pictures",
+                "Music",
+                "Videos",
+                "Saved Games",
+                "OneDrive",
+            ]
+            .iter()
+            .map(|name| format!("{user}\\{name}")),
+        )
+        .chain(["OneDrive", "OneDriveConsumer", "OneDriveCommercial"].map(env))
+        .filter(|p| !p.is_empty())
+        .collect();
+        user_content.sort_by_key(|p| normalize_path(p));
+        user_content.dedup_by_key(|p| normalize_path(p));
+
         KnownFolders {
-            windows: env("SystemRoot"),
+            windows: folder(&FOLDERID_Windows, "SystemRoot"),
             program_files,
             program_data: program_data.clone(),
             users_root: std::path::Path::new(&user)
@@ -66,13 +119,8 @@ impl KnownFolders {
             app_data: app_data.clone(),
             local_app_data: local.clone(),
             others: vec![
-                format!("{user}\\Desktop"),
-                format!("{user}\\Documents"),
-                format!("{user}\\Downloads"),
-                format!("{user}\\Pictures"),
-                format!("{user}\\Music"),
-                format!("{user}\\Videos"),
-                format!("{user}\\OneDrive"),
+                format!("{user}\\AppData"),
+                format!("{user}\\AppData\\LocalLow"),
                 format!("{local}\\Programs"),
                 format!("{local}\\Temp"),
                 format!("{local}\\Microsoft"),
@@ -85,25 +133,13 @@ impl KnownFolders {
                 env("PUBLIC"),
                 env("TEMP"),
             ],
+            user_content,
         }
     }
 
     /// 사용자가 직접 만든 파일이 있는 폴더 (바탕 화면, 문서, 다운로드 등). 이 아래는 자동 선택하지 않는다.
     pub fn user_content_dirs(&self) -> impl Iterator<Item = &String> {
-        const NAMES: [&str; 7] = [
-            "desktop",
-            "documents",
-            "downloads",
-            "pictures",
-            "music",
-            "videos",
-            "onedrive",
-        ];
-        self.others.iter().filter(|p| {
-            let last = normalize_path(p);
-            let last = last.rsplit('\\').next().unwrap_or_default().to_string();
-            NAMES.contains(&last.as_str())
-        })
+        self.user_content.iter()
     }
 
     /// `path`가 사용자 파일 폴더(바탕 화면·문서 등) 안에 있는지.
@@ -122,6 +158,7 @@ impl KnownFolders {
                 &self.local_app_data,
             ])
             .chain(self.others.iter())
+            .chain(self.user_content.iter())
             .filter(|p| !p.is_empty())
     }
 }
@@ -292,7 +329,11 @@ mod tests {
             user_profile: r"C:\Users\robin".into(),
             app_data: r"C:\Users\robin\AppData\Roaming".into(),
             local_app_data: r"C:\Users\robin\AppData\Local".into(),
-            others: vec![r"C:\Users\robin\Documents".into()],
+            others: vec![],
+            user_content: vec![
+                r"C:\Users\robin\Documents".into(),
+                r"C:\Users\robin\문서".into(),
+            ],
         }
     }
 
@@ -381,6 +422,9 @@ mod tests {
     fn user_content_and_services() {
         let k = known();
         assert!(k.is_user_content(r"C:\Users\robin\Documents\report.docx"));
+        // 이름이 다른 실제 문서 폴더도 사용자 폴더이고, 폴더 자체는 보호한다
+        assert!(k.is_user_content(r"C:\Users\robin\문서\report.hwp"));
+        assert!(protected_path_reason(r"C:\Users\robin\문서", &k).is_some());
         assert!(!k.is_user_content(r"C:\Users\robin\AppData\Roaming\Acme"));
         assert!(is_service_key(r"SYSTEM\ControlSet001\Services\Acme"));
         assert!(is_service_key(r"system\currentcontrolset\services\acme\"));

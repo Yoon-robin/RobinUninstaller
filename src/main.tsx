@@ -3,6 +3,7 @@ import ReactDOM from "react-dom/client";
 import { invoke } from "@tauri-apps/api/core";
 import App from "./App";
 import { SetupApp, type SetupMode } from "./features/setup/setup-app";
+import { beginStartupUpdateCheck } from "./features/updates/updates";
 import "./index.css";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -10,6 +11,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 invoke<"app" | SetupMode>("app_mode")
   .catch(() => "app" as const)
   .then((mode) => {
+    if (mode === "app") beginStartupUpdateCheck();
     ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       <React.StrictMode>{mode === "app" ? <App /> : <SetupApp mode={mode} />}</React.StrictMode>,
     );

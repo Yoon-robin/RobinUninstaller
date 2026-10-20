@@ -184,6 +184,11 @@ fn replace_file(src: &Path, dest: &Path, warnings: &mut Vec<String>) -> std::io:
     let old = dest.with_file_name(format!("{name}.old"));
     let _ = std::fs::remove_file(&new);
     std::fs::copy(src, &new)?;
+    // 복사는 "인터넷에서 받은 파일" 표시(Zone.Identifier 스트림)까지 옮긴다. 그대로 두면 설치한 RobinX를 열 때마다
+    // 보안 경고가 뜰 수 있다. 받은 설치 파일 자체는 이미 실행해서 확인을 거쳤다.
+    let mut stream = new.clone().into_os_string();
+    stream.push(":Zone.Identifier");
+    let _ = std::fs::remove_file(stream);
     // 지난번에 지우지 못한 옛 파일
     let _ = std::fs::remove_file(&old);
     if dest.exists() {
@@ -396,6 +401,15 @@ pub fn uninstall(env: &Env, opts: &UninstallOptions) -> Result<UninstallReport, 
         let _ = std::fs::remove_dir(&dir);
     }
 
+    // 실행 파일을 지우지 못했으면(관리자 권한으로 실행 중인 RobinX 등) 등록 정보를 남긴다. 지우면 파일만 남고
+    // 프로그램 목록에서 사라져 다시 제거할 방법이 없어진다.
+    if exe.is_file() {
+        report.warnings.push(format!(
+            "{}를 지우지 못해 설치 정보를 남겨 두었어요. RobinX를 모두 닫고 다시 제거해 주세요",
+            exe.display()
+        ));
+        return Ok(report);
+    }
     reg::remove(env);
 
     if opts.delete_data {

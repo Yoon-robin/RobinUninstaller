@@ -157,9 +157,9 @@ export function SettingsPage() {
     }
   }
 
-  const removeExclusion = async (index: number) => {
+  const removeExclusion = async (index: number, location: string) => {
     try {
-      await settingsApi.removeExclusion(index)
+      await settingsApi.removeExclusion(index, location)
       toast.success("제외 목록에서 뺐어요. 다음 스캔부터 다시 찾아요")
     } catch (e) {
       toast.error(String(e))
@@ -290,7 +290,7 @@ export function SettingsPage() {
                       size="icon"
                       className="size-7 shrink-0 text-muted-foreground"
                       aria-label="제외 목록에서 빼기"
-                      onClick={() => removeExclusion(i)}
+                      onClick={() => removeExclusion(i, e.location)}
                     >
                       <X />
                     </Button>

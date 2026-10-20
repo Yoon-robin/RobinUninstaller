@@ -179,18 +179,25 @@ impl SettingsStore {
         Ok(settings)
     }
 
-    /// 임시 파일에 쓰고 바꿔치기한다.
+    /// 임시 파일에 쓰고 바꿔치기한다. 임시 파일 이름은 저장할 때마다 달라서, 두 저장이 겹쳐도
+    /// 서로의 반쯤 쓴 파일을 settings.json으로 옮기지 않는다.
     pub fn save(&self, settings: &Settings) -> std::io::Result<()> {
+        static SEQ: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
         if let Some(dir) = self.path.parent() {
             std::fs::create_dir_all(dir)?;
         }
-        let tmp = self.path.with_extension("json.tmp");
+        let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        let tmp = self
+            .path
+            .with_extension(format!("json.{}-{seq}.tmp", std::process::id()));
         {
             let mut f = std::fs::File::create(&tmp)?;
             f.write_all(serde_json::to_string_pretty(settings)?.as_bytes())?;
             f.sync_all()?;
         }
-        std::fs::rename(tmp, &self.path)
+        std::fs::rename(&tmp, &self.path).inspect_err(|_| {
+            let _ = std::fs::remove_file(&tmp);
+        })
     }
 }
 
@@ -199,6 +206,9 @@ pub fn update<T>(
     store: &SettingsStore,
     f: impl FnOnce(&mut Settings) -> Result<T, String>,
 ) -> Result<T, String> {
+    // 읽고 바꾸고 저장하는 동안 다른 변경이 끼어들면 한쪽이 사라진다 ("다음부터 제외"를 빠르게 두 번 등)
+    static LOCK: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _guard = LOCK.lock().unwrap_or_else(|e| e.into_inner());
     let mut settings = store.try_load()?;
     let out = f(&mut settings)?;
     store
@@ -299,6 +309,29 @@ mod tests {
         assert_eq!(store.load(), s);
         update(&store, |s| s.set_retention(None)).unwrap();
         assert_eq!(store.load().backup_retention_days, None);
+        let _ = std::fs::remove_dir_all(dir);
+    }
+
+    #[test]
+    fn concurrent_updates_keep_every_change() {
+        let dir = std::env::temp_dir().join(format!("robin-settings-race-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&dir);
+        let store = std::sync::Arc::new(SettingsStore::new(dir.join("settings.json")));
+        let threads: Vec<_> = (0..8)
+            .map(|i| {
+                let store = store.clone();
+                std::thread::spawn(move || {
+                    update(&store, |s| {
+                        s.add_exclusion(ex(ExclusionKind::Path, &format!(r"C:\Race\{i}"), None))
+                    })
+                    .unwrap()
+                })
+            })
+            .collect();
+        for t in threads {
+            assert!(t.join().unwrap());
+        }
+        assert_eq!(store.load().exclusions.len(), 8);
         let _ = std::fs::remove_dir_all(dir);
     }
 

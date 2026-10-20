@@ -45,7 +45,15 @@ impl ScanContext {
             .filter(|p| !p.is_empty())
             // 드라이브 루트·Program Files·Windows 같은 곳을 설치 폴더로 적어 둔 프로그램도 있다.
             // 그런 곳을 기준으로 "설치 폴더를 가리킴"을 찾으면 다른 프로그램 항목까지 잡히므로 기준으로 쓰지 않는다.
-            .filter(|p| protected_path_reason(p, &known).is_none());
+            .filter(|p| protected_path_reason(p, &known).is_none())
+            .filter(|p| {
+                !is_shared_parent(
+                    p,
+                    &app.display_name,
+                    app.publisher.as_deref(),
+                    installed.iter().filter(|o| o.id != app.id),
+                )
+            });
 
         let others = installed
             .iter()
@@ -54,7 +62,20 @@ impl ScanContext {
                 id: o.id.clone(),
                 name: o.display_name.clone(),
                 publisher: o.publisher.clone(),
-                install_location: o.install_location.clone().filter(|p| !p.trim().is_empty()),
+                // 여러 제품을 담는 상위 폴더("C:\Program Files\Adobe")를 적어 둔 프로그램은 그 폴더로 공유를 판단하지 않는다.
+                // 그러면 그 아래 다른 제품의 폴더가 모두 "함께 쓰는 것"이 되어 정작 지운 프로그램의 폴더를 못 찾는다.
+                install_location: o
+                    .install_location
+                    .clone()
+                    .filter(|p| !p.trim().is_empty())
+                    .filter(|p| {
+                        !is_shared_parent(
+                            p,
+                            &o.display_name,
+                            o.publisher.as_deref(),
+                            installed.iter().filter(|x| x.id != o.id),
+                        )
+                    }),
             })
             .collect();
 
@@ -168,6 +189,31 @@ impl ScanContext {
     }
 }
 
+/// 설치 폴더로 적힌 곳이 한 제품의 폴더가 아니라 여러 제품을 담는 상위 폴더인지.
+/// - 폴더 이름이 게시자 이름이고 제품 이름과는 맞지 않음 (`C:\Program Files\Adobe`, `...\Epic Games`)
+/// - 다른 설치 프로그램의 설치 폴더가 그 아래에 있음
+///
+/// 이런 곳을 기준으로 삼으면 같은 게시자의 다른 제품(시작 항목, 실행 파일 등록, 폴더)이 "설치 폴더를 가리킴"으로 잡혀
+/// 미리 선택된다.
+fn is_shared_parent<'a>(
+    location: &str,
+    name: &str,
+    publisher: Option<&str>,
+    others: impl Iterator<Item = &'a InstalledApplication>,
+) -> bool {
+    let loc = location.trim().trim_matches('"').trim_end_matches('\\');
+    let last = loc.rsplit('\\').next().unwrap_or_default();
+    let publisher_folder = publisher.is_some_and(|p| matches_publisher(last, p))
+        && match_name(last, name, publisher) == NameMatch::None;
+    publisher_folder
+        || others
+            .filter_map(|o| o.install_location.as_deref())
+            .map(|p| p.trim().trim_matches('"').trim_end_matches('\\'))
+            .any(|their| {
+                !their.is_empty() && !their.eq_ignore_ascii_case(loc) && is_within(their, loc)
+            })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -220,6 +266,49 @@ mod tests {
             ctx.uninstall_key_of_other("READER").as_deref(),
             Some("Adobe Acrobat Reader")
         );
+    }
+
+    #[test]
+    fn shared_parent_folder_is_not_an_anchor() {
+        // 게시자 이름 폴더를 설치 폴더로 적어 둔 제품
+        let ae = app(
+            "hklm:ae",
+            "Adobe After Effects 2026",
+            "Adobe Inc.",
+            Some(r"C:\Program Files\Adobe"),
+        );
+        let ctx = ScanContext::new(&ae, std::slice::from_ref(&ae), known());
+        assert!(ctx.install_location.is_none());
+        // 다른 프로그램의 설치 폴더를 품은 폴더
+        let launcher = app("hklm:l", "Some Launcher", "Acme", Some(r"C:\Games"));
+        let game = app("hklm:g", "Some Game", "Acme", Some(r"C:\Games\Some Game"));
+        let ctx = ScanContext::new(&launcher, &[launcher.clone(), game.clone()], known());
+        assert!(ctx.install_location.is_none());
+        // 그런 폴더를 적어 둔 다른 프로그램 때문에 지운 프로그램의 폴더가 "공유"로 보이지 않는다
+        let ps = app(
+            "hklm:ps",
+            "Adobe Photoshop 2026",
+            "Adobe Inc.",
+            Some(r"C:\Program Files\Adobe\Adobe Photoshop 2026"),
+        );
+        let ctx = ScanContext::new(&ps, &[ps.clone(), ae.clone()], known());
+        assert_eq!(
+            ctx.install_location.as_deref(),
+            Some(r"C:\Program Files\Adobe\Adobe Photoshop 2026")
+        );
+        assert!(
+            ctx.other_app_sharing_path(r"C:\Program Files\Adobe\Adobe Photoshop 2026")
+                .is_none()
+        );
+        // 게시자와 제품 이름이 같은 폴더는 그 제품의 폴더다
+        let spotify = app(
+            "hkcu:s",
+            "Spotify",
+            "Spotify AB",
+            Some(r"C:\Users\me\AppData\Roaming\Spotify"),
+        );
+        let ctx = ScanContext::new(&spotify, std::slice::from_ref(&spotify), known());
+        assert!(ctx.install_location.is_some());
     }
 
     #[test]

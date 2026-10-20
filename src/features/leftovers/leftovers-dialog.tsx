@@ -141,6 +141,7 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
                   appId={target.id}
                   appName={target.name}
                   forceAppId={force ? target.id : undefined}
+                  preview={!force && !target.removed}
                   onClose={onClose}
                   onLockChange={setLocked}
                 />
@@ -279,6 +280,7 @@ function Results({
   appId,
   appName,
   forceAppId,
+  preview,
   onClose,
   onLockChange,
 }: {
@@ -286,6 +288,8 @@ function Results({
   appId: string
   appName: string
   forceAppId?: string
+  /** 아직 설치된 프로그램: 보여 주기만 하고 정리하지 않는다 (설치 폴더·등록 정보가 지금 쓰는 것이라) */
+  preview: boolean
   onClose: () => void
   onLockChange: (lock: "none" | "stage" | "busy") => void
 }) {
@@ -297,9 +301,10 @@ function Results({
   }, [stage.step, onLockChange])
   const strong = report.items.filter((i) => i.confidence === "strong")
   const review = report.items.filter((i) => i.confidence === "review")
-  // 근거가 강한 항목(등록 정보가 직접 가리키는 위치 등)만 미리 선택한다.
-  const [selected, setSelected] = useState<Set<string>>(() => new Set(strong.map((i) => i.id)))
-  useEffect(() => setSelected(new Set(strong.map((i) => i.id))), [report])
+  // 근거가 강한 항목(등록 정보가 직접 가리키는 위치 등)만 미리 선택한다. 미리 보기는 고르지 않는다.
+  const initial = () => new Set(preview ? [] : strong.map((i) => i.id))
+  const [selected, setSelected] = useState<Set<string>>(initial)
+  useEffect(() => setSelected(initial()), [report])
 
   const selectedBytes = useMemo(
     () => report.items.filter((i) => selected.has(i.id)).reduce((sum, i) => sum + (i.sizeBytes ?? 0), 0),
@@ -320,7 +325,14 @@ function Results({
       setCleanError(String(e))
       setStage({ step: "review" })
     } finally {
-      for (const key of ["backups", "installed-apps", "recently-removed", "startup-items"]) {
+      for (const key of [
+        "backups",
+        "backup-usage",
+        "old-backups",
+        "installed-apps",
+        "recently-removed",
+        "startup-items",
+      ]) {
         queryClient.invalidateQueries({ queryKey: [key] })
       }
     }
@@ -391,33 +403,49 @@ function Results({
           <div className="min-h-0 flex-1 overflow-y-auto">
             <Group
               title="설치 정보와 연결된 흔적"
-              hint="설치 등록 정보가 직접 가리키는 위치라 미리 골라 두었어요. 안전을 보장하는 표시는 아니니 한 번 훑어보세요"
+              hint={
+                preview
+                  ? "설치 등록 정보가 직접 가리키는 위치예요"
+                  : "설치 등록 정보가 직접 가리키는 위치라 미리 골라 두었어요. 안전을 보장하는 표시는 아니니 한 번 훑어보세요"
+              }
               items={strong}
               offset={0}
               selected={selected}
-              onToggle={toggle}
+              onToggle={preview ? undefined : toggle}
             />
             <Group
               title="직접 확인이 필요한 항목"
-              hint="이름만 비슷하거나 다른 프로그램과 겹칠 수 있어요. 확인한 뒤 직접 선택하세요"
+              hint={
+                preview
+                  ? "이름만 비슷하거나 다른 프로그램과 겹칠 수 있어요"
+                  : "이름만 비슷하거나 다른 프로그램과 겹칠 수 있어요. 확인한 뒤 직접 선택하세요"
+              }
               items={review}
               offset={strong.length}
               selected={selected}
-              onToggle={toggle}
+              onToggle={preview ? undefined : toggle}
             />
           </div>
         </>
       )}
 
       <div className="flex items-center gap-3 border-t px-5 py-3">
-        <p className="mr-auto text-sm text-muted-foreground tabular-nums">
-          {selected.size > 0 ? `${selected.size}개 선택 · ${formatBytes(selectedBytes)}` : "선택한 항목 없음"}
-        </p>
-        {cleanError && <p className="text-xs text-destructive">{cleanError}</p>}
-        <Button variant="destructive" disabled={selected.size === 0} onClick={() => setStage({ step: "confirm" })}>
-          <Trash2 />
-          선택 항목 정리
-        </Button>
+        {preview ? (
+          <p className="mr-auto text-sm text-muted-foreground">
+            설치된 상태라 보여 주기만 해요. 프로그램을 제거한 뒤 남은 흔적을 정리할 수 있어요.
+          </p>
+        ) : (
+          <>
+            <p className="mr-auto text-sm text-muted-foreground tabular-nums">
+              {selected.size > 0 ? `${selected.size}개 선택 · ${formatBytes(selectedBytes)}` : "선택한 항목 없음"}
+            </p>
+            {cleanError && <p className="text-xs text-destructive">{cleanError}</p>}
+            <Button variant="destructive" disabled={selected.size === 0} onClick={() => setStage({ step: "confirm" })}>
+              <Trash2 />
+              선택 항목 정리
+            </Button>
+          </>
+        )}
         <Button variant="outline" onClick={onClose}>
           닫기
         </Button>
@@ -453,7 +481,8 @@ function Group({
   items: Leftover[]
   offset: number
   selected: Set<string>
-  onToggle: (id: string) => void
+  /** 없으면 고를 수 없다 (미리 보기) */
+  onToggle?: (id: string) => void
 }) {
   if (items.length === 0) return null
   return (
@@ -471,7 +500,7 @@ function Group({
             item={item}
             index={offset + i}
             checked={selected.has(item.id)}
-            onToggle={() => onToggle(item.id)}
+            onToggle={onToggle && (() => onToggle(item.id))}
           />
         ))}
       </ul>
@@ -495,7 +524,7 @@ function LeftoverRow({
   item: Leftover
   index: number
   checked: boolean
-  onToggle: () => void
+  onToggle?: () => void
 }) {
   const Icon = kindIcons[item.kind]
   const isFs = item.kind === "folder" || item.kind === "file"
@@ -506,7 +535,9 @@ function LeftoverRow({
       className={cn("group flex gap-3 px-5 py-3 transition-colors hover:bg-accent/30", index < 12 && "row-intro")}
       style={index < 12 ? ({ "--i": index } as CSSProperties) : undefined}
     >
-      <Checkbox checked={checked} onCheckedChange={onToggle} aria-label={`${fullPath} 선택`} className="mt-0.5" />
+      {onToggle && (
+        <Checkbox checked={checked} onCheckedChange={onToggle} aria-label={`${fullPath} 선택`} className="mt-0.5" />
+      )}
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-label={kindLabels[item.kind]} />
       <div className="min-w-0 flex-1">
         <p data-selectable className="font-mono text-xs leading-5 break-all" title={fullPath}>

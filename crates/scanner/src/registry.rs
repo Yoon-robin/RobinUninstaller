@@ -159,8 +159,10 @@ fn software_keys(ctx: &ScanContext, out: &mut Vec<Leftover>, protected: &mut usi
                 continue; // Microsoft·Classes 등은 이름으로 들어가지 않는다
             }
 
+            // 게시자 키로 보고 그 안의 제품 키를 찾는다. 단, 게시자와 제품 이름이 같으면("Spotify") 그 키가 곧 제품 키다.
             if let Some(publisher) = &ctx.publisher
                 && matches_publisher(&name, publisher)
+                && match_name(&name, &ctx.app_name, Some(publisher)) != NameMatch::Exact
             {
                 publisher_key(ctx, hive, &software, &name, out, protected);
                 continue;

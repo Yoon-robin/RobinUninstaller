@@ -8,14 +8,19 @@ import { cn } from "@/lib/utils"
  * 자리와 순서는 Windows 사용자에게 익숙하게 오른쪽 위에 두고, 모양은 macOS처럼 둥근 유리 버튼으로 만든다.
  */
 export function WindowControls() {
-  const appWindow = getCurrentWindow()
+  const [appWindow] = useState(getCurrentWindow)
   const [maximized, setMaximized] = useState(false)
 
   useEffect(() => {
-    appWindow.isMaximized().then(setMaximized)
-    const unlisten = appWindow.onResized(() => appWindow.isMaximized().then(setMaximized))
+    const check = () =>
+      appWindow
+        .isMaximized()
+        .then(setMaximized)
+        .catch(() => {})
+    check()
+    const unlisten = appWindow.onResized(check)
     return () => {
-      unlisten.then((fn) => fn())
+      unlisten.then((fn) => fn()).catch(() => {})
     }
   }, [appWindow])
 

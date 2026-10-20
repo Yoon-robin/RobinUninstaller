@@ -47,9 +47,11 @@ pub fn scan(ctx: &ScanContext, out: &mut Vec<Leftover>, protected: &mut usize) {
                 continue;
             }
 
+            // 게시자 폴더로 보고 그 안의 제품 폴더를 찾는다. 단, 게시자와 제품 이름이 같으면("Discord") 그 폴더가 곧 제품 폴더다.
             if is_dir
                 && let Some(publisher) = &ctx.publisher
                 && matches_publisher(&name, publisher)
+                && match_name(&name, &ctx.app_name, Some(publisher)) != NameMatch::Exact
             {
                 scan_publisher_folder(ctx, out, protected, &mut seen, &path);
                 continue;
@@ -162,16 +164,20 @@ fn push(
     }
 
     let is_dir = path.is_dir();
-    let (size, docs) = if is_dir {
+    let (size, docs, complete) = if is_dir {
         measure(&path)
     } else {
         (
             std::fs::metadata(&path).map(|m| m.len()).unwrap_or(0),
             usize::from(is_document(&path)),
+            true,
         )
     };
     if docs > 0 {
         evidence.push(Evidence::ContainsUserDocuments { count: docs });
+    }
+    if !complete {
+        evidence.push(Evidence::TooLargeToCheck);
     }
 
     seen.push(key);
@@ -189,7 +195,7 @@ fn push(
     out.push(item);
 }
 
-/// 폴더 크기와 문서 파일 수 (최대 WALK_LIMIT개까지만 센다).
+/// 폴더 크기와 문서 파일 수, 끝까지 셌는지 (최대 WALK_LIMIT개까지만 센다).
 /// 사용자가 만든 문서 파일로 보이는지 (확장자 기준)
 pub(crate) fn is_document(path: &Path) -> bool {
     path.extension()
@@ -197,7 +203,7 @@ pub(crate) fn is_document(path: &Path) -> bool {
         .is_some_and(|ext| DOCUMENT_EXTENSIONS.contains(&ext.as_str()))
 }
 
-pub(crate) fn measure(dir: &Path) -> (u64, usize) {
+pub(crate) fn measure(dir: &Path) -> (u64, usize, bool) {
     let mut size = 0u64;
     let mut docs = 0usize;
     let mut stack = vec![dir.to_path_buf()];
@@ -209,7 +215,7 @@ pub(crate) fn measure(dir: &Path) -> (u64, usize) {
         for entry in entries.flatten() {
             visited += 1;
             if visited > WALK_LIMIT {
-                return (size, docs);
+                return (size, docs, false);
             }
             let Ok(ft) = entry.file_type() else { continue };
             // 심볼릭 링크·정션은 따라가지 않는다 (다른 위치를 잘못 세거나 지우는 것 방지)
@@ -231,5 +237,5 @@ pub(crate) fn measure(dir: &Path) -> (u64, usize) {
             }
         }
     }
-    (size, docs)
+    (size, docs, true)
 }

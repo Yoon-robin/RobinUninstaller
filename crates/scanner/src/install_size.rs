@@ -159,6 +159,7 @@ mod tests {
             app_data: r"C:\Users\me\AppData\Roaming".into(),
             local_app_data: r"C:\Users\me\AppData\Local".into(),
             others: vec![],
+            user_content: vec![],
         }
     }
 

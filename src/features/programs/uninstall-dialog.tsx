@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
 import { Check, ChevronRight, CircleAlert, Loader2, RotateCcw, Sparkles, ShieldAlert, Trash2, X } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
@@ -35,15 +35,20 @@ export function UninstallDialog({
   const [phase, setPhase] = useState<Phase>({ step: "confirm" })
   const queryClient = useQueryClient()
   const running = phase.step === "running"
+  // 사라지는 중인 화면의 단추도 잠깐 눌리므로, 두 번 눌러도 한 번만 시작한다
+  const starting = useRef(false)
 
   const start = async () => {
-    if (!app) return
+    if (!app || starting.current) return
+    starting.current = true
     setPhase({ step: "running", event: null })
     let outcome: UninstallOutcome
     try {
       outcome = await api.uninstallApp(app.id, (event) => setPhase({ step: "running", event }))
     } catch (e) {
       outcome = { kind: "failed", message: String(e) }
+    } finally {
+      starting.current = false
     }
     setPhase({ step: "done", outcome })
     if (outcome.kind === "removed" || outcome.kind === "removedRebootRequired") {

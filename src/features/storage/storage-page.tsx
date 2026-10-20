@@ -447,7 +447,7 @@ function summarize(results: CleanResult[]) {
 
 function CleanDialog({
   open,
-  items,
+  items: selectedItems,
   onClose,
   onDone,
 }: {
@@ -457,6 +457,9 @@ function CleanDialog({
   onDone: () => void
 }) {
   const [busy, setBusy] = useState(false)
+  // 정리를 시작할 때 고른 항목. 끝나면 화면이 선택을 비우고 다시 찾으므로, 결과는 이 목록으로 보여 준다
+  const [ranItems, setRanItems] = useState<StorageCategory[] | null>(null)
+  const items = ranItems ?? selectedItems
   const [understood, setUnderstood] = useState(false)
   // 정리가 끝나면 창을 닫지 않고 항목별 결과를 보여 준다
   const [results, setResults] = useState<CleanResult[] | null>(null)
@@ -468,6 +471,7 @@ function CleanDialog({
   // 되돌릴 수 없는 항목의 확인은 창을 열 때마다 새로 받는다
   useEffect(() => {
     if (open) {
+      setRanItems(null)
       setUnderstood(false)
       setResults(null)
       setMeasured(null)
@@ -483,8 +487,11 @@ function CleanDialog({
   const onlyIrreversible = irreversible.length === items.length
 
   const run = async () => {
-    const before = await storageApi.diskUsage().catch(() => null)
+    if (busy) return
+    // 먼저 잠근다: 남은 공간을 재는 동안 두 번 눌러 정리가 두 번 시작되지 않게
     setBusy(true)
+    setRanItems(selectedItems)
+    const before = await storageApi.diskUsage().catch(() => null)
     const allow = irreversible.length > 0 && understood
     setLive({ startedAt: Date.now(), stage: "normal", current: null, done: [] })
     const onEvent = (e: CleanEvent) =>

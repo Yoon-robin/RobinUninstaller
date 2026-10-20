@@ -197,6 +197,7 @@ pub fn clean_only(
         if !retryable(op.items[i].status) {
             continue;
         }
+        let was_partial = op.items[i].status == ItemStatus::Partial;
         crate::progress::report(|p| p.set_current(&op.items[i].location));
         if !op.items[i].backup_path_is_valid(i) {
             op.items[i].status = ItemStatus::Blocked;
@@ -220,6 +221,16 @@ pub fn clean_only(
                     item.error = msg;
                 }
             }
+        }
+        // 일부를 이미 지운 항목은 다시 시도하다 실패해도(사용 중, 막힘 등) "일부만 정리됨"으로 남긴다.
+        // 지운 부분은 백업에만 있으므로, 다른 상태로 바뀌면 되돌릴 수 없게 되고 보관 기간이 지나면 사라진다.
+        if was_partial
+            && !matches!(
+                op.items[i].status,
+                ItemStatus::Removed | ItemStatus::AlreadyGone | ItemStatus::Partial
+            )
+        {
+            op.items[i].status = ItemStatus::Partial;
         }
         let snapshot = op.items[i].clone();
         save_or_stop(store, op)?;
@@ -298,13 +309,14 @@ fn clean_fs(store: &Store, op: &mut Operation, op_dir: &Path, i: usize) -> Resul
     if let (ItemStatus::Partial, Some(Backup::Quarantine { path })) =
         (op.items[i].status, &op.items[i].backup)
     {
-        if !op_dir.join(path).exists() {
+        let backup = op_dir.join(path);
+        if !backup.exists() {
             return Err((
                 ItemStatus::Failed,
                 Some("격리 폴더의 백업이 없어져 다시 정리하지 않았어요".into()),
             ));
         }
-        return match files::remove_rest(&src) {
+        return match files::remove_rest(&src, &backup) {
             Ok(()) | Err(FsError::NotFound) => Ok(()),
             Err(e) => Err(match fs_error(e) {
                 // 백업은 이미 있으므로 "일부만 정리됨"으로 남긴다
@@ -334,6 +346,16 @@ fn clean_fs(store: &Store, op: &mut Operation, op_dir: &Path, i: usize) -> Resul
         Ok(()) => Ok(()),
         // 복사본이 있으므로 백업 기록은 남긴다
         Err(e @ FsError::Partial(_)) => Err(fs_error(e)),
+        // 경로가 너무 긴 경우 등: 옮기지 못했는데 "이미 없음"으로 보이면 안 된다
+        Err(FsError::NotFound) if std::fs::symlink_metadata(&src).is_ok() => {
+            if !op_dir.join(&rel).exists() {
+                op.items[i].backup = None;
+            }
+            Err((
+                ItemStatus::Failed,
+                Some("옮기지 못했어요 (경로가 너무 길거나 찾을 수 없어요)".into()),
+            ))
+        }
         Err(e) => {
             if !op_dir.join(&rel).exists() {
                 op.items[i].backup = None;
@@ -480,11 +502,24 @@ pub fn restore(
     Ok(())
 }
 
-/// 백업으로 옮긴 직후 기록 저장이 실패해 상태가 "대기"로 남은 항목. 백업 위치는 옮기기 전에 먼저 기록하므로,
-/// 격리 폴더에 데이터가 있으면 실제로 옮겨진 것이다 (레지스트리는 지우기 전에 백업을 쓰므로 여기서 다루지 않는다).
+/// 백업으로 옮기거나 지운 직후 기록 저장이 실패해 상태가 "대기"로 남은 항목. 백업 위치는 옮기거나 지우기 전에
+/// 먼저 기록하므로, 격리 폴더에 데이터가 있으면 실제로 옮겨진 것이다. 레지스트리는 백업 파일이 있고 원래 자리에
+/// 그 키·값이 없을 때 (지운 뒤 기록하지 못함).
 fn moved_but_not_recorded(item: &OperationItem, op_dir: &Path) -> bool {
-    item.status == ItemStatus::Pending
-        && matches!(&item.backup, Some(Backup::Quarantine { path }) if op_dir.join(path).exists())
+    if item.status != ItemStatus::Pending {
+        return false;
+    }
+    match &item.backup {
+        Some(Backup::Quarantine { path }) => op_dir.join(path).exists(),
+        Some(Backup::Registry { path }) => std::fs::read(op_dir.join(path))
+            .ok()
+            .and_then(|b| serde_json::from_slice::<RegistryBackup>(&b).ok())
+            .is_some_and(|backup| {
+                backup.target() == (item.location.as_str(), item.value_name.as_deref())
+                    && !registry::target_exists(&backup)
+            }),
+        None => false,
+    }
 }
 
 /// 항목 하나를 되돌린다. 덮어쓰지 않고 남긴 것의 목록을 돌려준다.

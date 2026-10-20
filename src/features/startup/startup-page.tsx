@@ -354,6 +354,8 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
     setBusy(true)
     try {
       const updated = await startupApi.setEnabled(entry.id, enabled)
+      // 이미 돌고 있던 목록 읽기가 바꾸기 전 상태로 덮어쓰지 않게 멈추고 반영한다
+      await queryClient.cancelQueries({ queryKey: QUERY_KEY })
       queryClient.setQueryData<StartupEntry[]>(QUERY_KEY, (old) => old?.map((e) => (e.id === updated.id ? updated : e)))
       toast.success(enabled ? `다시 켰어요 · ${entry.name}` : `껐어요 · ${entry.name}`, {
         description: enabled ? "다음 로그인부터 다시 실행돼요" : "다음 로그인부터 실행되지 않아요",

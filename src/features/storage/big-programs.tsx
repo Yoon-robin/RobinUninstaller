@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react"
-import { useQuery, useQueryClient } from "@tanstack/react-query"
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query"
 import { Loader2, Package, Trash2 } from "lucide-react"
 
 import { api, canUninstall, navigate, type InstalledApplication } from "@/lib/api"
@@ -27,6 +27,8 @@ export function BigProgramsCard() {
     queryFn: measureAppSizes,
     enabled: apps.data != null,
     staleTime: Infinity,
+    // 목록을 다시 읽어 다시 재는 동안 앞서 잰 크기를 그대로 보여 준다 (크기·정렬이 잠깐 사라지지 않게)
+    placeholderData: keepPreviousData,
   })
   const sizeProgress = useAppSizeProgress()
   const [target, setTarget] = useState<InstalledApplication | null>(null)
@@ -43,59 +45,63 @@ export function BigProgramsCard() {
       .slice(0, TOP)
   }, [apps.data, sizes.data])
 
-  if (top.length === 0) return null
-  const max = top[0].estimatedSizeKb ?? 1
+  const max = top[0]?.estimatedSizeKb ?? 1
 
   return (
-    <section className="overflow-clip rounded-2xl border bg-card shadow-sm">
-      <div className="flex flex-wrap items-center gap-3 border-b px-5 py-4">
-        <div className="mr-auto min-w-0">
-          <h2 className="font-semibold">용량이 큰 프로그램</h2>
-          <p className="text-xs text-muted-foreground">
-            안 쓰는 큰 프로그램을 지우면 캐시 정리보다 공간이 훨씬 많이 생길 수 있어요. 지우고 나면 남은 흔적도 찾아
-            드려요.
-          </p>
-        </div>
-        <Button variant="outline" size="sm" onClick={() => navigate("programs")}>
-          <Package />
-          전체 목록
-        </Button>
-      </div>
-      <ul className="divide-y">
-        {top.map((app) => {
-          const kb = app.estimatedSizeKb ?? 0
-          return (
-            <li key={app.id} className="flex items-center gap-3 px-5 py-2.5">
-              <AppIcon app={app} className="size-8" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-medium">{app.displayName}</p>
-                <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                  <div className="h-full rounded-full bg-chart-2" style={{ width: `${(kb / max) * 100}%` }} />
-                </div>
-              </div>
-              <span className="w-20 shrink-0 text-right text-sm font-semibold tabular-nums">
-                {app.sizeMeasured && "약 "}
-                {formatSize(kb)}
-              </span>
-              {canUninstall(app) ? (
-                <Button variant="outline" size="sm" onClick={() => setTarget(app)}>
-                  <Trash2 />
-                  제거
-                </Button>
-              ) : (
-                <Button variant="ghost" size="sm" onClick={() => navigate("programs")}>
-                  프로그램 화면에서
-                </Button>
-              )}
-            </li>
-          )
-        })}
-      </ul>
-      {sizes.isFetching && (
-        <p className="flex items-center gap-2 border-t px-5 py-2.5 text-xs text-muted-foreground" role="status">
-          <Loader2 className="size-3.5 animate-spin" />
-          크기 기록이 없는 프로그램을 재는 중이에요{sizeProgressText(sizeProgress)}. 순서가 바뀔 수 있어요.
-        </p>
+    <>
+      {/* 목록이 비어도 대화상자는 남긴다: 마지막 큰 프로그램을 지우면 목록이 비는데, 그때 결과·남은 흔적 창이 같이 사라지면 안 된다 */}
+      {top.length > 0 && (
+        <section className="overflow-clip rounded-2xl border bg-card shadow-sm">
+          <div className="flex flex-wrap items-center gap-3 border-b px-5 py-4">
+            <div className="mr-auto min-w-0">
+              <h2 className="font-semibold">용량이 큰 프로그램</h2>
+              <p className="text-xs text-muted-foreground">
+                안 쓰는 큰 프로그램을 지우면 캐시 정리보다 공간이 훨씬 많이 생길 수 있어요. 지우고 나면 남은 흔적도 찾아
+                드려요.
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={() => navigate("programs")}>
+              <Package />
+              전체 목록
+            </Button>
+          </div>
+          <ul className="divide-y">
+            {top.map((app) => {
+              const kb = app.estimatedSizeKb ?? 0
+              return (
+                <li key={app.id} className="flex items-center gap-3 px-5 py-2.5">
+                  <AppIcon app={app} className="size-8" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium">{app.displayName}</p>
+                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                      <div className="h-full rounded-full bg-chart-2" style={{ width: `${(kb / max) * 100}%` }} />
+                    </div>
+                  </div>
+                  <span className="w-20 shrink-0 text-right text-sm font-semibold tabular-nums">
+                    {app.sizeMeasured && "약 "}
+                    {formatSize(kb)}
+                  </span>
+                  {canUninstall(app) ? (
+                    <Button variant="outline" size="sm" onClick={() => setTarget(app)}>
+                      <Trash2 />
+                      제거
+                    </Button>
+                  ) : (
+                    <Button variant="ghost" size="sm" onClick={() => navigate("programs")}>
+                      프로그램 화면에서
+                    </Button>
+                  )}
+                </li>
+              )
+            })}
+          </ul>
+          {sizes.isFetching && (
+            <p className="flex items-center gap-2 border-t px-5 py-2.5 text-xs text-muted-foreground" role="status">
+              <Loader2 className="size-3.5 animate-spin" />
+              크기 기록이 없는 프로그램을 재는 중이에요{sizeProgressText(sizeProgress)}. 순서가 바뀔 수 있어요.
+            </p>
+          )}
+        </section>
       )}
 
       <UninstallDialog
@@ -109,6 +115,6 @@ export function BigProgramsCard() {
         }}
       />
       <LeftoversDialog target={leftovers} onClose={() => setLeftovers(null)} />
-    </section>
+    </>
   )
 }

@@ -82,7 +82,12 @@ async function runCheck(): Promise<CheckResult> {
 }
 
 // 켤 때 확인은 화면을 그리기 전에 바로 시작한다. 시작 화면이 보이는 동안 받아 오므로 기다리는 시간이 거의 없다.
-let startupCheck: Promise<CheckResult> | null = readBool(AUTO_KEY, true) ? runCheck() : null
+let startupCheck: Promise<CheckResult> | null = null
+
+/** 앱 모드로 켜질 때 main.tsx가 화면을 그리기 전에 부른다 (설치·제거 화면에서는 확인하지 않는다). */
+export function beginStartupUpdateCheck() {
+  if (!startupCheck && readBool(AUTO_KEY, true)) startupCheck = runCheck()
+}
 
 /** `ready`: 시작 화면이 걷혔는지. 그 전에 새 버전을 찾으면 창은 걷힌 뒤에 띄운다. */
 export function UpdatesProvider({ ready, children }: { ready: boolean; children: ReactNode }) {

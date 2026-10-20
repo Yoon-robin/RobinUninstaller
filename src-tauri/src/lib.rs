@@ -22,12 +22,23 @@ use robin_startup::{StartupEntry, ToggleError};
 use tauri::ipc::Channel;
 use tauri::{Manager, State};
 
-/// 스캔 한 번의 결과. 정리 요청은 같은 프로그램의 스캔 결과에 있는 항목만 받는다
-/// (다른 프로그램을 스캔한 뒤 이전 화면의 정리 요청이 들어와도 섞이지 않게).
+/// 프로그램별 마지막 스캔 결과. 정리 요청은 그 프로그램의 스캔 결과에 있는 항목만 받는다
+/// (다른 프로그램을 스캔한 뒤 이전 화면의 정리 요청이 들어와도 섞이지 않게). 프로그램별로 두는 이유:
+/// 닫은 창의 느린 스캔이 나중에 끝나도 지금 보는 프로그램의 결과를 덮어쓰지 않게.
 #[derive(Default)]
 pub(crate) struct ScanSession {
-    app_id: String,
-    items: Vec<Leftover>,
+    by_app: HashMap<String, Vec<Leftover>>,
+}
+
+impl ScanSession {
+    /// 어느 스캔 결과에든 있는 항목 (탐색기로 열기, 제외 목록에 더하기)
+    pub(crate) fn find(&self, item_id: &str) -> Option<Leftover> {
+        self.by_app
+            .values()
+            .flat_map(|items| items.iter())
+            .find(|i| i.id == item_id)
+            .cloned()
+    }
 }
 
 #[derive(Default)]
@@ -90,6 +101,11 @@ async fn list_installed_apps(
 
     if let Ok(mut map) = cache.apps.lock() {
         *map = apps.iter().map(|a| (a.id.clone(), a.clone())).collect();
+    }
+    // 제거했던 프로그램을 다시 설치했으면 "제거한 프로그램"에서 뺀다. 남겨 두면 다시 설치한 파일·등록 정보가
+    // 옛 기록 기준으로 "남은 흔적"이 된다.
+    if let Ok(mut removed) = cache.removed.lock() {
+        removed.retain(|r| !apps.iter().any(|a| a.id == r.id));
     }
     Ok(apps)
 }
@@ -348,28 +364,33 @@ async fn scan_leftovers(id: String, cache: State<'_, AppCache>) -> Result<ScanRe
         .ok_or("알 수 없는 프로그램이에요")?;
 
     let report = tauri::async_runtime::spawn_blocking(move || {
-        robin_scanner::scan(&app, &robin_discovery::list_installed())
+        let installed = robin_discovery::list_installed();
+        // 다시 설치된 프로그램이면 옛 제거 기록 대신 지금 등록 정보로 본다
+        let app = installed
+            .iter()
+            .find(|a| a.id == app.id)
+            .cloned()
+            .unwrap_or(app);
+        robin_scanner::scan(&app, &installed)
     })
     .await
     .map_err(|e| e.to_string())?;
 
     if let Ok(mut last) = cache.last_scan.lock() {
-        *last = ScanSession {
-            app_id: id,
-            items: report.items.clone(),
-        };
+        last.by_app.insert(id, report.items.clone());
     }
     Ok(report)
 }
 
 /// 스캔 결과의 파일·폴더를 탐색기에서 선택해 보여 준다. 마지막 스캔에 있던 항목만 허용한다.
-#[tauri::command]
+// 경로가 연결 안 된 네트워크 드라이브면 확인이 오래 걸려 창이 멈추지 않게 메인 스레드 밖에서 돈다
+#[tauri::command(async)]
 fn reveal_leftover(item_id: String, cache: State<'_, AppCache>) -> Result<(), String> {
     let item = cache
         .last_scan
         .lock()
         .ok()
-        .and_then(|scan| scan.items.iter().find(|i| i.id == item_id).cloned())
+        .and_then(|scan| scan.find(&item_id))
         .ok_or("스캔 결과에 없는 항목이에요")?;
     if !matches!(item.kind, LeftoverKind::Folder | LeftoverKind::File) {
         return Err("파일이나 폴더만 열 수 있어요".into());
@@ -387,7 +408,8 @@ fn reveal_leftover(item_id: String, cache: State<'_, AppCache>) -> Result<(), St
 }
 
 /// 설치 폴더를 탐색기로 연다.
-#[tauri::command]
+// 경로가 연결 안 된 네트워크 드라이브면 확인이 오래 걸려 창이 멈추지 않게 메인 스레드 밖에서 돈다
+#[tauri::command(async)]
 fn open_install_location(id: String, cache: State<'_, AppCache>) -> Result<(), String> {
     let app = cache.get(&id).ok_or("알 수 없는 프로그램이에요")?;
     let dir = app
@@ -430,12 +452,12 @@ async fn clean_leftovers(
 ) -> Result<Operation, String> {
     let items: Vec<Leftover> = {
         let scan = cache.last_scan.lock().map_err(|e| e.to_string())?;
-        if scan.app_id != app_id {
+        let Some(scanned) = scan.by_app.get(&app_id) else {
             return Err(
-                "다른 프로그램의 스캔 결과예요. 남은 흔적을 다시 찾은 뒤 시도해 주세요".into(),
+                "이 프로그램의 스캔 결과가 없어요. 남은 흔적을 다시 찾은 뒤 시도해 주세요".into(),
             );
-        }
-        scan.items
+        };
+        scanned
             .iter()
             .filter(|i| item_ids.contains(&i.id))
             .cloned()
@@ -443,6 +465,21 @@ async fn clean_leftovers(
     };
     if items.is_empty() {
         return Err("정리할 항목이 없어요. 다시 찾은 뒤 시도해 주세요".into());
+    }
+    // 아직 설치된 프로그램은 강제 제거로만 정리한다. "흔적 미리 보기"에는 지금 쓰는 설치 폴더·등록 정보가
+    // 들어 있어서, 여기서 정리하면 강제 제거의 확인(보안 프로그램·실행 중)을 건너뛰게 된다.
+    if force_app_id.is_none() {
+        let id = app_id.clone();
+        let installed = tauri::async_runtime::spawn_blocking(move || {
+            robin_discovery::list_installed().iter().any(|a| a.id == id)
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+        if installed {
+            return Err(
+                "아직 설치된 프로그램이에요. 프로그램을 제거한 뒤 남은 흔적을 정리해 주세요".into(),
+            );
+        }
     }
     // 강제 제거는 화면에서 이미 확인했어도 여기서 다시 확인한다 (보안 프로그램·실행 중인 프로그램).
     // 대상을 찾지 못하면 확인을 건너뛰지 않고 멈춘다.
@@ -552,11 +589,37 @@ async fn clean_leftovers_elevated(
     force_app_id: Option<String>,
     cache: State<'_, AppCache>,
 ) -> Result<Operation, String> {
+    let _lock = BackupLock::acquire(&op_id)?;
     let op = tauri::async_runtime::spawn_blocking(move || run_worker(worker::CLEAN, &op_id, ""))
         .await
         .map_err(|e| e.to_string())??;
     note_force_removed(&cache, force_app_id).await;
     Ok(op)
+}
+
+/// 지금 되돌리거나 지우고 있는 백업. 같은 백업을 동시에 다루지 않게 한다: 복구 기록 화면을 떠났다 돌아와
+/// 다시 누르거나(화면은 진행 중인 것을 잊는다), 앱을 켤 때 도는 오래된 백업 정리와 겹치면 지우는 중인 백업에서
+/// 되돌리게 된다.
+static BUSY_BACKUPS: Mutex<Vec<String>> = Mutex::new(Vec::new());
+
+pub(crate) struct BackupLock(String);
+
+impl BackupLock {
+    pub(crate) fn acquire(op_id: &str) -> Result<Self, String> {
+        let mut busy = BUSY_BACKUPS.lock().unwrap_or_else(|e| e.into_inner());
+        if busy.iter().any(|id| id == op_id) {
+            return Err("이 백업으로 다른 작업을 하고 있어요. 끝난 뒤 다시 시도해 주세요".into());
+        }
+        busy.push(op_id.to_string());
+        Ok(Self(op_id.to_string()))
+    }
+}
+
+impl Drop for BackupLock {
+    fn drop(&mut self) {
+        let mut busy = BUSY_BACKUPS.lock().unwrap_or_else(|e| e.into_inner());
+        busy.retain(|id| *id != self.0);
+    }
 }
 
 /// 복구 기록 (최근 작업부터).
@@ -574,6 +637,7 @@ async fn restore_backup(
     item_ids: Option<Vec<String>>,
     on_progress: Channel<ProgressSnapshot>,
 ) -> Result<Operation, String> {
+    let _lock = BackupLock::acquire(&op_id)?;
     let progress = Arc::new(Progress::new());
     let _ticker = ProgressTicker::start(progress.clone(), on_progress);
     tauri::async_runtime::spawn_blocking(move || {
@@ -594,6 +658,7 @@ async fn restore_backup_elevated(
     op_id: String,
     item_ids: Option<Vec<String>>,
 ) -> Result<Operation, String> {
+    let _lock = BackupLock::acquire(&op_id)?;
     tauri::async_runtime::spawn_blocking(move || {
         let extra = match item_ids {
             None => String::new(),
@@ -624,6 +689,7 @@ async fn delete_backup(
     op_id: String,
     on_progress: Channel<ProgressSnapshot>,
 ) -> Result<(), String> {
+    let _lock = BackupLock::acquire(&op_id)?;
     let progress = Arc::new(Progress::new());
     let _ticker = ProgressTicker::start(progress.clone(), on_progress);
     tauri::async_runtime::spawn_blocking(move || {
@@ -804,7 +870,8 @@ async fn list_hidden_startup_tasks() -> Result<Vec<StartupEntry>, String> {
 }
 
 /// 시작 항목을 탐색기에서 보여 준다: 시작 폴더 항목은 그 파일, Run 항목과 예약 작업은 실행 파일.
-#[tauri::command]
+// 경로가 연결 안 된 네트워크 드라이브면 확인이 오래 걸려 창이 멈추지 않게 메인 스레드 밖에서 돈다
+#[tauri::command(async)]
 fn reveal_startup_item(id: String, cache: State<'_, AppCache>) -> Result<(), String> {
     let entry = cache
         .get_startup(&id)
@@ -942,7 +1009,8 @@ async fn clean_storage_elevated(
 }
 
 /// 정리 항목의 첫 위치를 탐색기로 연다. 마지막 스캔에 있던 위치만 허용한다.
-#[tauri::command]
+// 경로가 연결 안 된 네트워크 드라이브면 확인이 오래 걸려 창이 멈추지 않게 메인 스레드 밖에서 돈다
+#[tauri::command(async)]
 fn reveal_storage_category(id: String, cache: State<'_, AppCache>) -> Result<(), String> {
     let location = cache
         .storage
@@ -1193,7 +1261,8 @@ fn cancel_large_files(cache: State<'_, AppCache>) {
 }
 
 /// 분석 결과의 항목을 탐색기로 연다.
-#[tauri::command]
+// 경로가 연결 안 된 네트워크 드라이브면 확인이 오래 걸려 창이 멈추지 않게 메인 스레드 밖에서 돈다
+#[tauri::command(async)]
 fn reveal_folder_item(id: String, cache: State<'_, AppCache>) -> Result<(), String> {
     open_in_explorer(&cache.folder_path(&id).ok_or("알 수 없는 항목이에요")?)
 }
@@ -1206,6 +1275,15 @@ pub fn run() {
         .plugin(tauri_plugin_process::init())
         .manage(AppCache::default())
         .manage(tracking::TrackingState::default())
+        // 설치·제거 화면을 Alt+F4 등으로 닫을 때도 진행 중이면 막고, 제거를 마쳤으면 임시 복사본을 정리한다
+        .on_window_event(|_window, event| {
+            if let tauri::WindowEvent::CloseRequested { api, .. } = event
+                && setup::mode() != setup::Mode::App
+                && !setup::on_close_requested()
+            {
+                api.prevent_close();
+            }
+        })
         .setup(|app| {
             // 설치·제거 화면: 작은 고정 크기 창으로 띄우고, 앱의 다른 시작 작업은 하지 않는다
             #[cfg(windows)]

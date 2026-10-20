@@ -43,6 +43,8 @@ pub enum Evidence {
     ContainsUserDocuments { count: usize },
     /// 바탕 화면·문서·다운로드처럼 사용자가 직접 파일을 두는 폴더 안 (감점·경고, 자동 선택 안 함)
     InUserFolder,
+    /// 파일이 너무 많아 안을 끝까지 확인하지 못함: 문서가 있는지 모르므로 자동 선택하지 않는다 (감점·경고)
+    TooLargeToCheck,
 }
 
 impl Evidence {
@@ -61,6 +63,7 @@ impl Evidence {
             Evidence::SharedWithOtherApp { .. } => -90,
             Evidence::ContainsUserDocuments { .. } => -40,
             Evidence::InUserFolder => -60,
+            Evidence::TooLargeToCheck => -40,
         }
     }
 
@@ -217,6 +220,7 @@ impl Leftover {
                 Evidence::SharedWithOtherApp { .. }
                     | Evidence::ContainsUserDocuments { .. }
                     | Evidence::InUserFolder
+                    | Evidence::TooLargeToCheck
             )
         })
     }

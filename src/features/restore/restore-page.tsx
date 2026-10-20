@@ -271,7 +271,14 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
     } finally {
       setBusy(null)
       // 복원하면 프로그램·시작 항목이 다시 생길 수 있다
-      for (const key of ["backups", "installed-apps", "recently-removed", "startup-items"]) {
+      for (const key of [
+        "backups",
+        "backup-usage",
+        "old-backups",
+        "installed-apps",
+        "recently-removed",
+        "startup-items",
+      ]) {
         queryClient.invalidateQueries({ queryKey: [key] })
       }
     }
@@ -407,7 +414,7 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
       toast.error(String(e))
     } finally {
       setBusy(false)
-      queryClient.invalidateQueries({ queryKey: ["backups"] })
+      for (const key of ["backups", "backup-usage", "old-backups"]) queryClient.invalidateQueries({ queryKey: [key] })
     }
   }
 
