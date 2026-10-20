@@ -61,7 +61,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
             <motion.span
               layoutId="sidebar-active"
               className="absolute inset-0 -z-10 rounded-[0.625rem] bg-sidebar-accent"
-              transition={{ type: "spring", duration: 0.4, bounce: 0.12 }}
+              transition={{ type: "spring", duration: 0.32, bounce: 0 }}
             />
           )}
           <item.icon className={page === item.page ? "text-sidebar-primary" : undefined} />

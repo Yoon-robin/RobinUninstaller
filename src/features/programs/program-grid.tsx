@@ -62,9 +62,7 @@ const GridCard = forwardRef<HTMLDivElement, CardProps>(function GridCard(
     <motion.div
       ref={ref}
       exit={
-        removing
-          ? { opacity: 0, scale: 0.9, filter: "blur(6px)", transition: { duration: 0.3, ease: [0.22, 1, 0.36, 1] } }
-          : undefined
+        removing ? { opacity: 0, scale: 0.94, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } } : undefined
       }
     >
       <AppContextMenu app={app} {...handlers}>

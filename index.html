@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ko" class="dark" style="color-scheme: dark">
+<html lang="ko" class="dark booting" style="color-scheme: dark">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
@@ -14,27 +14,72 @@
           document.documentElement.style.colorScheme = "light"
         }
       } catch {}
-      try {
-        window.__TAURI_INTERNALS__?.invoke("plugin:window|show", { label: "main" })
-      } catch {}
+      // 창 열림: 창이 실제로 보인 다음에 시작 화면 판을 키운다. 먼저 시작하면 창이 뜰 때 이미 다 커져 있다.
+      // 다 커지면 .booting을 떼고 바탕을 칠한다 (main.tsx는 이 신호를 기다렸다가 시작 화면을 넘긴다).
+      ;(() => {
+        const html = document.documentElement
+        let started = false
+        const opened = () => {
+          if (window.__bootOpened) return
+          window.__bootOpened = true
+          html.classList.remove("booting", "opening")
+          window.dispatchEvent(new Event("robin:boot-opened"))
+        }
+        const start = () => {
+          if (started) return
+          started = true
+          requestAnimationFrame(() =>
+            requestAnimationFrame(() => {
+              html.classList.add("opening")
+              setTimeout(opened, 800) // animationend가 오지 않을 때를 위한 안전장치
+            }),
+          )
+        }
+        if (matchMedia("(prefers-reduced-motion: reduce)").matches) opened()
+        addEventListener("animationend", (e) => e.animationName === "boot-open" && opened())
+        let shown = null
+        try {
+          shown = window.__TAURI_INTERNALS__?.invoke("plugin:window|show", { label: "main" })
+        } catch {}
+        if (shown) shown.then(start, start)
+        else addEventListener("DOMContentLoaded", start)
+        setTimeout(start, 2500)
+        setTimeout(opened, 4000)
+      })()
     </script>
     <style>
+      /* 창 열림: 창은 투명하게 만들어져 있어서, 시작 화면을 작은 둥근 판으로 그렸다가 창 크기로 키우면
+         창이 작게 떴다가 커지는 것처럼 보인다. 다 커지면 .booting을 떼고 바탕을 불투명하게 칠한다. */
+      html.booting, html.booting body { background: transparent !important; }
+      html.booting #root { visibility: hidden; }
+      /* 모서리는 움직이지 않는다: border-radius를 움직이면 매 프레임 다시 그려야 해서, 앱 코드를 읽느라 바쁠 때 멈칫한다.
+         transform·opacity만 움직이면 GPU가 따로 그려 매끄럽다. */
+      html.booting #boot { opacity: 0; border-radius: 12px; will-change: transform, opacity; }
+      html.booting.opening #boot { animation: boot-open 0.52s cubic-bezier(0.22, 1, 0.36, 1) both; }
+      @keyframes boot-open {
+        from { opacity: 0; transform: scale(0.9); }
+        60% { opacity: 1; }
+        to { opacity: 1; transform: scale(1); }
+      }
       /* 앱 코드가 뜨기 전 시작 화면. React의 StartupSplash와 같은 자리·모양이라 바뀌는 게 보이지 않는다. */
       #boot {
         position: fixed; inset: 0; z-index: 200; display: flex; flex-direction: column;
         align-items: center; justify-content: center; padding-top: 3rem; padding-bottom: 4rem;
-        background: radial-gradient(50% 45% at 50% 42%, rgba(46, 230, 240, 0.08), transparent), #1a1b1f;
+        background: #1c1c1e; overflow: hidden;
         color: #f3f4f6; font-family: "Pretendard Variable", Pretendard, -apple-system, "Segoe UI", sans-serif;
         transition: opacity 0.3s ease;
       }
-      .light #boot { background: radial-gradient(50% 45% at 50% 42%, rgba(8, 145, 178, 0.08), transparent), #f5f6f8; color: #1f2023; }
+      .light #boot { background: #f5f5f7; color: #1f2023; }
       #boot svg { filter: drop-shadow(0 10px 24px rgba(0, 0, 0, 0.35)); }
       #boot .name { margin-top: 1.5rem; font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
       #boot .bar { margin-top: 1.5rem; width: 12rem; height: 4px; border-radius: 999px; overflow: hidden; background: rgba(127, 127, 127, 0.18); }
       #boot .bar i { display: block; width: 33%; height: 100%; border-radius: 999px; background: #5ee3e0; animation: boot-sweep 1.1s cubic-bezier(0.22, 1, 0.36, 1) infinite; }
       #boot .msg { margin-top: 1rem; font-size: 0.875rem; opacity: 0.6; }
       @keyframes boot-sweep { from { transform: translateX(-100%); } to { transform: translateX(300%); } }
-      @media (prefers-reduced-motion: reduce) { #boot .bar i { animation: none; width: 100%; opacity: 0.5; } }
+      @media (prefers-reduced-motion: reduce) {
+        html.booting #boot { animation: none; opacity: 1; }
+        #boot .bar i { animation: none; width: 100%; opacity: 0.5; }
+      }
     </style>
   </head>
 

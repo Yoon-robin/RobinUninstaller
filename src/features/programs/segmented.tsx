@@ -83,7 +83,7 @@ export function FilterChips<K extends string>({
               <motion.span
                 layoutId="filter-chip"
                 className="absolute inset-0 rounded-full bg-primary"
-                transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
+                transition={{ type: "spring", duration: 0.3, bounce: 0 }}
               />
             )}
             <span className="relative">{o.label}</span>
@@ -139,7 +139,7 @@ export function IconSegmented<K extends string>({
               <motion.span
                 layoutId={layoutId}
                 className="absolute inset-0 rounded-md bg-muted shadow-sm"
-                transition={{ type: "spring", duration: 0.3, bounce: 0.15 }}
+                transition={{ type: "spring", duration: 0.3, bounce: 0 }}
               />
             )}
             <o.icon className="relative size-4" />
@@ -198,7 +198,7 @@ export function TextTabs<K extends string>({
               <motion.span
                 layoutId={layoutId}
                 className="absolute inset-0 rounded-full bg-background shadow-sm"
-                transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
+                transition={{ type: "spring", duration: 0.3, bounce: 0 }}
               />
             )}
             <span className="relative">{o.label}</span>

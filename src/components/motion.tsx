@@ -6,16 +6,16 @@ export const EASE_OUT_QUINT = [0.22, 1, 0.36, 1] as const
 /** 순서대로 나타나는 묶음. 자식은 <FadeUp>을 쓴다. */
 export const staggerContainer: Variants = {
   hidden: {},
-  show: { transition: { staggerChildren: 0.04, delayChildren: 0.02 } },
+  show: { transition: { staggerChildren: 0.025, delayChildren: 0 } },
 }
 
 const fadeUpVariants: Variants = {
   // 페이지를 옮길 때마다 보이는 동작이라 짧고 가볍게 (흐림 없이 살짝 떠오르기만)
-  hidden: { opacity: 0, y: 6 },
+  hidden: { opacity: 0, y: 4 },
   show: {
     opacity: 1,
     y: 0,
-    transition: { duration: 0.24, ease: EASE_OUT_QUINT },
+    transition: { duration: 0.2, ease: EASE_OUT_QUINT },
   },
 }
 

@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArchiveRestore, Check, Loader2, ShieldAlert, TriangleAlert } from "lucide-react"
+import { ArchiveRestore, Loader2, ShieldAlert, TriangleAlert } from "lucide-react"
 import { motion } from "motion/react"
 
 import {
@@ -14,6 +14,7 @@ import {
 } from "@/lib/api"
 import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { DrawnCheck } from "@/components/drawn-check"
 import { EASE_OUT_QUINT } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { ScanProgressView } from "@/components/scan-progress"
@@ -177,11 +178,7 @@ export function CleanResult({
             needsAdmin || problems.length ? "bg-chart-3/15 text-chart-3" : "bg-primary/15 text-primary",
           )}
         >
-          {needsAdmin || problems.length ? (
-            <TriangleAlert className="size-7" />
-          ) : (
-            <Check className="size-7" strokeWidth={2.4} />
-          )}
+          {needsAdmin || problems.length ? <TriangleAlert className="size-7" /> : <DrawnCheck className="size-7" />}
         </motion.div>
         <div>
           <p className="text-base font-semibold">{removed}개를 정리했어요</p>

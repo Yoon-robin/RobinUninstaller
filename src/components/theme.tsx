@@ -141,10 +141,10 @@ export function ThemeToggle() {
         <AnimatePresence mode="popLayout" initial={false}>
           <motion.span
             key={isDark ? "moon" : "sun"}
-            initial={{ opacity: 0, rotate: -60, scale: 0.7, filter: "blur(3px)" }}
-            animate={{ opacity: 1, rotate: 0, scale: 1, filter: "blur(0px)" }}
-            exit={{ opacity: 0, rotate: 60, scale: 0.7, filter: "blur(3px)" }}
-            transition={{ duration: 0.35, ease: EASE_OUT_QUINT }}
+            initial={{ opacity: 0, rotate: -45, scale: 0.75 }}
+            animate={{ opacity: 1, rotate: 0, scale: 1 }}
+            exit={{ opacity: 0, rotate: 45, scale: 0.75 }}
+            transition={{ duration: 0.3, ease: EASE_OUT_QUINT }}
           >
             {isDark ? <Moon className="size-4" /> : <Sun className="size-4" />}
           </motion.span>

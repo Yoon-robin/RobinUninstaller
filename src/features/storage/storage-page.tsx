@@ -12,6 +12,7 @@ import {
   Sparkles,
   TriangleAlert,
 } from "lucide-react"
+import { DrawnCheck } from "@/components/drawn-check"
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
@@ -811,7 +812,7 @@ function CleanResultView({
       <DialogTitle className="flex items-center gap-2">
         {freed > 0 ? (
           <>
-            <Check className="size-5 text-chart-5" />
+            <DrawnCheck className="size-5 text-chart-5" />
             {formatBytes(freed)}를 지웠어요
           </>
         ) : (

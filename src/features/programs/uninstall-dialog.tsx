@@ -11,6 +11,7 @@ import {
   type UninstallOutcome,
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { DrawnCheck } from "@/components/drawn-check"
 import { EASE_OUT_QUINT } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
@@ -77,10 +78,10 @@ export function UninstallDialog({
             <AnimatePresence mode="wait" initial={false}>
               <motion.div
                 key={phase.step}
-                initial={{ opacity: 0, y: 8, filter: "blur(4px)" }}
-                animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                exit={{ opacity: 0, y: -4, filter: "blur(4px)", transition: { duration: 0.12 } }}
-                transition={{ duration: 0.3, ease: EASE_OUT_QUINT }}
+                initial={{ opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -3, transition: { duration: 0.1 } }}
+                transition={{ duration: 0.25, ease: EASE_OUT_QUINT }}
               >
                 {phase.step === "confirm" && <ConfirmBody app={app} onCancel={close} onStart={start} />}
                 {phase.step === "running" && <RunningBody event={phase.event} />}
@@ -291,7 +292,7 @@ function ResultBody({
         transition={{ type: "spring", duration: 0.45, bounce: 0.35, delay: 0.05 }}
         className={cn("flex size-14 items-center justify-center rounded-full", view.toneClass)}
       >
-        <view.icon className="size-7" strokeWidth={2.4} />
+        {view.icon === Check ? <DrawnCheck className="size-7" /> : <view.icon className="size-7" strokeWidth={2.4} />}
       </motion.div>
       <div>
         <p className="text-base font-semibold">{view.title}</p>

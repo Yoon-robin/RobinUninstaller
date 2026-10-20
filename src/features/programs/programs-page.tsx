@@ -474,10 +474,10 @@ export function ProgramsPage() {
                 <AnimatePresence mode="wait" initial={false}>
                   <motion.div
                     key={view}
-                    initial={{ opacity: 0, filter: "blur(4px)" }}
-                    animate={{ opacity: 1, filter: "blur(0px)" }}
-                    exit={{ opacity: 0, filter: "blur(4px)", transition: { duration: 0.1 } }}
-                    transition={{ duration: 0.2, ease: [0.22, 1, 0.36, 1] }}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0, transition: { duration: 0.1 } }}
+                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                   >
                     {view === "list" || picked ? (
                       <div className="divide-y">
@@ -538,7 +538,7 @@ export function ProgramsPage() {
             initial={{ opacity: 0, y: 16 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16, transition: { duration: 0.15 } }}
-            transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
+            transition={{ type: "spring", duration: 0.35, bounce: 0 }}
             className="sticky bottom-4 z-20 mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border bg-popover px-4 py-3 shadow-[var(--shadow-floating)]"
           >
             <p className="mr-auto text-sm tabular-nums">
