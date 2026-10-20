@@ -156,6 +156,7 @@ fn copy_tree(src: &Path, dest: &Path) -> Result<(), FsError> {
     let meta = std::fs::symlink_metadata(src)?;
     if meta.is_dir() {
         std::fs::create_dir_all(dest)?;
+        crate::progress::report(|p| p.set_current(src.display()));
         for entry in std::fs::read_dir(src)? {
             let entry = entry?;
             copy_tree(&entry.path(), &dest.join(entry.file_name()))?;
@@ -164,7 +165,8 @@ fn copy_tree(src: &Path, dest: &Path) -> Result<(), FsError> {
         if dest.exists() {
             return Err(FsError::Conflict);
         }
-        std::fs::copy(src, dest)?;
+        let copied = std::fs::copy(src, dest)?;
+        crate::progress::report(|p| p.add_file(copied));
     }
     Ok(())
 }

@@ -181,17 +181,31 @@ export interface Operation {
 export const recoveryApi = {
   /** `forceAppId`: 강제 제거 중이면 대상 프로그램 ID (등록 정보가 사라지면 "제거한 프로그램"으로 옮긴다). */
   /** `appId`: 스캔한 프로그램. 엔진은 같은 프로그램의 마지막 스캔 결과에 있는 항목만 정리한다. */
-  clean: (appId: string, appName: string, itemIds: string[], forceAppId?: string) =>
-    invoke<Operation>("clean_leftovers", { appId, appName, itemIds, forceAppId: forceAppId ?? null }),
+  /** `onProgress`: 지금 옮기는 항목, 복사한 파일 수 (다른 드라이브는 복사라 오래 걸릴 수 있다) */
+  clean: (
+    appId: string,
+    appName: string,
+    itemIds: string[],
+    forceAppId?: string,
+    onProgress?: (p: ScanProgress) => void,
+  ) =>
+    invoke<Operation>("clean_leftovers", {
+      appId,
+      appName,
+      itemIds,
+      forceAppId: forceAppId ?? null,
+      onProgress: progressChannel(onProgress),
+    }),
   cleanElevated: (opId: string, forceAppId?: string) =>
     invoke<Operation>("clean_leftovers_elevated", { opId, forceAppId: forceAppId ?? null }),
   list: () => invoke<Operation[]>("list_backups"),
-  restore: (opId: string, itemIds?: string[]) =>
-    invoke<Operation>("restore_backup", { opId, itemIds: itemIds ?? null }),
+  restore: (opId: string, itemIds?: string[], onProgress?: (p: ScanProgress) => void) =>
+    invoke<Operation>("restore_backup", { opId, itemIds: itemIds ?? null, onProgress: progressChannel(onProgress) }),
   /** 관리자 권한으로 되돌린다. `itemIds`가 없으면 되돌릴 수 있는 항목 전부. */
   restoreElevated: (opId: string, itemIds?: string[]) =>
     invoke<Operation>("restore_backup_elevated", { opId, itemIds: itemIds ?? null }),
-  deleteBackup: (opId: string) => invoke<void>("delete_backup", { opId }),
+  deleteBackup: (opId: string, onProgress?: (p: ScanProgress) => void) =>
+    invoke<void>("delete_backup", { opId, onProgress: progressChannel(onProgress) }),
 }
 
 export const countStatus = (op: Operation, status: ItemStatus) => op.items.filter((i) => i.status === status).length
@@ -439,8 +453,13 @@ export const settingsApi = {
   addExclusion: (itemId: string) => invoke<boolean>("add_exclusion", { itemId }),
   removeExclusion: (index: number) => invoke<void>("remove_exclusion", { index }),
   backupUsage: () => invoke<BackupUsage>("backup_usage"),
-  pruneBackups: () => invoke<{ deleted: number; failed: number }>("prune_backups"),
+  pruneBackups: (onProgress?: (p: ScanProgress) => void) =>
+    invoke<{ deleted: number; failed: number }>("prune_backups", { onProgress: progressChannel(onProgress) }),
   /** `days`일보다 오래된 백업 (읽기 전용). days는 retentionChoices 중 하나 */
   oldBackups: (days: number) => invoke<{ count: number; bytes: number }>("old_backups", { days }),
-  deleteOldBackups: (days: number) => invoke<{ deleted: number; failed: number }>("delete_old_backups", { days }),
+  deleteOldBackups: (days: number, onProgress?: (p: ScanProgress) => void) =>
+    invoke<{ deleted: number; failed: number }>("delete_old_backups", {
+      days,
+      onProgress: progressChannel(onProgress),
+    }),
 }

@@ -30,6 +30,7 @@ import {
   type LeftoverKind,
   type Operation,
   type ScanReport,
+  type ScanProgress,
 } from "@/lib/api"
 import { useQueryClient } from "@tanstack/react-query"
 import { CleanResult, Cleaning, ConfirmClean } from "./clean-flow"
@@ -305,12 +306,15 @@ function Results({
     [report, selected],
   )
   const selectedItems = report.items.filter((i) => selected.has(i.id))
+  // 정리하는 동안의 진행 (지금 옮기는 항목, 복사한 파일 수)
+  const [cleanProgress, setCleanProgress] = useState<ScanProgress | null>(null)
 
   const runClean = async () => {
     setStage({ step: "cleaning" })
     setCleanError(null)
+    setCleanProgress(null)
     try {
-      const op = await recoveryApi.clean(appId, appName, [...selected], forceAppId)
+      const op = await recoveryApi.clean(appId, appName, [...selected], forceAppId, setCleanProgress)
       setStage({ step: "done", op })
     } catch (e) {
       setCleanError(String(e))
@@ -326,7 +330,7 @@ function Results({
     return <ConfirmClean items={selectedItems} onCancel={() => setStage({ step: "review" })} onConfirm={runClean} />
   }
   if (stage.step === "cleaning") {
-    return <Cleaning label="백업하고 정리하는 중이에요" />
+    return <Cleaning label="백업하고 정리하는 중이에요" progress={cleanProgress} />
   }
   if (stage.step === "done") {
     return (

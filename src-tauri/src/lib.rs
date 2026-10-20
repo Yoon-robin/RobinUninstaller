@@ -426,6 +426,7 @@ async fn clean_leftovers(
     app_name: String,
     item_ids: Vec<String>,
     force_app_id: Option<String>,
+    on_progress: Channel<ProgressSnapshot>,
     cache: State<'_, AppCache>,
 ) -> Result<Operation, String> {
     let items: Vec<Leftover> = {
@@ -465,13 +466,18 @@ async fn clean_leftovers(
         }
     }
 
+    // 다른 드라이브의 폴더는 복사해서 옮기느라 오래 걸릴 수 있어 진행 상황을 보낸다
+    let progress = Arc::new(Progress::new());
+    let _ticker = ProgressTicker::start(progress.clone(), on_progress);
     let op = tauri::async_runtime::spawn_blocking(move || {
         let store = store()?;
         let mut op = robin_recovery::new_operation(&app_name, &items);
         store
             .save(&op)
             .map_err(|e| format!("작업 기록을 만들지 못했어요: {e}"))?;
-        robin_recovery::clean(&store, &mut op, &guard(&store), |_| {})?;
+        robin_recovery::progress::with(progress, || {
+            robin_recovery::clean(&store, &mut op, &guard(&store), |_| {})
+        })?;
         Ok::<_, String>(op)
     })
     .await
@@ -564,11 +570,19 @@ async fn list_backups() -> Result<Vec<Operation>, String> {
 
 /// 작업에서 지운 항목을 되돌린다. `item_ids`가 없으면 전부.
 #[tauri::command]
-async fn restore_backup(op_id: String, item_ids: Option<Vec<String>>) -> Result<Operation, String> {
+async fn restore_backup(
+    op_id: String,
+    item_ids: Option<Vec<String>>,
+    on_progress: Channel<ProgressSnapshot>,
+) -> Result<Operation, String> {
+    let progress = Arc::new(Progress::new());
+    let _ticker = ProgressTicker::start(progress.clone(), on_progress);
     tauri::async_runtime::spawn_blocking(move || {
         let store = store()?;
         let mut op = store.load(&op_id).map_err(|e| e.to_string())?;
-        robin_recovery::restore(&store, &mut op, &guard(&store), item_ids.as_deref(), |_| {})?;
+        robin_recovery::progress::with(progress, || {
+            robin_recovery::restore(&store, &mut op, &guard(&store), item_ids.as_deref(), |_| {})
+        })?;
         Ok(op)
     })
     .await
@@ -607,10 +621,15 @@ async fn restore_backup_elevated(
 
 /// 백업을 완전히 지운다. 이후에는 복원할 수 없다 (사용자가 확인한 뒤에만 부른다).
 #[tauri::command]
-async fn delete_backup(op_id: String) -> Result<(), String> {
+async fn delete_backup(
+    op_id: String,
+    on_progress: Channel<ProgressSnapshot>,
+) -> Result<(), String> {
+    let progress = Arc::new(Progress::new());
+    let _ticker = ProgressTicker::start(progress.clone(), on_progress);
     tauri::async_runtime::spawn_blocking(move || {
         let store = store()?;
-        match store.delete(&op_id) {
+        match robin_recovery::progress::with(progress, || store.delete(&op_id)) {
             Ok(()) => Ok(()),
             // 관리자 권한으로 격리한 폴더는 원래 권한을 그대로 갖고 있어 일반 권한으로 못 지울 수 있다
             Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
@@ -1005,14 +1024,14 @@ impl AppCache {
 
 /// 오래 걸리는 작업 동안 [`Progress`]를 짧은 간격으로 화면에 보낸다 (멈춘 것처럼 보이지 않게).
 /// 값이 바뀔 때만 보내고, 버리면(drop) 마지막 상태를 한 번 더 보낸 뒤 멈춘다.
-struct ProgressTicker {
+pub(crate) struct ProgressTicker {
     stop: Arc<AtomicBool>,
 }
 
 impl ProgressTicker {
     const INTERVAL: std::time::Duration = std::time::Duration::from_millis(150);
 
-    fn start(progress: Arc<Progress>, channel: Channel<ProgressSnapshot>) -> Self {
+    pub(crate) fn start(progress: Arc<Progress>, channel: Channel<ProgressSnapshot>) -> Self {
         let stop = Arc::new(AtomicBool::new(false));
         let flag = stop.clone();
         std::thread::spawn(move || {

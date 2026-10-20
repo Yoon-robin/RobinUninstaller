@@ -47,6 +47,7 @@ cargo run -p robin-recovery --example clean_fixture
 cargo run -p robin-recovery --example force_fixture   # install --broken 뒤 강제 제거 → 복원
 cargo run -p robin-recovery --example startup_cleanup_fixture   # 파일 없는 시작 항목 정리 → 복원
 cargo run -p robin-recovery --example recovery_edge_fixture   # 백업·복원 경계 상황 (덮어쓰기 금지, 조작된 기록 거부 등)
+cargo run -p robin-recovery --example progress_cross_drive -- D:\   # 다른 드라이브 정리·되돌리기·백업 삭제 진행 상황 (시험 폴더를 만들고 지움)
 cargo run -p robin-tracker --example track_fixture   # 테스트 앱 설치를 추적 (먼저 cargo build -p robin-fixture)
 cargo run -p robin-startup --example list             # 시작 항목 보기 (읽기 전용)
 cargo run -p robin-startup --example toggle_fixture   # 테스트 앱 시작 항목만 껐다 켜기

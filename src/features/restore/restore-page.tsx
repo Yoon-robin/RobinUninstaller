@@ -16,7 +16,16 @@ import {
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
-import { isRestorable, recoveryApi, settingsApi, type ItemStatus, type LeftoverKind, type Operation } from "@/lib/api"
+import {
+  isRestorable,
+  recoveryApi,
+  settingsApi,
+  type ItemStatus,
+  type LeftoverKind,
+  type Operation,
+  type ScanProgress,
+} from "@/lib/api"
+import { ScanProgressView } from "@/components/scan-progress"
 import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
@@ -151,6 +160,8 @@ function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () =
   const settings = useQuery({ queryKey: ["settings"], queryFn: settingsApi.get, enabled: open })
   const [days, setDays] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  // 지우는 동안: 몇 번째 백업인지, 지운 크기
+  const [progress, setProgress] = useState<ScanProgress | null>(null)
   const preview = useQuery({
     queryKey: ["old-backups", days],
     queryFn: () => settingsApi.oldBackups(days!),
@@ -164,8 +175,9 @@ function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () =
   const run = async () => {
     if (days == null) return
     setBusy(true)
+    setProgress(null)
     try {
-      const r = await settingsApi.deleteOldBackups(days)
+      const r = await settingsApi.deleteOldBackups(days, setProgress)
       if (r.failed > 0) {
         toast.warning(`${r.deleted}개를 지웠어요. ${r.failed}개는 지우지 못했어요`, {
           description: "관리자 권한으로 정리한 백업일 수 있어요. 복구 기록에서 하나씩 지워 주세요.",
@@ -215,6 +227,7 @@ function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () =
                 ? `${days}일 지난 백업이 없어요.`
                 : `${count}개, ${formatBytes(preview.data?.bytes ?? 0)}를 지워요.`}
         </p>
+        {busy && <ScanProgressView label="오래된 백업을 지우는 중이에요" progress={progress} />}
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={busy}>
             취소
@@ -233,6 +246,8 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
+  // 되돌리는 동안: 지금 항목, 복사한 파일 수 (관리자 권한 작업자는 따로 도는 프로세스라 진행을 알 수 없다)
+  const [progress, setProgress] = useState<ScanProgress | null>(null)
 
   const kept = op.items.filter((i) => isRestorable(i.status)).length
   const restored = op.items.filter((i) => i.status === "restored").length
@@ -245,6 +260,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
 
   const run = async (key: string, action: () => Promise<Operation>) => {
     setBusy(key)
+    setProgress(null)
     try {
       const updated = await action()
       const failed = updated.items.filter((i) => isRestorable(i.status) && i.error?.startsWith("복원 실패")).length
@@ -300,7 +316,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
           size="sm"
           variant="outline"
           disabled={kept === 0 || busy != null}
-          onClick={() => run("all", () => recoveryApi.restore(op.id))}
+          onClick={() => run("all", () => recoveryApi.restore(op.id, undefined, setProgress))}
         >
           {busy === "all" ? <Loader2 className="animate-spin" /> : <RotateCcw />}
           정리 되돌리기
@@ -316,6 +332,9 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
           <Trash2 />
         </Button>
       </div>
+      {busy != null && busy !== "admin" && (
+        <ScanProgressView className="border-t px-5 py-4" label="되돌리는 중이에요" progress={progress} />
+      )}
 
       <AnimatePresence initial={false}>
         {open && (
@@ -347,7 +366,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
                         variant="ghost"
                         className="h-7 shrink-0"
                         disabled={busy != null}
-                        onClick={() => run(item.id, () => recoveryApi.restore(op.id, [item.id]))}
+                        onClick={() => run(item.id, () => recoveryApi.restore(op.id, [item.id], setProgress))}
                       >
                         {busy === item.id ? <Loader2 className="animate-spin" /> : <RotateCcw />}
                         되돌리기
@@ -367,6 +386,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
 function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: () => void }) {
   const queryClient = useQueryClient()
   const [busy, setBusy] = useState(false)
+  const [progress, setProgress] = useState<ScanProgress | null>(null)
   // 닫히는 애니메이션 동안 op가 null이 돼도 문구가 깨지지 않게 마지막 값을 보여 준다
   const [shown, setShown] = useState(op)
   useEffect(() => {
@@ -378,8 +398,9 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
   const confirm = async () => {
     if (!op) return
     setBusy(true)
+    setProgress(null)
     try {
-      await recoveryApi.deleteBackup(op.id)
+      await recoveryApi.deleteBackup(op.id, setProgress)
       toast.success("백업을 삭제했어요")
       onClose()
     } catch (e) {
@@ -404,6 +425,7 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
             </span>
           )}
         </DialogDescription>
+        {busy && <ScanProgressView label="백업을 지우는 중이에요" progress={progress} />}
         <div className="mt-2 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={busy}>
             취소

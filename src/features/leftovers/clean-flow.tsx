@@ -3,11 +3,20 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import { ArchiveRestore, Check, Loader2, ShieldAlert, TriangleAlert } from "lucide-react"
 import { motion } from "motion/react"
 
-import { countStatus, navigate, recoveryApi, settingsApi, type Leftover, type Operation } from "@/lib/api"
+import {
+  countStatus,
+  navigate,
+  recoveryApi,
+  settingsApi,
+  type Leftover,
+  type Operation,
+  type ScanProgress,
+} from "@/lib/api"
 import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT } from "@/components/motion"
 import { Button } from "@/components/ui/button"
+import { ScanProgressView } from "@/components/scan-progress"
 
 const panel = {
   initial: { opacity: 0, y: 8 },
@@ -82,7 +91,22 @@ export function ConfirmClean({
   )
 }
 
-export function Cleaning({ label }: { label: string }) {
+/**
+ * 정리하는 동안. `progress`를 넘기면(잔여물·강제 제거) 지금 옮기는 항목, 복사한 파일 수, 몇 번째인지, 걸린 시간을 보여 준다.
+ * 다른 드라이브의 폴더는 복사해서 옮기므로 몇 분 걸릴 수 있다.
+ */
+export function Cleaning({ label, progress }: { label: string; progress?: ScanProgress | null }) {
+  if (progress !== undefined) {
+    return (
+      <motion.div {...panel} className="flex flex-1 flex-col justify-center p-8">
+        <ScanProgressView
+          label={label}
+          progress={progress}
+          hint="같은 드라이브의 항목은 금방 옮겨지고, 다른 드라이브의 폴더는 복사해서 옮기느라 오래 걸릴 수 있어요."
+        />
+      </motion.div>
+    )
+  }
   return (
     <motion.div {...panel} className="flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center">
       <Loader2 className="size-8 animate-spin text-primary" />

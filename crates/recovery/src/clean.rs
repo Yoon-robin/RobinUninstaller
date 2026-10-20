@@ -185,10 +185,19 @@ pub fn clean_only(
     order.dedup();
 
     let op_dir = store.dir(&op.id);
+    crate::progress::report(|p| {
+        p.set_total(
+            order
+                .iter()
+                .filter(|&&i| retryable(op.items[i].status))
+                .count() as u64,
+        )
+    });
     for i in order {
         if !retryable(op.items[i].status) {
             continue;
         }
+        crate::progress::report(|p| p.set_current(&op.items[i].location));
         if !op.items[i].backup_path_is_valid(i) {
             op.items[i].status = ItemStatus::Blocked;
             op.items[i].error = Some("작업 기록이 올바르지 않아요".into());
@@ -214,6 +223,7 @@ pub fn clean_only(
         }
         let snapshot = op.items[i].clone();
         save_or_stop(store, op)?;
+        crate::progress::report(|p| p.unit_done());
         on_item(&snapshot);
     }
     Ok(())
@@ -426,13 +436,18 @@ pub fn restore(
     mut on_item: impl FnMut(&OperationItem),
 ) -> Result<(), String> {
     let op_dir = store.dir(&op.id);
+    let wanted = |item: &OperationItem| {
+        (matches!(item.status, ItemStatus::Removed | ItemStatus::Partial)
+            || moved_but_not_recorded(item, &op_dir))
+            && !ids.is_some_and(|ids| !ids.contains(&item.id))
+    };
+    crate::progress::report(|p| p.set_total(op.items.iter().filter(|i| wanted(i)).count() as u64));
     for i in restore_order(op) {
         let item = &op.items[i];
-        let restorable = matches!(item.status, ItemStatus::Removed | ItemStatus::Partial)
-            || moved_but_not_recorded(item, &op_dir);
-        if !restorable || ids.is_some_and(|ids| !ids.contains(&item.id)) {
+        if !wanted(item) {
             continue;
         }
+        crate::progress::report(|p| p.set_current(&item.location));
         let partial = item.status == ItemStatus::Partial;
         let result = if !item.backup_path_is_valid(i) {
             Err("작업 기록이 올바르지 않아요".to_string())
@@ -459,6 +474,7 @@ pub fn restore(
         }
         let snapshot = item.clone();
         save_or_stop(store, op)?;
+        crate::progress::report(|p| p.unit_done());
         on_item(&snapshot);
     }
     Ok(())

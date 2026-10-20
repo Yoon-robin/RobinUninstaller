@@ -134,6 +134,26 @@ impl Store {
         }
         // 보관한 파일을 먼저 지우고 기록은 마지막에 지운다. 중간에 실패해도(권한 등) 기록이 남아 목록에 보인다.
         let dir = self.dir(op_id);
+        // 항목 하나씩 지우며 진행 상황을 알린다 (파일이 많으면 오래 걸린다)
+        if let Ok(entries) = std::fs::read_dir(dir.join("files")) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                let bytes = dir_size(&path);
+                crate::progress::report(|p| p.set_current(path.display()));
+                let removed = match entry.file_type() {
+                    Ok(t) if t.is_dir() => std::fs::remove_dir_all(&path),
+                    // 링크는 따라가지 않고 링크 자신만 지운다 (폴더 링크는 remove_dir로 지워진다)
+                    Ok(t) if t.is_symlink() => {
+                        std::fs::remove_dir(&path).or_else(|_| std::fs::remove_file(&path))
+                    }
+                    _ => std::fs::remove_file(&path),
+                };
+                match removed {
+                    Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),
+                    _ => crate::progress::report(|p| p.add_files(1, bytes)),
+                }
+            }
+        }
         for sub in ["files", "registry"] {
             match std::fs::remove_dir_all(dir.join(sub)) {
                 Err(e) if e.kind() != std::io::ErrorKind::NotFound => return Err(e),

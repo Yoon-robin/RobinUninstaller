@@ -144,19 +144,27 @@ pub fn prune_expired() -> Result<PruneResult, String> {
         });
     };
     let store = crate::store()?;
+    let ids = store.expired(days, now());
+    robin_recovery::progress::report_total(ids.len() as u64);
     let (mut deleted, mut failed) = (0, 0);
-    for id in store.expired(days, now()) {
+    for id in ids {
         match store.delete(&id) {
             Ok(()) => deleted += 1,
             Err(_) => failed += 1,
         }
+        robin_recovery::progress::report_unit_done();
     }
     Ok(PruneResult { deleted, failed })
 }
 
+/// 설정의 "지금 정리". 앱을 켤 때 도는 정리와 같고, 화면에 진행 상황을 보낸다.
 #[tauri::command]
-pub async fn prune_backups() -> Result<PruneResult, String> {
-    blocking(prune_expired).await
+pub async fn prune_backups(
+    on_progress: tauri::ipc::Channel<robin_core::progress::ProgressSnapshot>,
+) -> Result<PruneResult, String> {
+    let progress = std::sync::Arc::new(robin_core::progress::Progress::new());
+    let _ticker = crate::ProgressTicker::start(progress.clone(), on_progress);
+    blocking(move || robin_recovery::progress::with(progress, prune_expired)).await
 }
 
 /// 복구 기록에서 고르는 기간은 보관 기간 선택지와 같은 값만 받는다.
@@ -194,16 +202,25 @@ pub async fn old_backups(days: u32) -> Result<OldBackups, String> {
 /// `days`일보다 오래된 백업을 지운다. 사용자가 기간을 고르고 한 번 더 확인한 뒤에만 부른다.
 /// 관리자 권한으로 격리한 백업처럼 일반 권한으로 못 지운 것은 `failed`로 남고, 복구 기록에서 하나씩 지울 수 있다.
 #[tauri::command]
-pub async fn delete_old_backups(days: u32) -> Result<PruneResult, String> {
+pub async fn delete_old_backups(
+    days: u32,
+    on_progress: tauri::ipc::Channel<robin_core::progress::ProgressSnapshot>,
+) -> Result<PruneResult, String> {
+    // 백업이 크면 지우는 데 오래 걸려서, 몇 번째 백업을 지우는지와 지운 크기를 보낸다
+    let progress = std::sync::Arc::new(robin_core::progress::Progress::new());
+    let _ticker = crate::ProgressTicker::start(progress.clone(), on_progress);
     blocking(move || {
         let days = retention_choice(days)?;
         let store = crate::store()?;
+        let ids = store.expired(days, now());
+        progress.set_total(ids.len() as u64);
         let (mut deleted, mut failed) = (0, 0);
-        for id in store.expired(days, now()) {
-            match store.delete(&id) {
+        for id in ids {
+            match robin_recovery::progress::with(progress.clone(), || store.delete(&id)) {
                 Ok(()) => deleted += 1,
                 Err(_) => failed += 1,
             }
+            progress.unit_done();
         }
         Ok(PruneResult { deleted, failed })
     })

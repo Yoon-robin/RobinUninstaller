@@ -16,7 +16,8 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
-import { settingsApi } from "@/lib/api"
+import { settingsApi, type ScanProgress } from "@/lib/api"
+import { ScanProgressView } from "@/components/scan-progress"
 import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { FadeUp, Stagger } from "@/components/motion"
@@ -119,6 +120,9 @@ export function SettingsPage() {
   const [confirmPrune, setConfirmPrune] = useState(false)
   const [busy, setBusy] = useState(false)
 
+  // "지금 정리"로 백업을 지우는 동안: 몇 번째 백업인지, 지운 크기
+  const [pruneProgress, setPruneProgress] = useState<ScanProgress | null>(null)
+
   const refresh = () => {
     for (const key of ["settings", "backup-usage", "backups"]) queryClient.invalidateQueries({ queryKey: [key] })
   }
@@ -139,8 +143,9 @@ export function SettingsPage() {
 
   const prune = async () => {
     setBusy(true)
+    setPruneProgress(null)
     try {
-      const r = await settingsApi.pruneBackups()
+      const r = await settingsApi.pruneBackups(setPruneProgress)
       if (r.failed > 0) toast.warning(`${r.deleted}개를 지웠어요. ${r.failed}개는 복구 기록에서 하나씩 지워 주세요`)
       else toast.success(`오래된 백업 ${r.deleted}개를 지웠어요`)
     } catch (e) {
@@ -340,6 +345,7 @@ export function SettingsPage() {
             {retention}일이 지난 정리 기록과 보관 중인 항목이 영구히 지워져요.{" "}
             <b className="text-foreground">이후에는 되돌릴 수 없어요.</b>
           </DialogDescription>
+          {busy && <ScanProgressView label="오래된 백업을 지우는 중이에요" progress={pruneProgress} />}
           <div className="mt-2 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirmPrune(false)} disabled={busy}>
               취소
