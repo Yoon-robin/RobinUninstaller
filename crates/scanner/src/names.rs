@@ -249,17 +249,34 @@ fn match_name_ignoring_versions(
         if cand == core_compact {
             return NameMatch::Exact;
         }
-        let cand_tokens = tokens(candidate);
-        let cand_joined = cand_tokens.concat();
-        if product_core
-            .iter()
-            .all(|w| cand_tokens.contains(w) || cand_joined.contains(w.as_str()))
+        // 단어 단위로만 비교한다: "Timeline"·"Outline" 폴더가 "LINE"에 걸리지 않게.
+        // 붙여 쓴 이름("FixtureNotesCache")은 대소문자 경계에서 나누고, 소문자로만 붙여 쓴 이름
+        // ("fixturenotes-cache")은 두 단어 이상인 제품 이름 전체가 이어서 들어 있을 때만 받는다.
+        let cand_tokens = tokens(&split_camel(candidate));
+        let words_match = product_core.iter().all(|w| cand_tokens.contains(w));
+        let joined_match =
+            product_core.len() > 1 && cand_tokens.concat().contains(core_compact.as_str());
+        if (words_match || joined_match)
             && product_core.iter().map(|w| w.len()).sum::<usize>() >= 4
         {
             return NameMatch::AllSignificant;
         }
     }
     NameMatch::None
+}
+
+/// 대소문자 경계에서 띄어 쓴다: "FixtureNotesCache" → "Fixture Notes Cache". 대문자 묶음("SteamVR")은 그대로 둔다.
+fn split_camel(name: &str) -> String {
+    let mut out = String::with_capacity(name.len() + 8);
+    let mut prev_lower = false;
+    for c in name.chars() {
+        if c.is_uppercase() && prev_lower {
+            out.push(' ');
+        }
+        prev_lower = c.is_lowercase() || c.is_ascii_digit();
+        out.push(c);
+    }
+    out
 }
 
 /// 폴더·키 이름이 게시자 이름과 같은지 ("Adobe Inc." vs "Adobe").
@@ -353,6 +370,30 @@ mod tests {
         assert_eq!(
             match_name("Setup", "Setup Tools 2.0", None),
             NameMatch::None
+        );
+    }
+
+    #[test]
+    fn short_names_do_not_match_inside_other_words() {
+        // "LINE"의 핵심 단어가 다른 단어 속에 들어 있을 뿐인 폴더
+        for folder in ["Timeline", "Outline", "Online Services"] {
+            assert_eq!(
+                match_name(folder, "LINE", Some("LY Corporation")),
+                NameMatch::None,
+                "{folder}"
+            );
+        }
+        // 띄어쓰기 없이 붙여 쓴 이름은 여전히 맞는다
+        for folder in ["FixtureNotesCache", "fixturenotes-cache", "Fixture Notes Logs"] {
+            assert_eq!(
+                match_name(folder, "Fixture Notes", None),
+                NameMatch::AllSignificant,
+                "{folder}"
+            );
+        }
+        assert_eq!(
+            match_name("LINE Data", "LINE", Some("LY Corporation")),
+            NameMatch::AllSignificant
         );
     }
 
