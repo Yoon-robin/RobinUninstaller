@@ -53,10 +53,10 @@ export function Walkthrough() {
   return (
     <section id="walkthrough" className="border-y bg-white/[0.02] py-20 sm:py-24 lg:py-28">
       <div className="frame">
-        <Reveal className="mx-auto max-w-3xl text-center">
-          <h2 className="section-title">12초로 보는 정리 과정</h2>
-          <p className="mx-auto mt-5 max-w-[36ch] text-lead leading-snug text-balance text-muted-foreground">
-            방금 지운 프로그램의 남은 흔적을 찾고, 미리 골라 둔 것만 백업한 뒤 정리해요.
+        <Reveal heading className="mx-auto max-w-3xl text-center">
+          <h2 className="section-title">정리하는 모습</h2>
+          <p className="mx-auto mt-5 max-w-[34ch] text-lead leading-snug text-balance text-muted-foreground">
+            방금 지운 프로그램의 남은 흔적을 찾고, 미리 골라 둔 것만 백업한 다음 정리해요.
           </p>
         </Reveal>
 

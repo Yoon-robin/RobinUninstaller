@@ -63,7 +63,7 @@ export function Faq() {
     <section id="faq" className="frame grid gap-12 py-20 sm:py-28 lg:grid-cols-12 lg:gap-8 lg:py-32">
       <div className="lg:col-span-4">
         <div className="lg:sticky lg:top-24">
-          <Reveal>
+          <Reveal heading>
             <h2 className="section-title">
               자주 묻는
               <br />
@@ -88,7 +88,7 @@ export function Faq() {
           <List items={core} />
         </Reveal>
         <Reveal>
-          <h3 className="mb-8 text-body font-semibold text-muted-foreground">그 밖의 질문</h3>
+          <h3 className="mb-8 text-lead font-semibold text-muted-foreground">그 밖의 질문</h3>
           <List items={more} />
         </Reveal>
       </div>

@@ -91,7 +91,7 @@
   html {
     @apply font-sans;
     scroll-behavior: smooth;
-    scroll-padding-top: 1.5rem;
+    scroll-padding-top: 5.5rem; /* 위에 붙은 막대 높이만큼 */
   }
   body {
     @apply bg-background text-foreground;

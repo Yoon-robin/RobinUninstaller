@@ -2,7 +2,7 @@ import type { CSSProperties } from "react"
 
 import { cn } from "@/lib/utils"
 import { shot } from "@/lib/site"
-import { Reveal } from "@/components/motion"
+import { Reveal, Spotlight } from "@/components/motion"
 
 /**
  * 남은 흔적 말고 앱에 있는 도구. 흰 구역 위에 회색 타일.
@@ -74,7 +74,7 @@ function Shot({ t }: { t: Tile }) {
   return (
     <div
       className={cn(
-        "mt-auto ml-7 overflow-hidden rounded-tl-[1rem] border-t border-l bg-card sm:ml-8",
+        "mt-auto ml-7 overflow-hidden rounded-tl-[1rem] border-t border-l bg-card transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/spot:-translate-y-1 sm:ml-8",
         t.frame ?? "h-56 sm:h-72",
       )}
     >
@@ -96,25 +96,23 @@ export function Features() {
   return (
     <section id="features" className="py-20 sm:py-28 lg:py-32">
       <div className="frame">
-        <Reveal className="mx-auto max-w-3xl text-center">
-          <h2 className="section-title">RobinX로 할 수 있는 일</h2>
-          <p className="mx-auto mt-5 max-w-[38ch] text-lead leading-snug text-balance text-muted-foreground">
-            프로그램 제거에서 시작해, PC를 정리할 때 쓰는 도구가 들어 있어요.
+        <Reveal heading className="mx-auto max-w-3xl text-center">
+          <h2 className="section-title">제거 말고도 할 수 있는 일</h2>
+          <p className="mx-auto mt-5 max-w-[34ch] text-lead leading-snug text-balance text-muted-foreground">
+            저장공간 정리, 시작프로그램, 백업 관리도 같이 들어 있어요.
           </p>
         </Reveal>
 
         <div className="mt-12 grid gap-4 sm:mt-14 sm:gap-5 lg:grid-cols-6">
           {tiles.map((t, i) => (
-            <Reveal
-              key={t.name}
-              delay={0.04 * (i % 2)}
-              className={cn("flex flex-col overflow-hidden rounded-[1.75rem] border bg-white/[0.025]", t.span)}
-            >
-              <div className="p-7 sm:p-8">
-                <h3 className="text-lead leading-snug font-semibold tracking-tight">{t.name}</h3>
-                <p className="mt-2 max-w-[42ch] text-body text-muted-foreground">{t.text}</p>
-              </div>
-              <Shot t={t} />
+            <Reveal key={t.name} delay={0.06 * (i % 2)} className={t.span}>
+              <Spotlight className="flex h-full flex-col overflow-hidden rounded-[1.75rem] border bg-white/[0.025] transition-colors duration-300 hover:border-white/15">
+                <div className="p-7 sm:p-8">
+                  <h3 className="text-lead leading-snug font-semibold tracking-tight">{t.name}</h3>
+                  <p className="mt-2 max-w-[42ch] text-body text-muted-foreground">{t.text}</p>
+                </div>
+                <Shot t={t} />
+              </Spotlight>
             </Reveal>
           ))}
 

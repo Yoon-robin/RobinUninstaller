@@ -35,7 +35,7 @@ export function Status() {
     <section id="status" className="border-y bg-white/[0.02] py-20 sm:py-24 lg:py-28">
       <div className="frame">
         <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
-          <Reveal className="lg:col-span-5">
+          <Reveal heading className="lg:col-span-5">
             <h2 className="section-title">어디까지 됐는지</h2>
             <p className="mt-5 max-w-[34ch] text-lead leading-snug text-muted-foreground">
               지금까지는 직접 만든 테스트 앱으로 시험했어요. 실제 프로그램으로 하는 검증은 진행 중이에요.

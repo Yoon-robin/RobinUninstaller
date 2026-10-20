@@ -1,6 +1,8 @@
 import { CircleCheck, CircleDashed, CircleX } from "lucide-react"
 
-import { Reveal } from "@/components/motion"
+import { motion, useReducedMotion } from "motion/react"
+
+import { easeOutQuint, Reveal } from "@/components/motion"
 import { cn } from "@/lib/utils"
 
 type Level = "가능" | "백업이 있는 동안" | "안 됨"
@@ -42,17 +44,18 @@ const rows: { task: string; level: Level; note: string }[] = [
  * 되돌릴 수 있는지는 색과 함께 아이콘·글자로 나타낸다.
  */
 export function Restore() {
+  const reduce = useReducedMotion()
   return (
     <section id="restore" className="py-20 sm:py-28 lg:py-32">
       <div className="frame">
-        <Reveal className="grid gap-5 lg:grid-cols-12 lg:items-end lg:gap-8">
+        <Reveal heading className="grid gap-5 lg:grid-cols-12 lg:items-end lg:gap-8">
           <h2 className="section-title lg:col-span-7">되돌릴 수 있는 것, 없는 것</h2>
           <p className="max-w-[34ch] text-lead leading-snug text-muted-foreground lg:col-span-5">
             백업은 직접 지우거나, 보관 기간(처음 설정은 30일)이 지나면 사라져요. 그 뒤로는 되돌릴 수 없어요.
           </p>
         </Reveal>
 
-        <Reveal delay={0.06} className="mt-12 sm:mt-14">
+        <div className="mt-12 sm:mt-14">
           <table className="w-full text-left">
             <caption className="sr-only">작업마다 되돌릴 수 있는지와 조건</caption>
             <thead className="hidden text-fine text-muted-foreground md:table-header-group">
@@ -69,10 +72,17 @@ export function Restore() {
               </tr>
             </thead>
             <tbody>
-              {rows.map((r) => {
+              {rows.map((r, i) => {
                 const { icon: Icon, tone } = levelStyle[r.level]
                 return (
-                  <tr key={r.task} className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 py-4 md:table-row md:py-0">
+                  <motion.tr
+                    key={r.task}
+                    initial={reduce ? false : { opacity: 0, y: 10 }}
+                    whileInView={{ opacity: 1, y: 0 }}
+                    viewport={{ once: true, margin: "-40px" }}
+                    transition={{ duration: 0.5, delay: 0.06 * i, ease: easeOutQuint }}
+                    className="grid grid-cols-[1fr_auto] gap-x-4 gap-y-1 rounded-xl py-4 transition-colors hover:bg-white/[0.025] md:table-row md:py-0"
+                  >
                     <th
                       scope="row"
                       className="text-lead leading-snug font-semibold tracking-tight md:w-[26%] md:py-4 md:pr-6 md:align-top"
@@ -86,12 +96,12 @@ export function Restore() {
                       </span>
                     </td>
                     <td className="col-span-2 text-body text-muted-foreground md:py-4 md:align-top">{r.note}</td>
-                  </tr>
+                  </motion.tr>
                 )
               })}
             </tbody>
           </table>
-        </Reveal>
+        </div>
       </div>
     </section>
   )
