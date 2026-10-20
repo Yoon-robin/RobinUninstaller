@@ -98,7 +98,6 @@ function defaultHandlers() {
     get_settings: sample.settings,
     backup_usage: { count: 3, bytes: 52_428_800, expired: 0 },
     disk_usage: { drive: "C:\\", total: 512e9, free: 128e9 },
-    tracking_status: null,
   }
 }
 

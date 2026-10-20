@@ -15,7 +15,6 @@ const pages = [
   ["leftovers", "잔여물 정리"],
   ["storage", "저장공간"],
   ["startup", "시작프로그램"],
-  ["tracking", "설치 추적"],
   ["restore", "복구 기록"],
   ["settings", "설정"],
 ]
