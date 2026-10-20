@@ -200,6 +200,9 @@ export const recoveryApi = {
   cleanElevated: (opId: string, forceAppId?: string) =>
     invoke<Operation>("clean_leftovers_elevated", { opId, forceAppId: forceAppId ?? null }),
   list: () => invoke<Operation[]>("list_backups"),
+  /** 기록을 읽지 못한 백업 폴더 이름 (손상·권한 문제). 백업은 지우지 않는다. */
+  unreadable: () => invoke<string[]>("unreadable_backups"),
+  openFolder: () => invoke<void>("open_backup_folder"),
   restore: (opId: string, itemIds?: string[], onProgress?: (p: ScanProgress) => void) =>
     invoke<Operation>("restore_backup", { opId, itemIds: itemIds ?? null, onProgress: progressChannel(onProgress) }),
   /** 관리자 권한으로 되돌린다. `itemIds`가 없으면 되돌릴 수 있는 항목 전부. */

@@ -108,9 +108,12 @@ impl Operation {
     }
 }
 
-/// 작업 ID: 시간 순으로 정렬되고 겹치지 않게 `밀리초-프로세스번호`.
+/// 작업 ID: 시간 순으로 정렬되고 겹치지 않게 `밀리초-프로세스번호-순번`.
+/// 순번이 있어야 한 프로세스에서 같은 밀리초에 두 작업(잔여물 정리와 시작 항목 정리 등)을 만들어도 기록이 섞이지 않는다.
 pub fn new_operation_id(now_millis: u128, pid: u32) -> String {
-    format!("{now_millis:013}-{pid:x}")
+    static SEQ: std::sync::atomic::AtomicU32 = std::sync::atomic::AtomicU32::new(0);
+    let seq = SEQ.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    format!("{now_millis:013}-{pid:x}-{seq:x}")
 }
 
 /// 파일 이름으로 쓸 수 없는 글자를 바꾼다 (격리 폴더 안 이름용).
@@ -142,6 +145,15 @@ mod tests {
         let a = new_operation_id(1_700_000_000_000, 10);
         let b = new_operation_id(1_700_000_000_001, 9);
         assert!(a < b);
+    }
+
+    #[test]
+    fn ids_made_in_the_same_millisecond_differ() {
+        let ids: std::collections::HashSet<String> = (0..1000)
+            .map(|_| new_operation_id(1_700_000_000_000, 10))
+            .collect();
+        assert_eq!(ids.len(), 1000);
+        assert!(ids.iter().all(|id| crate::store::is_valid_id(id)));
     }
 
     #[test]

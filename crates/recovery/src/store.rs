@@ -90,6 +90,24 @@ impl Store {
         Ok(op)
     }
 
+    /// 기록을 읽지 못한 작업 폴더 이름 (매니페스트가 깨졌거나 권한이 없음). 그 안의 백업은 지우지 않고 알리기만 한다.
+    /// 저장소 폴더 자체를 읽지 못하면 오류 (없으면 빈 목록).
+    pub fn unreadable(&self) -> std::io::Result<Vec<String>> {
+        let entries = match std::fs::read_dir(&self.root) {
+            Ok(entries) => entries,
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Vec::new()),
+            Err(e) => return Err(e),
+        };
+        let mut names: Vec<String> = entries
+            .flatten()
+            .filter(|e| e.file_type().is_ok_and(|t| t.is_dir()))
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .filter(|name| self.load(name).is_err())
+            .collect();
+        names.sort();
+        Ok(names)
+    }
+
     /// 최근 작업부터.
     pub fn list(&self) -> Vec<Operation> {
         let Ok(entries) = std::fs::read_dir(&self.root) else {
@@ -181,15 +199,19 @@ fn dir_size(path: &Path) -> u64 {
 }
 
 /// 보관 기간이 지난 작업. 순수 함수.
-/// 복원하다 충돌이 난 항목이 있으면(그 파일은 백업에만 있다) 기간이 지나도 자동으로 지우지 않는다.
+/// 다음 경우는 기간이 지나도 자동으로 지우지 않는다 (사용자가 복구 기록에서 보고 직접 정한다):
+/// - 복원하다 충돌이 난 항목 (그 파일은 백업에만 있다)
+/// - 백업 위치를 기록했는데 상태가 "대기"인 항목 (옮기거나 지우다 멈췄다. 데이터가 백업에만 있을 수 있다)
 pub fn expired_ids(ops: &[Operation], days: u32, now: u64) -> Vec<String> {
+    use crate::model::ItemStatus;
     let limit = u64::from(days) * 24 * 60 * 60;
     ops.iter()
         .filter(|op| now.saturating_sub(op.created_at) > limit)
         .filter(|op| {
-            !op.items
-                .iter()
-                .any(|i| i.status == crate::model::ItemStatus::Conflicted)
+            !op.items.iter().any(|i| {
+                i.status == ItemStatus::Conflicted
+                    || (i.status == ItemStatus::Pending && i.backup.is_some())
+            })
         })
         .map(|op| op.id.clone())
         .collect()
@@ -247,6 +269,22 @@ mod tests {
         ];
         assert_eq!(expired_ids(&ops, 30, now), vec!["b".to_string()]);
         assert!(expired_ids(&ops, 90, now).is_empty());
+
+        // 옮기다 멈춘 항목(백업 위치는 기록, 상태는 대기)이 있으면 기간이 지나도 남긴다
+        let mut stuck = op("d", now - 40 * day);
+        stuck.items.push(crate::model::OperationItem {
+            id: "x".into(),
+            kind: robin_scanner::LeftoverKind::Folder,
+            location: r"C:\Old".into(),
+            value_name: None,
+            size_bytes: None,
+            status: crate::model::ItemStatus::Pending,
+            backup: Some(crate::model::Backup::Quarantine {
+                path: r"files \Old".into(),
+            }),
+            error: None,
+        });
+        assert!(expired_ids(&[stuck], 30, now).is_empty());
     }
 
     #[test]

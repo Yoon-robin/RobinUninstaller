@@ -625,9 +625,38 @@ impl Drop for BackupLock {
 /// 복구 기록 (최근 작업부터).
 #[tauri::command]
 async fn list_backups() -> Result<Vec<Operation>, String> {
-    tauri::async_runtime::spawn_blocking(|| Ok(store()?.list()))
+    tauri::async_runtime::spawn_blocking(|| {
+        let store = store()?;
+        // 저장소 폴더를 읽지 못하면 "기록 없음"이 아니라 오류로 알린다
+        store
+            .unreadable()
+            .map_err(|e| format!("백업 폴더를 읽지 못했어요: {e}"))?;
+        Ok(store.list())
+    })
+    .await
+    .map_err(|e| e.to_string())?
+}
+
+/// 기록을 읽지 못한 백업 폴더 이름 (매니페스트가 깨졌거나 권한이 없음). 백업은 그대로 두고 알리기만 한다.
+#[tauri::command]
+async fn unreadable_backups() -> Result<Vec<String>, String> {
+    tauri::async_runtime::spawn_blocking(|| store()?.unreadable().map_err(|e| e.to_string()))
         .await
         .map_err(|e| e.to_string())?
+}
+
+/// 백업 폴더(`%LOCALAPPDATA%\RobinX\backups`)를 탐색기로 연다.
+#[tauri::command(async)]
+fn open_backup_folder() -> Result<(), String> {
+    let root = store()?.root().to_path_buf();
+    if !root.is_dir() {
+        return Err("아직 백업 폴더가 없어요".into());
+    }
+    std::process::Command::new("explorer.exe")
+        .arg(&root)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
 }
 
 /// 작업에서 지운 항목을 되돌린다. `item_ids`가 없으면 전부.
@@ -1269,7 +1298,23 @@ fn reveal_folder_item(id: String, cache: State<'_, AppCache>) -> Result<(), Stri
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    tauri::Builder::default()
+    let builder = tauri::Builder::default();
+    // 앱은 하나만 띄운다: 두 번째로 켜면 떠 있는 창을 앞으로 가져온다. 두 창에서 같은 백업을 되돌리거나 지우는 일을 막는다.
+    // 설치·제거 화면은 앱이 떠 있어도 열려야 하므로 앱 모드에서만. 개발 빌드는 설치된 RobinX와 식별자가 같아
+    // 개발 앱이 설치된 앱 창만 띄우고 끝나므로 배포 빌드에서만 켠다.
+    #[cfg(not(debug_assertions))]
+    let builder = if setup::mode() == setup::Mode::App {
+        builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = window.unminimize();
+                let _ = window.show();
+                let _ = window.set_focus();
+            }
+        }))
+    } else {
+        builder
+    };
+    builder
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
@@ -1340,6 +1385,8 @@ pub fn run() {
             clean_leftovers_elevated,
             force_uninstall_check,
             list_backups,
+            unreadable_backups,
+            open_backup_folder,
             restore_backup,
             restore_backup_elevated,
             delete_backup,

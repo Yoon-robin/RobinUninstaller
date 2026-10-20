@@ -12,6 +12,7 @@ import {
   RotateCcw,
   ShieldAlert,
   Trash2,
+  TriangleAlert,
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
@@ -65,6 +66,8 @@ function formatDate(seconds: number) {
 
 export function RestorePage() {
   const backups = useQuery({ queryKey: ["backups"], queryFn: recoveryApi.list })
+  // 기록이 깨진 백업은 목록에 없지만 파일은 남아 있다. "기록 없음"으로 보이지 않게 따로 알린다
+  const unreadable = useQuery({ queryKey: ["backups", "unreadable"], queryFn: recoveryApi.unreadable })
   const [deleting, setDeleting] = useState<Operation | null>(null)
   const [emptying, setEmptying] = useState(false)
 
@@ -77,6 +80,25 @@ export function RestorePage() {
           않고 알려 드려요. 제거한 프로그램 자체나 저장공간에서 지운 캐시는 여기서 되돌릴 수 없어요.
         </p>
       </FadeUp>
+
+      {(unreadable.data?.length ?? 0) > 0 && (
+        <FadeUp>
+          <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-chart-3/40 bg-chart-3/8 px-4 py-3 text-sm">
+            <TriangleAlert className="size-4 shrink-0 text-chart-3" />
+            <p className="min-w-0 flex-1">
+              기록을 읽지 못한 백업이 {unreadable.data?.length}개 있어요. 기록 파일이 손상됐거나 권한이 없어 목록에
+              보이지 않지만, 백업 파일은 지우지 않고 그대로 두었어요.
+            </p>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => recoveryApi.openFolder().catch((e) => toast.error(String(e)))}
+            >
+              백업 폴더 열기
+            </Button>
+          </div>
+        </FadeUp>
+      )}
 
       {backups.isLoading ? (
         <FadeUp>

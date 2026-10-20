@@ -166,6 +166,11 @@ fn schedule_self_delete() {
         return;
     }
     let path = exe.display().to_string();
+    // cmd는 따옴표 안의 %도 환경 변수로 펼친다. 이런 경로(드문 사용자 이름 등)는 지우지 않고 남긴다 (Temp라 나중에 정리된다)
+    if path.contains('%') {
+        log(&format!("경로에 %가 있어 임시 복사본을 남겨요: {path}"));
+        return;
+    }
     let cmd = format!(
         "for /l %i in (1,1,30) do @(ping -n 2 127.0.0.1 >nul & del /f /q \"{path}\" 2>nul & if not exist \"{path}\" exit /b 0)"
     );

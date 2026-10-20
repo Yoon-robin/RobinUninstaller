@@ -22,7 +22,7 @@ const sourceLabels: Record<PackageSource, { label: string; className: string }> 
   developer: { label: "개발자 모드", className: "border-chart-3/40 text-chart-3" },
 }
 
-function matches(app: StoreApp, query: string) {
+export function matchesStoreApp(app: StoreApp, query: string) {
   const q = query.trim().toLowerCase()
   return !q || app.displayName.toLowerCase().includes(q) || (app.publisher ?? "").toLowerCase().includes(q)
 }
@@ -33,10 +33,10 @@ const openSettings = () => storeApi.openSettings().catch((e) => toast.error(Stri
  * Microsoft Store·MSIX 앱 목록 (읽기 전용).
  * Store 앱은 Windows가 앱 데이터까지 함께 지우므로 제거는 Windows 설정으로 안내한다.
  */
-export function StoreAppsSection() {
+export function StoreAppsSection({ initialQuery = "" }: { initialQuery?: string }) {
   const apps = useQuery({ queryKey: ["store-apps"], queryFn: storeApi.list })
-  const [query, setQuery] = useState("")
-  const visible = useMemo(() => (apps.data ?? []).filter((a) => matches(a, query)), [apps.data, query])
+  const [query, setQuery] = useState(initialQuery)
+  const visible = useMemo(() => (apps.data ?? []).filter((a) => matchesStoreApp(a, query)), [apps.data, query])
 
   return (
     <section className="overflow-clip rounded-2xl border bg-card shadow-sm">

@@ -45,7 +45,7 @@ import { StatCard } from "./stat-card"
 import { measureAppSizes, sizeProgressText, useAppSizeProgress } from "./app-sizes"
 import { UninstallDialog } from "./uninstall-dialog"
 import { BatchUninstallDialog } from "./batch-uninstall-dialog"
-import { StoreAppsSection } from "./store-apps-section"
+import { StoreAppsSection, matchesStoreApp } from "./store-apps-section"
 import { LeftoversDialog, type LeftoverTarget } from "@/features/leftovers/leftovers-dialog"
 import { ErrorState } from "@/components/error-state"
 
@@ -99,6 +99,8 @@ export function ProgramsPage() {
   const [batch, setBatch] = useState<InstalledApplication[] | null>(null)
   // 데스크톱 프로그램 / Microsoft Store 앱
   const [tab, setTab] = useState<"desktop" | "store">("desktop")
+  // 데스크톱 목록에서 못 찾은 이름을 Store 앱 탭으로 넘겨 이어서 찾는다
+  const [storeQuery, setStoreQuery] = useState("")
   const searchRef = useRef<HTMLInputElement>(null)
   const apps = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
   const storeApps = useQuery({ queryKey: ["store-apps"], queryFn: storeApi.list })
@@ -133,6 +135,11 @@ export function ProgramsPage() {
   const visible = useMemo(
     () => all.filter((a) => matchesFilter(a, filter) && matchesQuery(a, query)).sort((a, b) => compareApps(a, b, sort)),
     [all, query, sort, filter],
+  )
+  // 같은 검색어로 Store 앱 탭에서 찾은 수 (데스크톱 목록에 없을 때 알려 준다)
+  const storeMatches = useMemo(
+    () => (query.trim() ? (storeApps.data ?? []).filter((a) => matchesStoreApp(a, query)).length : 0),
+    [storeApps.data, query],
   )
   // 여러 개 제거로 고른 프로그램 중 아직 목록에 있는 것 (새로고침으로 사라진 것은 수에서도 뺀다)
   const pickedApps = useMemo(() => (picked ? all.filter((a) => picked.has(a.id)) : []), [all, picked])
@@ -266,7 +273,7 @@ export function ProgramsPage() {
 
       {tab === "store" ? (
         <FadeUp>
-          <StoreAppsSection />
+          <StoreAppsSection initialQuery={storeQuery} />
         </FadeUp>
       ) : (
         <>
@@ -470,9 +477,23 @@ export function ProgramsPage() {
                   <p className="text-sm text-muted-foreground">
                     {query ? `"${query}"` : "선택한 필터"}에 해당하는 항목이 없어요.
                   </p>
-                  <Button variant="outline" size="sm" className="mt-2 rounded-lg" onClick={resetFilters}>
-                    검색과 필터 지우기
-                  </Button>
+                  <div className="mt-2 flex flex-wrap justify-center gap-2">
+                    {storeMatches > 0 && (
+                      <Button
+                        size="sm"
+                        className="rounded-lg"
+                        onClick={() => {
+                          setStoreQuery(query)
+                          setTab("store")
+                        }}
+                      >
+                        Store 앱에서 {storeMatches}개 보기
+                      </Button>
+                    )}
+                    <Button variant="outline" size="sm" className="rounded-lg" onClick={resetFilters}>
+                      검색과 필터 지우기
+                    </Button>
+                  </div>
                 </motion.div>
               ) : (
                 // 보기를 바꿀 때만 짧게 교차 전환한다. 검색·필터로 항목이 바뀔 때는 움직이지 않는다.

@@ -37,7 +37,7 @@ Windows 10 / 11 (x64)
 ```bash
 pnpm install
 pnpm tauri dev      # 개발 모드로 실행
-pnpm tauri build    # 설치 파일(NSIS) 만들기
+bash scripts/release.sh   # 배포용 설치 파일 만들기 (robinx.exe 자체가 설치 파일이다. NSIS는 쓰지 않는다)
 pnpm check          # 타입 검사 + fmt + clippy + 테스트 (커밋 전에 실행)
 ```
 

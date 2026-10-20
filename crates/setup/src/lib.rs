@@ -168,9 +168,19 @@ pub fn read_manifest(dir: &Path) -> Option<Manifest> {
     serde_json::from_str(&text).ok()
 }
 
+/// 임시 파일에 쓰고 바꿔치기한다. 쓰다 꺼지면 예전 기록이 그대로 남는다 (깨진 기록으로 제거가 엉뚱하게 돌지 않게).
 fn write_manifest(dir: &Path, manifest: &Manifest) -> std::io::Result<()> {
+    use std::io::Write;
     let text = serde_json::to_string_pretty(manifest).map_err(std::io::Error::other)?;
-    std::fs::write(dir.join(MANIFEST), text)
+    let tmp = dir.join(format!("{MANIFEST}.tmp"));
+    {
+        let mut f = std::fs::File::create(&tmp)?;
+        f.write_all(text.as_bytes())?;
+        f.sync_all()?;
+    }
+    std::fs::rename(&tmp, dir.join(MANIFEST)).inspect_err(|_| {
+        let _ = std::fs::remove_file(&tmp);
+    })
 }
 
 /// 바꿔치기: `name.new`에 쓰고, 있던 파일은 `name.old`로 비켜 둔 뒤 이름을 바꾼다.
