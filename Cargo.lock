@@ -2727,14 +2727,14 @@ dependencies = [
 
 [[package]]
 name = "robin-core"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "serde",
 ]
 
 [[package]]
 name = "robin-discovery"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "base64 0.23.1",
  "png 0.18.1",
@@ -2746,7 +2746,7 @@ dependencies = [
 
 [[package]]
 name = "robin-execution"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "robin-core",
  "robin-discovery",
@@ -2756,7 +2756,7 @@ dependencies = [
 
 [[package]]
 name = "robin-fixture"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "robin-startup",
  "windows",
@@ -2765,7 +2765,7 @@ dependencies = [
 
 [[package]]
 name = "robin-recovery"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "base64 0.23.1",
  "robin-core",
@@ -2781,7 +2781,7 @@ dependencies = [
 
 [[package]]
 name = "robin-scanner"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "robin-core",
  "robin-discovery",
@@ -2796,7 +2796,7 @@ dependencies = [
 
 [[package]]
 name = "robin-settings"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "robin-core",
  "serde",
@@ -2805,7 +2805,7 @@ dependencies = [
 
 [[package]]
 name = "robin-setup"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "serde",
  "serde_json",
@@ -2815,7 +2815,7 @@ dependencies = [
 
 [[package]]
 name = "robin-startup"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "robin-core",
  "robin-discovery",
@@ -2827,7 +2827,7 @@ dependencies = [
 
 [[package]]
 name = "robin-storage"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "rayon",
  "robin-core",
@@ -2838,7 +2838,7 @@ dependencies = [
 
 [[package]]
 name = "robin-tracker"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "robin-core",
  "robin-discovery",
@@ -2850,7 +2850,7 @@ dependencies = [
 
 [[package]]
 name = "robinx"
-version = "0.1.5"
+version = "0.1.6"
 dependencies = [
  "robin-core",
  "robin-discovery",
