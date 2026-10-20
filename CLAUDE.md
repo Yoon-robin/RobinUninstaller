@@ -27,6 +27,7 @@ Windows 프로그램 제거·정리 도구 (예전 이름 RobinUninstaller). 언
 - `Revo Uninstaller Pro.zip`(상용 프로그램)과 `docs/private/`(분석 메모)는 **절대 커밋하지 않는다** (.gitignore에 있음). 리포지토리는 공개 상태다.
 - **만들지 않는 기능:** 레지스트리 클리너·메모리 부스터처럼 효과가 없거나 위험한 기능, 보안(Defender·UAC·업데이트·방화벽)을 끄는 기능. 바꾸는 설정은 모두 원래 값을 기록해 되돌릴 수 있어야 한다.
 - 최적화(Windows 설정 바꾸기)는 26개 중 19개가 이미 적용돼 있을 만큼 효과가 작고 앱의 초점을 흐려 2026-10-19에 뺐다(사용자 결정). 코드는 git 기록(`crates/tweaks`, 커밋 `73a24a5` 무렵)에 있다. 다시 넣자는 요청이 없으면 비슷한 기능을 만들지 않는다.
+- 설치 추적(설치 전후 비교 기록)은 설치 전에 직접 "시작"을 눌러야 해서 쓸 일이 적고 잔여물 찾기는 기록 없이도 돌아가므로 2026-10-20에 뺐다(사용자 결정). 코드는 git 기록(`crates/tracker`, `src/features/tracking`)에 있다. 이미 저장된 기록(`%LOCALAPPDATA%\RobinX\traces`)은 지우지 않는다. 다시 넣자는 요청이 없으면 비슷한 기능을 만들지 않는다.
 - 분석한 외부 프로그램의 코드·리소스를 가져오지 않는다. 아이디어만 참고한다.
 
 ## 자주 쓰는 명령
@@ -48,7 +49,6 @@ cargo run -p robin-recovery --example force_fixture   # install --broken 뒤 강
 cargo run -p robin-recovery --example startup_cleanup_fixture   # 파일 없는 시작 항목 정리 → 복원
 cargo run -p robin-recovery --example recovery_edge_fixture   # 백업·복원 경계 상황 (덮어쓰기 금지, 조작된 기록 거부 등)
 cargo run -p robin-recovery --example progress_cross_drive -- D:\   # 다른 드라이브 정리·되돌리기·백업 삭제 진행 상황 (시험 폴더를 만들고 지움)
-cargo run -p robin-tracker --example track_fixture   # 테스트 앱 설치를 추적 (먼저 cargo build -p robin-fixture)
 cargo run -p robin-startup --example list             # 시작 항목 보기 (읽기 전용)
 cargo run -p robin-startup --example toggle_fixture   # 테스트 앱 시작 항목만 껐다 켜기
 cargo run -p robin-storage --example storage_scan            # 정리할 수 있는 항목 보기 (읽기 전용)
@@ -66,13 +66,12 @@ DevTools 프로토콜(`http://127.0.0.1:9223/json`)로 클릭·캡처한다. 마
 
 ## 코드 구조
 
-- `src/` React 화면 (`features/programs`, `features/leftovers`, `features/storage`, `features/startup`, `features/tracking`, `features/settings`, `features/restore`, `features/updates`, `components/`)
+- `src/` React 화면 (`features/programs`, `features/leftovers`, `features/storage`, `features/startup`, `features/settings`, `features/restore`, `features/updates`, `components/`)
 - `src-tauri/` Tauri command 계층(얇게 유지) + `worker.rs`(관리자 권한 작업자 모드)
 - `crates/core` 공통 모델 · `crates/discovery` 설치 목록(Store 앱 포함)·아이콘 · `crates/execution` 언인스톨러 실행
 - `crates/scanner` 잔여물 탐지(읽기 전용) · `crates/recovery` 백업·정리·복원 · `crates/fixture` 테스트 앱
 - `crates/startup` 시작프로그램 목록·끄기·원상복구 (작업 관리자와 같은 `StartupApproved` 값만 바꾼다)
 - `crates/storage` 저장공간 정리(규칙은 `rules.rs`, 사용자 폴더를 넣으면 테스트가 실패한다)와 폴더 크기 분석(읽기 전용)
-- `crates/tracker` 설치 추적: 설치 전후 스냅샷 비교(읽기 전용), 기록은 잔여물 스캔의 근거로 쓴다
 - `crates/settings` 사용자 설정(백업 보관 기간, 잔여물 스캔 제외 목록)
 - `crates/setup` 자체 설치 프로그램 엔진 + `src-tauri/src/setup.rs`(모드 판단·명령) + `src/features/setup`(화면). 설계는 [docs/INSTALLER.md](docs/INSTALLER.md). 설치·제거 시험은 RobinX 자신으로만 하고, 끝나면 이 PC의 원래 상태(설치 여부, 데이터 폴더)로 돌려놓는다. 0.1.0(NSIS)은 데이터 폴더에 설치됐으므로 그 폴더를 통째로 지우는 코드는 절대 넣지 않는다
 

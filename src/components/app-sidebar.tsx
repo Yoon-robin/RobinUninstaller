@@ -3,7 +3,6 @@ import {
   ArrowDownCircle,
   HardDrive,
   Package,
-  Radar,
   Rocket,
   Settings,
   ShieldCheck,
@@ -28,7 +27,7 @@ import {
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
 
-export type Page = "programs" | "leftovers" | "storage" | "startup" | "tracking" | "restore" | "settings"
+export type Page = "programs" | "leftovers" | "storage" | "startup" | "restore" | "settings"
 
 type Item = { page: Page; label: string; icon: typeof Package; soon?: boolean }
 
@@ -37,7 +36,6 @@ const mainItems: Item[] = [
   { page: "leftovers", label: "잔여물 정리", icon: Sparkles },
   { page: "storage", label: "저장공간", icon: HardDrive },
   { page: "startup", label: "시작프로그램", icon: Rocket },
-  { page: "tracking", label: "설치 추적", icon: Radar },
 ]
 
 const toolItems: Item[] = [

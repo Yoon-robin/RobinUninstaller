@@ -22,7 +22,6 @@ windows = { version = "0.62", features = [
   "Win32_UI_Shell",
 ] }
 robin-startup.workspace = true
-robin-tracker.workspace = true
 
 [dev-dependencies]
 robin-execution.workspace = true

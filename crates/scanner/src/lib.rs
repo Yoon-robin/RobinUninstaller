@@ -19,8 +19,6 @@ mod files;
 mod registry;
 #[cfg(windows)]
 mod startup;
-#[cfg(windows)]
-mod tracked;
 
 pub use context::ScanContext;
 pub use model::{Confidence, Evidence, Leftover, LeftoverKind, ScanReport};
@@ -117,29 +115,15 @@ pub fn finalize(
 }
 
 /// 스캔한다. `installed`는 지금 설치된 전체 목록(공유 여부 판단용), `app`은 대상(이미 제거됐을 수 있음).
-/// 이 프로그램과 연결된 설치 추적 기록이 있으면 함께 쓴다.
 #[cfg(windows)]
 pub fn scan(
     app: &robin_core::InstalledApplication,
     installed: &[robin_core::InstalledApplication],
 ) -> ScanReport {
-    let traces = robin_tracker::TraceStore::default_location()
-        .map(|s| s.for_app(&app.id))
-        .unwrap_or_default();
     let exclusions = robin_settings::SettingsStore::default_location()
         .map(|s| s.load().exclusions)
         .unwrap_or_default();
-    scan_with(app, installed, &traces, &exclusions)
-}
-
-/// `scan`과 같지만 설치 추적 기록을 직접 넘긴다 (예제·시험용, 제외 목록 없음).
-#[cfg(windows)]
-pub fn scan_with_traces(
-    app: &robin_core::InstalledApplication,
-    installed: &[robin_core::InstalledApplication],
-    traces: &[robin_tracker::Trace],
-) -> ScanReport {
-    scan_with(app, installed, traces, &[])
+    scan_with(app, installed, &exclusions)
 }
 
 /// 사용자가 "다음부터 제외"로 고른 위치를 결과에서 뺀다. 뺀 개수를 돌려준다. 순수 함수.
@@ -164,7 +148,6 @@ pub fn apply_exclusions(
 fn scan_with(
     app: &robin_core::InstalledApplication,
     installed: &[robin_core::InstalledApplication],
-    traces: &[robin_tracker::Trace],
     exclusions: &[robin_settings::Exclusion],
 ) -> ScanReport {
     let started = std::time::Instant::now();
@@ -173,8 +156,6 @@ fn scan_with(
     let mut protected = 0;
     files::scan(&ctx, &mut items, &mut protected);
     registry::scan(&ctx, &mut items, &mut protected);
-    // 추적 기록의 Run 값도 켜짐·꺼짐 상태 값과 짝지어지도록 시작 항목보다 먼저 본다
-    tracked::scan(&ctx, traces, &mut items, &mut protected);
     startup::scan(&ctx, &mut items, &mut protected);
     // 바탕 화면·문서 등 사용자 폴더 안의 항목은 근거가 강해도 자동 선택하지 않는다
     for item in &mut items {
@@ -240,7 +221,7 @@ mod tests {
                 item(
                     LeftoverKind::Folder,
                     r"C:\Program Files\Acme\",
-                    vec![Evidence::TrackedInstall],
+                    vec![Evidence::ExactName],
                 ),
             ],
             0,

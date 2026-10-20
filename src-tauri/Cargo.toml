@@ -27,7 +27,6 @@ robin-scanner.workspace = true
 robin-recovery.workspace = true
 robin-startup.workspace = true
 robin-storage.workspace = true
-robin-tracker.workspace = true
 robin-settings.workspace = true
 robin-setup.workspace = true
 tauri-plugin-dialog = "2"

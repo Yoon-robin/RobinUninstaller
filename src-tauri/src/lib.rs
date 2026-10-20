@@ -5,7 +5,7 @@
 mod settings;
 #[cfg(windows)]
 pub mod setup;
-mod tracking;
+
 pub mod worker;
 
 use std::collections::HashMap;
@@ -1319,7 +1319,6 @@ pub fn run() {
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
         .manage(AppCache::default())
-        .manage(tracking::TrackingState::default())
         // 설치·제거 화면을 Alt+F4 등으로 닫을 때도 진행 중이면 막고, 제거를 마쳤으면 임시 복사본을 정리한다
         .on_window_event(|_window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event
@@ -1403,13 +1402,6 @@ pub fn run() {
             settings::prune_backups,
             settings::old_backups,
             settings::delete_old_backups,
-            tracking::tracking_status,
-            tracking::start_tracking,
-            tracking::cancel_tracking,
-            tracking::finish_tracking,
-            tracking::save_trace,
-            tracking::list_traces,
-            tracking::delete_trace,
             reveal_startup_item,
             disk_usage,
             scan_storage,

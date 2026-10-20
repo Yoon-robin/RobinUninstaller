@@ -21,8 +21,6 @@ export function describeEvidence(e: Evidence): { label: string; warn?: boolean }
       return { label: "이름 일부 일치" }
     case "emptyPublisherFolder":
       return { label: "다른 제품 없는 게시자 폴더" }
-    case "trackedInstall":
-      return { label: "설치 추적 기록에 있음" }
     case "inUserFolder":
       return { label: "바탕 화면·문서 같은 사용자 폴더 안이에요", warn: true }
     case "sharedWithOtherApp":

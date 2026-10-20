@@ -14,7 +14,6 @@ robin-execution = { path = "crates/execution" }
 robin-scanner = { path = "crates/scanner" }
 robin-recovery = { path = "crates/recovery" }
 robin-startup = { path = "crates/startup" }
-robin-tracker = { path = "crates/tracker" }
 robin-settings = { path = "crates/settings" }
 robin-storage = { path = "crates/storage" }
 robin-setup = { path = "crates/setup" }
