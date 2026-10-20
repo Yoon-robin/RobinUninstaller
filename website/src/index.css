@@ -43,7 +43,7 @@
   --text-body: 1.0625rem; /* 17px: 본문 */
   --text-lead: 1.5rem; /* 24px: 짧은 문단, 목록 제목, FAQ 답 */
   --text-section: clamp(2.25rem, 4.4vw, 4rem); /* 섹션 제목 */
-  --text-display: clamp(3rem, 6.4vw, 5.75rem); /* 첫 화면 제목 */
+  --text-display: clamp(3rem, 6.4vw, 5.75rem); /* 첫 화면 제목 (두 줄, 한 줄 6자 안팎) */
 }
 
 /*

@@ -35,8 +35,8 @@ p { margin-top: 32px; font-size: 27px; line-height: 1.45; }
 </style></head><body>
 <div class="wrap">
   <div class="brand"><img src="${logo}">RobinX</div>
-  <h1>지우기 전에,<br>근거부터.</h1>
-  <p>프로그램을 지운 뒤 남은 흔적을<br>근거와 함께 찾아, 백업하고 정리해요.</p>
+  <h1>남은 흔적까지<br>정리해요.</h1>
+  <p>제거한 뒤 남은 파일과 레지스트리를<br>백업해 두고 정리하는 무료 Windows 앱</p>
 </div>
 <div class="stage"><div class="crop"><img src="${shot}"></div></div>
 </body></html>`

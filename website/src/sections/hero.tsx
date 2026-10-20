@@ -23,12 +23,12 @@ export function Hero() {
       <div className="frame grid grid-cols-[minmax(0,1fr)] items-center gap-12 pt-10 sm:pt-16 lg:min-h-[calc(100svh-5rem)] lg:grid-cols-12 lg:gap-8 lg:pt-0">
         <div className="lg:col-span-5 lg:pb-24">
           <motion.h1 {...rise(0.05, reduce)} className="display">
-            지우기 전에,
+            남은 흔적까지
             <br />
-            근거부터.
+            정리해요.
           </motion.h1>
           <motion.p {...rise(0.15, reduce)} className="mt-8 max-w-[34ch] text-lead leading-snug">
-            프로그램을 지워도 남는 파일과 설정 찌꺼기를 찾아 주는 무료 Windows 앱이에요. 지우기 전에 백업해 둬요.
+            제거한 뒤에도 남는 파일과 레지스트리를 찾아, 백업해 두고 정리하는 무료 Windows 앱이에요.
           </motion.p>
           <motion.div {...rise(0.25, reduce)} className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
             <a
