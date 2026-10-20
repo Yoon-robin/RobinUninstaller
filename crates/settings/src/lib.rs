@@ -157,11 +157,26 @@ impl SettingsStore {
     /// 파일이 없으면 기본값(30일 보관, 제외 없음). 파일이 있는데 읽지 못하거나 깨져 있으면
     /// 사용자가 고른 값을 알 수 없으므로 백업을 지우지 않는 "계속 보관"으로 둔다.
     pub fn load(&self) -> Settings {
-        match std::fs::read_to_string(&self.path) {
-            Err(e) if e.kind() == std::io::ErrorKind::NotFound => Settings::default(),
-            Ok(text) => serde_json::from_str(&text).unwrap_or_else(|_| Settings::keep_all()),
-            Err(_) => Settings::keep_all(),
+        self.try_load().unwrap_or_else(|_| Settings::keep_all())
+    }
+
+    /// `load`와 같지만 파일을 읽지 못하면 오류. 설정을 바꿔 저장할 때 쓴다:
+    /// 읽지 못한 채 "계속 보관"으로 저장하면 사용자가 고른 기간과 제외 목록이 사라진다.
+    fn try_load(&self) -> Result<Settings, String> {
+        let mut settings: Settings = match std::fs::read_to_string(&self.path) {
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(Settings::default()),
+            Err(e) => return Err(format!("설정 파일을 읽지 못했어요: {e}")),
+            Ok(text) => serde_json::from_str(&text)
+                .map_err(|e| format!("설정 파일이 손상돼 읽지 못했어요: {e}"))?,
+        };
+        // 고를 수 없는 기간(직접 고친 파일의 0일 등)이면 백업을 지우지 않는 쪽으로 둔다
+        if settings
+            .backup_retention_days
+            .is_some_and(|d| !RETENTION_CHOICES.contains(&d))
+        {
+            settings.backup_retention_days = None;
         }
+        Ok(settings)
     }
 
     /// 임시 파일에 쓰고 바꿔치기한다.
@@ -184,7 +199,7 @@ pub fn update<T>(
     store: &SettingsStore,
     f: impl FnOnce(&mut Settings) -> Result<T, String>,
 ) -> Result<T, String> {
-    let mut settings = store.load();
+    let mut settings = store.try_load()?;
     let out = f(&mut settings)?;
     store
         .save(&settings)
@@ -312,6 +327,12 @@ mod tests {
         assert_eq!(store.load().backup_retention_days, Some(180));
         // 깨진 파일이면 지우지 않는 쪽
         std::fs::write(&path, "{ not json").unwrap();
+        assert_eq!(store.load().backup_retention_days, None);
+        // 깨진 파일 위에 설정을 바꿔 저장하지 않는다 (사용자가 고른 값을 덮어쓰지 않게)
+        assert!(update(&store, |s| s.set_retention(Some(90))).is_err());
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "{ not json");
+        // 고를 수 없는 기간(0일 등)이면 지우지 않는 쪽
+        std::fs::write(&path, r#"{"backupRetentionDays":0}"#).unwrap();
         assert_eq!(store.load().backup_retention_days, None);
         // 저장하면 기본값도 파일에 남아, 다음에 읽어도 같다
         store.save(&Settings::default()).unwrap();

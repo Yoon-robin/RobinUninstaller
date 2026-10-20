@@ -150,9 +150,9 @@ export function UpdatesProvider({ ready, children }: { ready: boolean; children:
     startupCheck ??= runCheck()
     const first = startupCheck
     void first.then((result) => {
-      if (!alive) return
+      // 받은 결과는 한 번만 쓴다: 확인 중에 자동 확인을 껐다가 나중에 켜면 옛 결과 대신 새로 확인한다
       if (startupCheck === first) startupCheck = null
-      applyResult(result, false, true)
+      if (alive) applyResult(result, false, true)
     })
     const again = setInterval(() => void checkNow(false, false), RECHECK_MS)
     return () => {
