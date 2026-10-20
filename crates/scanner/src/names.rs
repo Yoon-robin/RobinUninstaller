@@ -256,8 +256,7 @@ fn match_name_ignoring_versions(
         let words_match = product_core.iter().all(|w| cand_tokens.contains(w));
         let joined_match =
             product_core.len() > 1 && cand_tokens.concat().contains(core_compact.as_str());
-        if (words_match || joined_match)
-            && product_core.iter().map(|w| w.len()).sum::<usize>() >= 4
+        if (words_match || joined_match) && product_core.iter().map(|w| w.len()).sum::<usize>() >= 4
         {
             return NameMatch::AllSignificant;
         }
@@ -384,7 +383,11 @@ mod tests {
             );
         }
         // 띄어쓰기 없이 붙여 쓴 이름은 여전히 맞는다
-        for folder in ["FixtureNotesCache", "fixturenotes-cache", "Fixture Notes Logs"] {
+        for folder in [
+            "FixtureNotesCache",
+            "fixturenotes-cache",
+            "Fixture Notes Logs",
+        ] {
             assert_eq!(
                 match_name(folder, "Fixture Notes", None),
                 NameMatch::AllSignificant,
