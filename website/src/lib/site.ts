@@ -3,3 +3,5 @@ export const REPO_URL = "https://github.com/Yoon-robin/RobinX"
 export const DOWNLOAD_URL = "https://github.com/Yoon-robin/RobinX/releases/latest"
 export const LOGO = `${import.meta.env.BASE_URL}logo.png`
 export const shot = (name: string) => `${import.meta.env.BASE_URL}shots/${name}.png`
+/** 앱 녹화 (public/demo, scripts/ui-mock/record-demo.mjs로 만든다) */
+export const demo = (file: string) => `${import.meta.env.BASE_URL}demo/${file}`

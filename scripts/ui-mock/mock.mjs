@@ -89,6 +89,8 @@ export const sample = {
 /** command 이름 → 응답. 함수면 (args) => 응답. 없으면 list*는 [], 나머지는 null. */
 function defaultHandlers() {
   return {
+    // 설치 프로그램 화면이 아니라 앱 화면으로 연다 (main.tsx가 가장 먼저 묻는다)
+    app_mode: "app",
     window_material: "solid",
     list_installed_apps: sample.apps,
     measure_app_sizes: sample.sizes,
@@ -106,6 +108,16 @@ function defaultHandlers() {
  * overrides 값은 JSON으로 넘어가므로, 함수가 필요하면 "(args) => ..." 문자열로 준다.
  */
 export async function openApp(browser, { scheme = "dark", overrides = {}, width = 1280, height = 860 } = {}) {
+  const page = await browser.newPage({ viewport: { width, height }, colorScheme: scheme })
+  return prepare(page, scheme, overrides)
+}
+
+/** openApp과 같지만 이미 만든 컨텍스트(녹화 설정 등)에서 연다. */
+export async function openAppInContext(context, { scheme = "dark", overrides = {} } = {}) {
+  return prepare(await context.newPage(), scheme, overrides)
+}
+
+async function prepare(page, scheme, overrides) {
   const handlers = { ...defaultHandlers(), ...overrides }
   const table = Object.entries(handlers)
     .map(([cmd, v]) =>
@@ -127,7 +139,6 @@ export async function openApp(browser, { scheme = "dark", overrides = {}, width 
         return null;
       },
     };`
-  const page = await browser.newPage({ viewport: { width, height }, colorScheme: scheme })
   page.on("pageerror", (e) => {
     if (!e.message.includes("unregisterListener")) console.log("pageerror", e.message)
   })

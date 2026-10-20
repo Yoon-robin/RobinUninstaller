@@ -3,6 +3,7 @@ import { MotionConfig } from "motion/react"
 import { Nav } from "@/sections/nav"
 import { Hero } from "@/sections/hero"
 import { Evidence } from "@/sections/evidence"
+import { Walkthrough } from "@/sections/walkthrough"
 import { Tools } from "@/sections/tools"
 import { Restore } from "@/sections/restore"
 import { Status } from "@/sections/status"
@@ -16,6 +17,7 @@ export default function App() {
       <main>
         <Hero />
         <Evidence />
+        <Walkthrough />
         <Tools />
         <Restore />
         <Status />
