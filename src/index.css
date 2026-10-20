@@ -297,10 +297,16 @@
   border-radius: 0.75rem;
   padding: 0.25rem;
 }
+/* 대화상자 뒤를 어둡게: 밝은 테마는 옅게, 어두운 테마는 진하게 (macOS처럼) */
 [data-slot="dialog-overlay"],
 [data-slot="alert-dialog-overlay"],
 [data-slot="sheet-overlay"] {
-  background-color: oklch(0 0 0 / 40%);
+  background-color: oklch(0 0 0 / 18%);
+}
+.dark [data-slot="dialog-overlay"],
+.dark [data-slot="alert-dialog-overlay"],
+.dark [data-slot="sheet-overlay"] {
+  background-color: oklch(0 0 0 / 50%);
 }
 /* 대화상자 아래쪽 버튼 줄은 살짝 다른 면으로 */
 [data-slot="dialog-footer"] {

@@ -21,6 +21,8 @@ mkdirSync(out, { recursive: true })
 rmSync(tmp, { recursive: true, force: true })
 mkdirSync(tmp, { recursive: true })
 
+// 사이트가 밝은 바탕이라 기본은 밝은 테마 (RECORD_SCHEME=dark로 바꿀 수 있다)
+const SCHEME = process.env.RECORD_SCHEME ?? "light"
 const W = 1280
 const H = 800
 const me = String.raw`C:\Users\me\AppData`
@@ -85,12 +87,12 @@ const handlers = {
 const browser = await launch()
 const context = await browser.newContext({
   viewport: { width: W, height: H },
-  colorScheme: "dark",
+  colorScheme: SCHEME,
   recordVideo: { dir: tmp, size: { width: W, height: H } },
 })
 // 녹화는 페이지를 만들 때 시작한다. 잔여물 화면이 뜬 시점부터 남기려고 시간을 잰다.
 const started = Date.now()
-const page = await openAppInContext(context, { overrides: handlers })
+const page = await openAppInContext(context, { overrides: handlers, scheme: SCHEME })
 const pause = (ms) => page.waitForTimeout(ms)
 
 await page.getByRole("button", { name: "잔여물 정리", exact: true }).first().click()

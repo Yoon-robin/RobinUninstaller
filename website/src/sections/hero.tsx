@@ -1,70 +1,87 @@
 import { ArrowRight, Download } from "lucide-react"
 import { motion, useReducedMotion } from "motion/react"
 
-import { DOWNLOAD_URL, REPO_URL } from "@/lib/site"
+import { DOWNLOAD_URL, LOGO, REPO_URL, shot } from "@/lib/site"
 import { GithubIcon } from "@/components/github-icon"
 import { easeOutQuint } from "@/components/motion"
-import { LeftoverDemo } from "@/sections/leftover-demo"
 
 const rise = (delay: number, reduce: boolean | null) => ({
-  initial: reduce ? false : { opacity: 0, y: 24 },
+  initial: reduce ? false : { opacity: 0, y: 20 },
   animate: { opacity: 1, y: 0 },
   transition: { duration: 0.8, delay, ease: easeOutQuint },
 })
 
 /**
- * 첫 화면: 왼쪽은 제목·한 문장·실행 하나, 오른쪽은 밝은 청록 무대 위의 실제로 움직이는 "남은 흔적" 화면 조각.
- * 무대는 오른쪽과 아래 가장자리로 넘친다.
+ * 첫 화면: Apple 제품 페이지처럼 가운데에 앱 아이콘·제목·한 문장·실행 둘, 그 아래 실제 앱 화면을 크게.
+ * 앱 화면은 가짜 응답으로 찍은 것이라 실제 PC의 프로그램 이름은 나오지 않는다 (scripts/capture.mjs).
  */
 export function Hero() {
   const reduce = useReducedMotion()
   return (
-    <section id="top" className="relative overflow-hidden">
-      <div className="frame grid grid-cols-[minmax(0,1fr)] items-center gap-12 pt-10 sm:pt-16 lg:min-h-[calc(100svh-5rem)] lg:grid-cols-12 lg:gap-8 lg:pt-0">
-        <div className="lg:col-span-5 lg:pb-24">
-          <motion.h1 {...rise(0.05, reduce)} className="display">
-            남은 흔적까지
-            <br />
-            정리해요.
-          </motion.h1>
-          <motion.p {...rise(0.15, reduce)} className="mt-8 max-w-[34ch] text-lead leading-snug">
-            제거한 뒤에도 남는 파일과 레지스트리를 찾아, 백업해 두고 정리하는 무료 Windows 앱이에요.
-          </motion.p>
-          <motion.div {...rise(0.25, reduce)} className="mt-10 flex flex-wrap items-center gap-x-6 gap-y-4">
-            <a
-              href={DOWNLOAD_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="inline-flex h-12 items-center gap-2.5 rounded-full bg-primary px-6 text-body font-semibold text-primary-foreground transition-[transform,background-color] hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97]"
-            >
-              <Download className="size-[1.1rem]" />
-              내려받기 (미리보기)
-            </a>
-            <a
-              href={REPO_URL}
-              target="_blank"
-              rel="noreferrer"
-              className="group inline-flex items-center gap-1.5 text-body font-medium text-primary hover:underline hover:underline-offset-4"
-            >
-              <GithubIcon className="size-4" />
-              소스 보기
-              <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
-            </a>
-          </motion.div>
-        </div>
-
-        {/* 무대: 오른쪽·아래로 넘친다. 좁은 화면에서는 양옆으로 넘친다 */}
+    <section id="top" className="overflow-hidden">
+      <div className="frame flex flex-col items-center pt-14 text-center sm:pt-20 lg:pt-24">
+        <motion.img
+          {...rise(0, reduce)}
+          src={LOGO}
+          alt=""
+          width={72}
+          height={72}
+          className="size-16 rounded-[1.1rem] sm:size-[4.5rem]"
+        />
+        <motion.h1 {...rise(0.06, reduce)} className="display mt-8">
+          남은 흔적까지
+          <br />
+          정리해요.
+        </motion.h1>
+        <motion.p {...rise(0.14, reduce)} className="mt-6 max-w-[32ch] text-lead leading-snug text-balance text-muted-foreground">
+          제거한 뒤에도 남는 파일과 레지스트리를 찾아, 백업해 두고 정리하는 무료 Windows 앱이에요.
+        </motion.p>
         <motion.div
-          initial={reduce ? false : { opacity: 0, y: 48 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1, delay: 0.3, ease: easeOutQuint }}
-          className="-mx-[clamp(1.25rem,4vw,2.5rem)] min-w-0 lg:col-span-7 lg:mx-0 lg:mr-[calc(-1*(max(0px,(100vw-80rem)/2)+clamp(1.25rem,4vw,2.5rem)))] lg:self-end"
+          {...rise(0.22, reduce)}
+          className="mt-9 flex flex-wrap items-center justify-center gap-x-7 gap-y-4"
         >
-          <div className="overflow-hidden bg-stage pt-8 pl-5 sm:pt-14 sm:pl-14 lg:rounded-tl-[1.75rem]">
-            <LeftoverDemo />
-          </div>
+          <a
+            href={DOWNLOAD_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex h-12 items-center gap-2.5 rounded-full bg-primary px-7 text-body font-semibold text-primary-foreground transition-[transform,background-color] hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97]"
+          >
+            <Download className="size-[1.1rem]" />
+            내려받기 (미리보기)
+          </a>
+          <a
+            href={REPO_URL}
+            target="_blank"
+            rel="noreferrer"
+            className="group inline-flex items-center gap-1.5 text-body font-medium text-primary hover:underline hover:underline-offset-4"
+          >
+            <GithubIcon className="size-4" />
+            소스 보기
+            <ArrowRight className="size-4 transition-transform group-hover:translate-x-0.5" />
+          </a>
         </motion.div>
+        <motion.p {...rise(0.28, reduce)} className="mt-4 text-fine text-muted-foreground">
+          Windows용 · 무료 · 소스 공개
+        </motion.p>
       </div>
+
+      {/* 실제 앱 화면. 아래쪽은 다음 구역으로 이어지도록 잘라 둔다 */}
+      <motion.div
+        initial={reduce ? false : { opacity: 0, y: 40 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 1, delay: 0.32, ease: easeOutQuint }}
+        className="frame mt-14 sm:mt-20"
+      >
+        <div className="mx-auto max-w-[68rem] overflow-hidden rounded-t-[1.5rem] bg-muted px-3 pt-3 sm:rounded-t-[2rem] sm:px-6 sm:pt-6">
+          <img
+            src={shot("programs")}
+            alt="RobinX의 설치된 프로그램 화면: 프로그램 수, 전체 용량, 언인스톨러가 없는 프로그램 수와 목록"
+            width={1280}
+            height={800}
+            className="block w-full rounded-t-[0.9rem] sm:rounded-t-[1.1rem]"
+          />
+        </div>
+      </motion.div>
     </section>
   )
 }

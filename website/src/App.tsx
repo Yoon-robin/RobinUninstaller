@@ -4,10 +4,11 @@ import { Nav } from "@/sections/nav"
 import { Hero } from "@/sections/hero"
 import { Evidence } from "@/sections/evidence"
 import { Walkthrough } from "@/sections/walkthrough"
-import { Tools } from "@/sections/tools"
+import { Features } from "@/sections/features"
 import { Restore } from "@/sections/restore"
 import { Status } from "@/sections/status"
 import { Faq } from "@/sections/faq"
+import { Cta } from "@/sections/cta"
 import { Footer } from "@/sections/footer"
 
 export default function App() {
@@ -16,12 +17,13 @@ export default function App() {
       <Nav />
       <main>
         <Hero />
+        <Features />
         <Evidence />
         <Walkthrough />
-        <Tools />
         <Restore />
         <Status />
         <Faq />
+        <Cta />
       </main>
       <Footer />
     </MotionConfig>

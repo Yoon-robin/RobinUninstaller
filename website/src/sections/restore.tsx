@@ -1,4 +1,3 @@
-import { shot } from "@/lib/site"
 import { Reveal } from "@/components/motion"
 import { cn } from "@/lib/utils"
 
@@ -20,51 +19,30 @@ const rows: { task: string; level: Level; note: string }[] = [
   { task: "백업을 지운 뒤", level: "불가", note: "그 백업으로는 더 되돌릴 수 없어요" },
 ]
 
+/** 가운데 제목 아래, 작업마다 되돌릴 수 있는지를 회색 타일 두 줄로. */
 export function Restore() {
   return (
-    <section id="restore" className="frame grid gap-14 pt-20 sm:pt-28 lg:grid-cols-12 lg:gap-8 lg:pt-32">
-      <div className="lg:col-span-5">
-        <Reveal>
-          <h2 className="section-title">
-            되돌릴 수 있는 것,
-            <br />
-            없는 것
-          </h2>
-        </Reveal>
-        <Reveal delay={0.08}>
-          <p className="mt-8 max-w-[36ch] text-lead leading-snug">
-            '백업 있으면'은 백업을 지우기 전까지 되돌릴 수 있다는 뜻이에요.
+    <section id="restore" className="py-20 sm:py-28 lg:py-32">
+      <div className="frame">
+        <Reveal className="mx-auto max-w-3xl text-center">
+          <h2 className="section-title">되돌릴 수 있는 것, 없는 것</h2>
+          <p className="mx-auto mt-5 max-w-[36ch] text-lead leading-snug text-balance text-muted-foreground">
+            '백업 있으면'은 백업을 지우기 전까지 되돌릴 수 있다는 뜻이에요. 백업은 직접 지우거나 30일이 지나면
+            사라져요.
           </p>
         </Reveal>
-        <ul className="mt-12 flex flex-col">
+        <ul className="mx-auto mt-14 grid max-w-5xl gap-4 sm:mt-16 sm:grid-cols-2 sm:gap-5">
           {rows.map((r, i) => (
-            <Reveal as="li" key={r.task} delay={0.12 + i * 0.04} y={12} className="py-3">
+            <Reveal as="li" key={r.task} delay={0.04 * (i % 2)} y={12} className="rounded-[1.5rem] bg-muted px-7 py-6">
               <p className="flex items-baseline justify-between gap-6">
-                <span className="text-lead font-semibold">{r.task}</span>
+                <span className="text-lead font-semibold tracking-tight">{r.task}</span>
                 <span className={cn("shrink-0 text-body font-semibold", tone[r.level])}>{r.level}</span>
               </p>
-              <p className="text-body text-muted-foreground">{r.note}</p>
+              <p className="mt-1 text-body text-muted-foreground">{r.note}</p>
             </Reveal>
           ))}
         </ul>
       </div>
-
-      <Reveal delay={0.16} className="lg:col-span-7 lg:pt-4">
-        <div className="lg:sticky lg:top-10">
-          <img
-            src={shot("restore")}
-            alt="복구 기록 화면: 작업마다 백업된 항목과 되돌리기 버튼이 있어요"
-            width={1280}
-            height={800}
-            loading="lazy"
-            className="w-full rounded-[1.25rem] bg-night"
-          />
-          <p className="mt-5 max-w-[52ch] text-body text-muted-foreground">
-            복구 기록 화면. 되돌릴 자리에 같은 이름의 파일이 새로 생겼으면 덮어쓰지 않고 알려 줘요. 백업은 직접 지우거나
-            30일이 지나면 사라져요.
-          </p>
-        </div>
-      </Reveal>
     </section>
   )
 }

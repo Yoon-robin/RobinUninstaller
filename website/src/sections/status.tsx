@@ -25,7 +25,7 @@ const groups = [
 
 export function Status() {
   return (
-    <section id="status" className="mt-20 bg-muted py-20 sm:mt-28 sm:py-24 lg:mt-32 lg:py-28">
+    <section id="status" className="bg-muted py-20 sm:py-28 lg:py-32">
       <div className="frame">
         <div className="grid gap-8 lg:grid-cols-12">
           <Reveal className="lg:col-span-6">

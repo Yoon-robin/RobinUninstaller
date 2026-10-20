@@ -6,8 +6,8 @@ import { GithubIcon } from "@/components/github-icon"
 import { Sheet, SheetContent, SheetDescription, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 
 export const links = [
+  { href: "#features", label: "기능" },
   { href: "#evidence", label: "남은 흔적" },
-  { href: "#tools", label: "도구" },
   { href: "#restore", label: "되돌리기" },
   { href: "#status", label: "개발 현황" },
   { href: "#faq", label: "FAQ" },

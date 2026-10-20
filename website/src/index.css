@@ -47,26 +47,26 @@
 }
 
 /*
- * 바탕 하나, 글자색 하나, 강조색 하나.
- * 강조색(진한 청록)은 실행 버튼과 선택된 것에만 쓴다. 밝은 청록은 첫 화면의 무대 한 곳에만 쓴다.
- * 면은 선이나 그림자가 아니라 톤 차이로 나눈다.
+ * Apple 제품 페이지처럼 흰 바탕과 연한 회색(--muted, #F5F5F7) 구역을 번갈아 쓴다.
+ * 글자색 하나, 강조색(진한 청록) 하나. 강조색은 실행 버튼과 링크에만 쓴다.
+ * 면은 선이나 그림자가 아니라 톤 차이로 나눈다 (흰 구역 위 타일은 회색, 회색 구역 위 타일은 흰색).
  */
 :root {
   color-scheme: light;
   --radius: 1.25rem;
-  --background: oklch(0.99 0.001 260);
-  --foreground: oklch(0.2 0.006 260);
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.19 0.006 286);
   --card: oklch(1 0 0);
   --card-foreground: oklch(0.2 0.006 260);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.2 0.006 260);
   --primary: oklch(0.47 0.085 196);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.955 0.003 260);
+  --secondary: oklch(0.972 0.002 286);
   --secondary-foreground: oklch(0.2 0.006 260);
-  --muted: oklch(0.955 0.003 260);
-  --muted-foreground: oklch(0.43 0.008 260);
-  --accent: oklch(0.955 0.003 260);
+  --muted: oklch(0.972 0.002 286);
+  --muted-foreground: oklch(0.47 0.008 286);
+  --accent: oklch(0.972 0.002 286);
   --accent-foreground: oklch(0.2 0.006 260);
   --destructive: oklch(0.55 0.2 25);
   --border: oklch(0 0 0 / 9%);

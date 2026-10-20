@@ -38,7 +38,7 @@ const faqs = [
  */
 export function Faq() {
   return (
-    <section id="faq" className="frame grid gap-12 pt-20 sm:pt-28 lg:grid-cols-12 lg:gap-8 lg:pt-32">
+    <section id="faq" className="frame grid gap-12 py-20 sm:py-28 lg:grid-cols-12 lg:gap-8 lg:py-32">
       <div className="lg:col-span-4">
         <div className="lg:sticky lg:top-24">
           <Reveal>

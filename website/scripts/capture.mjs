@@ -365,7 +365,8 @@ const nav = async (page, name) => {
   await page.waitForTimeout(1600)
 }
 
-const page = await openApp(browser, { overrides, width: 1280, height: 800 })
+// 사이트는 밝은 바탕이라 앱도 밝은 테마로 찍는다 (CAPTURE_SCHEME=dark로 바꿀 수 있다)
+const page = await openApp(browser, { overrides, width: 1280, height: 800, scheme: process.env.CAPTURE_SCHEME ?? "light" })
 await page.waitForTimeout(2500)
 await shot("programs", page)
 
