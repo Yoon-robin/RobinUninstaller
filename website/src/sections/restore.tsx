@@ -6,8 +6,8 @@ import { cn } from "@/lib/utils"
 type Level = "가능" | "백업이 있는 동안" | "안 됨"
 
 const levelStyle: Record<Level, { icon: typeof CircleCheck; tone: string }> = {
-  가능: { icon: CircleCheck, tone: "text-primary" },
-  "백업이 있는 동안": { icon: CircleDashed, tone: "text-[oklch(0.45_0.11_60)]" },
+  가능: { icon: CircleCheck, tone: "text-sure" },
+  "백업이 있는 동안": { icon: CircleDashed, tone: "text-review" },
   "안 됨": { icon: CircleX, tone: "text-muted-foreground" },
 }
 

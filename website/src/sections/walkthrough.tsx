@@ -51,7 +51,7 @@ export function Walkthrough() {
   }, [reduce])
 
   return (
-    <section id="walkthrough" className="bg-muted py-20 sm:py-24 lg:py-28">
+    <section id="walkthrough" className="border-y bg-white/[0.02] py-20 sm:py-24 lg:py-28">
       <div className="frame">
         <Reveal className="mx-auto max-w-3xl text-center">
           <h2 className="section-title">12초로 보는 정리 과정</h2>
@@ -73,7 +73,7 @@ export function Walkthrough() {
             controls
             preload="metadata"
             aria-label="RobinX 시연: 남은 흔적 찾기, 찾은 항목 확인, 백업하고 정리, 정리 결과 화면"
-            className="aspect-[16/10] w-full rounded-[1.5rem] bg-background object-contain"
+            className="window aspect-[16/10] w-full rounded-[1.5rem] object-contain p-2 sm:p-3"
           />
           <ol className="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-body font-medium">
             {steps.map((s, i) => (
@@ -84,7 +84,7 @@ export function Walkthrough() {
                   </span>
                 )}
                 <span>
-                  <span className="mr-1.5 text-primary tabular-nums">{i + 1}</span>
+                  <span className="mr-1.5 text-stage tabular-nums">{i + 1}</span>
                   {s}
                 </span>
               </li>

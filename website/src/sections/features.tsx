@@ -73,7 +73,10 @@ const pairs = [
 function Shot({ t }: { t: Tile }) {
   return (
     <div
-      className={cn("mt-auto ml-7 overflow-hidden rounded-tl-[1rem] bg-background sm:ml-8", t.frame ?? "h-56 sm:h-72")}
+      className={cn(
+        "mt-auto ml-7 overflow-hidden rounded-tl-[1rem] border-t border-l bg-card sm:ml-8",
+        t.frame ?? "h-56 sm:h-72",
+      )}
     >
       <img
         src={shot(t.shot)}
@@ -105,7 +108,7 @@ export function Features() {
             <Reveal
               key={t.name}
               delay={0.04 * (i % 2)}
-              className={cn("flex flex-col overflow-hidden rounded-[1.75rem] bg-muted", t.span)}
+              className={cn("flex flex-col overflow-hidden rounded-[1.75rem] border bg-white/[0.025]", t.span)}
             >
               <div className="p-7 sm:p-8">
                 <h3 className="text-lead leading-snug font-semibold tracking-tight">{t.name}</h3>
@@ -115,7 +118,7 @@ export function Features() {
             </Reveal>
           ))}
 
-          <Reveal className="grid gap-8 rounded-[1.75rem] bg-muted p-7 sm:p-8 md:grid-cols-2 md:gap-12 lg:col-span-6">
+          <Reveal className="grid gap-8 rounded-[1.75rem] border bg-white/[0.025] p-7 sm:p-8 md:grid-cols-2 md:gap-12 lg:col-span-6">
             {pairs.map((p) => (
               <div key={p.name}>
                 <h3 className="text-lead leading-snug font-semibold tracking-tight">{p.name}</h3>

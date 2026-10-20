@@ -21,8 +21,8 @@ mkdirSync(out, { recursive: true })
 rmSync(tmp, { recursive: true, force: true })
 mkdirSync(tmp, { recursive: true })
 
-// 사이트가 밝은 바탕이라 기본은 밝은 테마 (RECORD_SCHEME=dark로 바꿀 수 있다)
-const SCHEME = process.env.RECORD_SCHEME ?? "light"
+// 사이트가 어두운 바탕이라 기본은 어두운 테마 (RECORD_SCHEME=light로 바꿀 수 있다)
+const SCHEME = process.env.RECORD_SCHEME ?? "dark"
 const W = 1280
 const H = 800
 const me = String.raw`C:\Users\me\AppData`

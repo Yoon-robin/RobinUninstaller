@@ -23,23 +23,29 @@ function goTo(href: string) {
   el.focus({ preventScroll: true })
 }
 
-/** 평범한 막대: 이름, 링크 몇 개, 내려받기 하나. GitHub는 아이콘 링크로 둔다. 떠 있거나 흐린 유리는 쓰지 않는다. */
+/**
+ * 첫 화면 위에 얹는 막대: 왼쪽 이름, 가운데 둥근 판 안의 링크, 오른쪽 GitHub 아이콘과 다운로드.
+ * 첫 화면의 빛이 막대 뒤까지 이어지도록 위에 겹쳐 둔다 (따라 내려오지는 않는다).
+ */
 export function Nav() {
   const [menuOpen, setMenuOpen] = useState(false)
   const pendingTarget = useRef<string | null>(null)
 
   return (
-    <header className="frame flex h-16 items-center gap-3 sm:h-20 sm:gap-8">
+    <header className="frame absolute inset-x-0 top-0 z-30 flex h-16 items-center gap-3 sm:h-20 sm:gap-6">
       <a href="#top" className="flex items-center gap-2.5 text-body font-semibold tracking-tight">
         <img src={LOGO} alt="" width={28} height={28} className="size-7 rounded-[0.45rem]" />
         RobinX
       </a>
-      <nav aria-label="페이지 메뉴" className="ml-auto hidden items-center gap-7 md:flex">
+      <nav
+        aria-label="페이지 메뉴"
+        className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border bg-white/[0.03] p-1 md:flex"
+      >
         {links.map((l) => (
           <a
             key={l.href}
             href={l.href}
-            className="text-body text-foreground/80 transition-colors hover:text-foreground focus-visible:rounded-sm focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+            className="rounded-full px-4 py-1.5 text-fine font-medium text-foreground/75 transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             {l.label}
           </a>
@@ -50,13 +56,13 @@ export function Nav() {
         target="_blank"
         rel="noreferrer"
         aria-label="GitHub에서 소스 보기"
-        className="ml-auto hidden size-11 items-center justify-center rounded-full text-foreground/80 transition-colors hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:inline-flex md:ml-0"
+        className="ml-auto hidden size-11 items-center justify-center rounded-full text-foreground/75 transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:inline-flex"
       >
         <GithubIcon className="size-5" />
       </a>
       <a
         href={RELEASE.downloadUrl}
-        className="ml-auto inline-flex h-11 items-center gap-2 rounded-full bg-primary px-5 text-body font-semibold text-primary-foreground transition-[transform,background-color] hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:outline-none active:scale-[0.97] sm:ml-0"
+        className="ml-auto inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-fine font-semibold text-primary-foreground transition-[transform,background-color] hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.97] sm:ml-0 sm:h-11 sm:px-5 sm:text-body"
       >
         <Download className="size-4" />
         다운로드

@@ -32,7 +32,7 @@ const released = RELEASE.publishedAt.toLocaleDateString("ko-KR", { year: "numeri
 
 export function Status() {
   return (
-    <section id="status" className="bg-muted py-20 sm:py-24 lg:py-28">
+    <section id="status" className="border-y bg-white/[0.02] py-20 sm:py-24 lg:py-28">
       <div className="frame">
         <div className="grid gap-10 lg:grid-cols-12 lg:gap-8">
           <Reveal className="lg:col-span-5">
@@ -43,7 +43,7 @@ export function Status() {
           </Reveal>
 
           {/* 최신 릴리스: 흰 판 하나에 버전·날짜·확인 방법 */}
-          <Reveal delay={0.06} className="rounded-[1.75rem] bg-background p-7 sm:p-8 lg:col-span-7">
+          <Reveal delay={0.06} className="window rounded-[1.75rem] p-7 sm:p-8 lg:col-span-7">
             <p className="text-section leading-none font-bold tracking-tight tabular-nums">v{RELEASE.version}</p>
             <p className="mt-3 text-body text-muted-foreground">
               최신 미리보기 · {released} 공개 · {RELEASE.file} · {RELEASE.sizeMb} MB
@@ -58,7 +58,7 @@ export function Status() {
                 href={RELEASE.pageUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="text-primary underline-offset-4 hover:underline"
+                className="text-stage underline-offset-4 hover:underline"
               >
                 릴리스 노트
               </a>
@@ -66,7 +66,7 @@ export function Status() {
                 href={`${REPO_URL}/commits/main`}
                 target="_blank"
                 rel="noreferrer"
-                className="text-primary underline-offset-4 hover:underline"
+                className="text-stage underline-offset-4 hover:underline"
               >
                 변경 기록
               </a>

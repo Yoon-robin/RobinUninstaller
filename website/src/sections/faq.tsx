@@ -75,7 +75,7 @@ export function Faq() {
               href={`${REPO_URL}/issues`}
               target="_blank"
               rel="noreferrer"
-              className="mt-8 inline-block text-body font-medium text-primary underline-offset-4 hover:underline"
+              className="mt-8 inline-block text-body font-medium text-stage underline-offset-4 hover:underline"
             >
               다른 질문은 GitHub에 남겨 주세요
             </a>
