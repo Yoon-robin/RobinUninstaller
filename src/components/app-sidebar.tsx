@@ -60,7 +60,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
             // 선택 표시(둥근 알약)가 메뉴 사이를 미끄러지듯 옮겨 간다.
             <motion.span
               layoutId="sidebar-active"
-              className="absolute inset-0 -z-10 rounded-[0.625rem] bg-sidebar-accent shadow-[inset_0_0_0_1px_var(--glass-edge)]"
+              className="absolute inset-0 -z-10 rounded-[0.625rem] bg-sidebar-accent"
               transition={{ type: "spring", duration: 0.4, bounce: 0.12 }}
             />
           )}
@@ -77,7 +77,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
 
   return (
     // 창 가장자리에서 떨어져 떠 있는 유리 사이드바 (macOS 스타일)
-    <Sidebar collapsible="icon" variant="floating">
+    <Sidebar collapsible="icon" variant="sidebar">
       <SidebarHeader data-tauri-drag-region className="h-[4.5rem] justify-center">
         <div data-tauri-drag-region className="flex items-center gap-2.5 px-1">
           <Logo className="size-8 shrink-0" />
@@ -106,7 +106,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           <button
             type="button"
             onClick={openUpdate}
-            className="flex items-start gap-2.5 rounded-xl bg-primary/10 p-3 text-left shadow-[inset_0_0_0_1px_var(--glass-edge)] transition-colors hover:bg-primary/15"
+            className="flex items-start gap-2.5 rounded-xl bg-primary/10 p-3 text-left border transition-colors hover:bg-primary/15"
           >
             <ArrowDownCircle className="mt-0.5 size-4 shrink-0 text-primary" />
             <span className="text-xs leading-relaxed">
@@ -115,7 +115,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
             </span>
           </button>
         )}
-        <div className="flex items-start gap-2.5 rounded-xl bg-sidebar-accent/60 p-3 shadow-[inset_0_0_0_1px_var(--glass-edge)]">
+        <div className="flex items-start gap-2.5 rounded-xl bg-sidebar-accent/60 p-3 border">
           <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
           <div className="text-xs leading-relaxed">
             <p className="font-medium">안전하게 정리해요</p>

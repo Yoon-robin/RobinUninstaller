@@ -49,10 +49,6 @@ export function StartupSplash() {
           <div data-tauri-drag-region className="flex h-12 shrink-0 items-center justify-end">
             <WindowControls />
           </div>
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(50%_45%_at_50%_42%,oklch(0.82_0.12_190/12%),transparent)]"
-          />
           <div data-tauri-drag-region className="relative flex flex-1 flex-col items-center justify-center pb-16">
             <motion.div
               initial={reduce ? false : { opacity: 0, scale: 0.86, filter: "blur(8px)" }}

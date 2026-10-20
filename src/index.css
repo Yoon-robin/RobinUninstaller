@@ -52,69 +52,69 @@
  * macOS처럼 거의 무채색인 바탕과 반투명한 구분선 위에, 로고의 청록색만 강조색으로 쓴다.
  */
 :root {
-  --background: oklch(0.975 0.002 260);
-  --foreground: oklch(0.22 0.005 260);
+  --background: oklch(0.975 0.0015 286);
+  --foreground: oklch(0.21 0.005 286);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.22 0.005 260);
-  --popover: oklch(0.995 0 0);
-  --popover-foreground: oklch(0.22 0.005 260);
-  --primary: oklch(0.6 0.11 200);
+  --card-foreground: oklch(0.21 0.005 286);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.21 0.005 286);
+  --primary: oklch(0.56 0.1 200);
   --primary-foreground: oklch(0.99 0 0);
-  --secondary: oklch(0.945 0.003 260);
-  --secondary-foreground: oklch(0.25 0.005 260);
-  --muted: oklch(0.945 0.003 260);
-  --muted-foreground: oklch(0.52 0.008 260);
-  --accent: oklch(0.94 0.02 200);
-  --accent-foreground: oklch(0.25 0.005 260);
+  --secondary: oklch(0.955 0.002 286);
+  --secondary-foreground: oklch(0.25 0.005 286);
+  --muted: oklch(0.955 0.002 286);
+  --muted-foreground: oklch(0.5 0.008 286);
+  --accent: oklch(0.945 0.003 286);
+  --accent-foreground: oklch(0.21 0.005 286);
   --destructive: oklch(0.6 0.22 25);
-  --border: oklch(0 0 0 / 8%);
-  --input: oklch(0 0 0 / 10%);
-  --ring: oklch(0.6 0.11 200);
+  --border: oklch(0 0 0 / 9%);
+  --input: oklch(0 0 0 / 13%);
+  --ring: oklch(0.56 0.1 200);
   --chart-1: oklch(0.72 0.12 195);
   --chart-2: oklch(0.62 0.17 285);
   --chart-3: oklch(0.76 0.15 70);
   --chart-4: oklch(0.65 0.2 20);
   --chart-5: oklch(0.68 0.15 150);
-  --radius: 0.875rem;
-  --sidebar: oklch(0.97 0.002 260);
-  --sidebar-foreground: oklch(0.25 0.005 260);
-  --sidebar-primary: oklch(0.6 0.11 200);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.955 0.002 286);
+  --sidebar-foreground: oklch(0.25 0.005 286);
+  --sidebar-primary: oklch(0.56 0.1 200);
   --sidebar-primary-foreground: oklch(0.99 0 0);
-  --sidebar-accent: oklch(0 0 0 / 6%);
+  --sidebar-accent: oklch(0 0 0 / 7%);
   --sidebar-accent-foreground: oklch(0.2 0.005 260);
-  --sidebar-border: oklch(0 0 0 / 7%);
-  --sidebar-ring: oklch(0.6 0.11 200);
+  --sidebar-border: oklch(0 0 0 / 8%);
+  --sidebar-ring: oklch(0.56 0.1 200);
 }
 
 .dark {
-  --background: oklch(0.185 0.004 260);
-  --foreground: oklch(0.96 0.002 260);
-  --card: oklch(0.225 0.004 260);
-  --card-foreground: oklch(0.96 0.002 260);
-  --popover: oklch(0.25 0.005 260);
-  --popover-foreground: oklch(0.96 0.002 260);
+  --background: oklch(0.205 0.002 286);
+  --foreground: oklch(0.96 0.002 286);
+  --card: oklch(0.24 0.002 286);
+  --card-foreground: oklch(0.96 0.002 286);
+  --popover: oklch(0.255 0.003 286);
+  --popover-foreground: oklch(0.96 0.002 286);
   --primary: oklch(0.82 0.12 190);
   --primary-foreground: oklch(0.2 0.04 200);
-  --secondary: oklch(0.27 0.005 260);
+  --secondary: oklch(0.27 0.003 286);
   --secondary-foreground: oklch(0.94 0.002 260);
-  --muted: oklch(0.26 0.005 260);
-  --muted-foreground: oklch(0.7 0.006 260);
-  --accent: oklch(0.28 0.02 220);
+  --muted: oklch(0.27 0.003 286);
+  --muted-foreground: oklch(0.72 0.005 286);
+  --accent: oklch(0.29 0.003 286);
   --accent-foreground: oklch(0.96 0.002 260);
   --destructive: oklch(0.7 0.19 22);
-  --border: oklch(1 0 0 / 9%);
-  --input: oklch(1 0 0 / 12%);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 14%);
   --ring: oklch(0.82 0.12 190 / 60%);
   --chart-1: oklch(0.82 0.12 190);
   --chart-2: oklch(0.72 0.15 285);
   --chart-3: oklch(0.83 0.14 75);
   --chart-4: oklch(0.72 0.17 20);
   --chart-5: oklch(0.75 0.14 150);
-  --sidebar: oklch(0.2 0.004 260);
+  --sidebar: oklch(0.225 0.002 286);
   --sidebar-foreground: oklch(0.92 0.003 260);
   --sidebar-primary: oklch(0.82 0.12 190);
   --sidebar-primary-foreground: oklch(0.2 0.04 200);
-  --sidebar-accent: oklch(1 0 0 / 8%);
+  --sidebar-accent: oklch(1 0 0 / 9%);
   --sidebar-accent-foreground: oklch(0.97 0.002 260);
   --sidebar-border: oklch(1 0 0 / 8%);
   --sidebar-ring: oklch(0.82 0.12 190 / 60%);
@@ -235,24 +235,6 @@
   }
 }
 
-/* ── Windows 11 Mica ──────────────────────────────────────
- * 창 뒤 배경화면 색이 은은하게 비치도록 바탕과 사이드바만 반투명하게 만든다.
- * 카드와 패널은 읽기 좋게 거의 불투명하게 둔다. Mica가 없으면(.mica 없음) 그대로 불투명.
- */
-.mica body {
-  background: transparent;
-}
-.mica:not(.dark) {
-  --background: oklch(0.975 0.002 260 / 60%);
-  --sidebar: oklch(0.97 0.002 260 / 30%);
-  --card: oklch(1 0 0 / 84%);
-}
-.mica.dark {
-  --background: oklch(0.185 0.004 260 / 68%);
-  --sidebar: oklch(0.2 0.004 260 / 35%);
-  --card: oklch(0.225 0.004 260 / 82%);
-}
-
 /* 테마 전환: 새 테마가 원형으로 퍼지는 동안 기존 화면은 그대로 둔다. */
 ::view-transition-old(root),
 ::view-transition-new(root) {
@@ -280,76 +262,19 @@
   }
 }
 
-/* ── Liquid Glass ─────────────────────────────────────────
- * 사이드바, 제목 표시줄, 창 버튼, 대화상자, 메뉴, 알림처럼 "떠 있는" 것만 유리처럼 만든다.
- * 목록과 카드 같은 읽을거리는 또렷하게 불투명하게 둔다.
- * 유리 = 뒤를 흐리게 + 채도 높이기 + 위쪽에 맺히는 밝은 테두리(빛 반사) + 부드러운 그림자.
+/* ── 떠 있는 면 ───────────────────────────────────────────
+ * 투명·흐림 효과는 쓰지 않는다 (2026-10-20 사용자 결정: 고정 헤더 뒤로 목록이 비쳐 겹쳐 보였다).
+ * 대화상자·메뉴·알림은 shadcn처럼 불투명한 면 + 1px 테두리 + 옅은 그림자로 띄운다.
  */
 :root {
-  --glass-tint: oklch(1 0 0 / 62%);
-  --glass-tint-strong: oklch(0.99 0 0 / 80%);
-  --glass-rim: oklch(1 0 0 / 85%);
-  --glass-edge: oklch(0 0 0 / 8%);
-  --glass-shadow:
-    0 1px 2px oklch(0 0 0 / 6%), 0 10px 30px -8px oklch(0 0 0 / 16%), 0 30px 70px -20px oklch(0 0 0 / 22%);
+  /* 예전 유리 효과 변수 이름을 쓰는 곳이 남아 있어도 테두리로 보이게 */
+  --glass-edge: var(--border);
+  --shadow-floating: 0 1px 2px oklch(0 0 0 / 5%), 0 8px 24px -6px oklch(0 0 0 / 14%);
 }
 .dark {
-  --glass-tint: oklch(0.26 0.005 260 / 55%);
-  --glass-tint-strong: oklch(0.24 0.005 260 / 78%);
-  --glass-rim: oklch(1 0 0 / 22%);
-  --glass-edge: oklch(1 0 0 / 10%);
-  --glass-shadow:
-    0 1px 2px oklch(0 0 0 / 30%), 0 12px 32px -8px oklch(0 0 0 / 45%), 0 30px 80px -20px oklch(0 0 0 / 55%);
+  --shadow-floating: 0 1px 2px oklch(0 0 0 / 40%), 0 12px 32px -8px oklch(0 0 0 / 55%);
 }
 
-@layer components {
-  .glass,
-  .glass-strong {
-    position: relative;
-    isolation: isolate;
-    background-color: var(--glass-tint);
-    -webkit-backdrop-filter: blur(24px) saturate(180%);
-    backdrop-filter: blur(24px) saturate(180%);
-    box-shadow:
-      inset 0 0 0 1px var(--glass-edge),
-      var(--glass-shadow);
-  }
-  .glass-strong {
-    background-color: var(--glass-tint-strong);
-    -webkit-backdrop-filter: blur(36px) saturate(190%);
-    backdrop-filter: blur(36px) saturate(190%);
-  }
-  /* 빛이 위·왼쪽 모서리에 맺히는 테두리 */
-  .glass::before,
-  .glass-strong::before {
-    content: "";
-    position: absolute;
-    inset: 0;
-    z-index: -1;
-    border-radius: inherit;
-    padding: 1px;
-    background: linear-gradient(160deg, var(--glass-rim), transparent 38%, transparent 70%, oklch(1 0 0 / 12%));
-    -webkit-mask:
-      linear-gradient(#000 0 0) content-box,
-      linear-gradient(#000 0 0);
-    -webkit-mask-composite: xor;
-    mask-composite: exclude;
-    pointer-events: none;
-  }
-
-  /* 기본 버튼: macOS 버튼처럼 위쪽이 살짝 밝고 아래로 얇은 그림자 */
-  [data-slot="button"][data-variant="default"] {
-    background-image: linear-gradient(to bottom, oklch(1 0 0 / 16%), oklch(1 0 0 / 0%));
-    box-shadow:
-      inset 0 1px 0 oklch(1 0 0 / 25%),
-      0 1px 2px oklch(0 0 0 / 18%);
-  }
-  [data-slot="button"][data-variant="outline"] {
-    box-shadow: 0 1px 1px oklch(0 0 0 / 4%);
-  }
-}
-
-/* 떠 있는 것들 (shadcn 기본 배경보다 우선하도록 레이어 밖에 둔다) */
 [data-slot="dialog-content"],
 [data-slot="alert-dialog-content"],
 [data-slot="sheet-content"],
@@ -359,119 +284,36 @@
 [data-slot="context-menu-sub-content"],
 [data-slot="popover-content"],
 [data-slot="select-content"] {
-  background-color: var(--glass-tint-strong);
-  -webkit-backdrop-filter: blur(36px) saturate(190%);
-  backdrop-filter: blur(36px) saturate(190%);
-  box-shadow:
-    inset 0 0 0 1px var(--glass-edge),
-    inset 0 1px 0 var(--glass-rim),
-    var(--glass-shadow);
-  border-color: transparent;
+  background-color: var(--popover);
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-floating);
 }
 [data-slot="dialog-content"],
 [data-slot="alert-dialog-content"] {
-  border-radius: 1.25rem;
+  border-radius: 1rem;
 }
 [data-slot="dropdown-menu-content"],
 [data-slot="context-menu-content"] {
-  border-radius: 0.875rem;
-  padding: 0.3rem;
+  border-radius: 0.75rem;
+  padding: 0.25rem;
 }
 [data-slot="dialog-overlay"],
 [data-slot="alert-dialog-overlay"],
 [data-slot="sheet-overlay"] {
-  background-color: oklch(0 0 0 / 22%);
-  -webkit-backdrop-filter: blur(6px) saturate(120%);
-  backdrop-filter: blur(6px) saturate(120%);
+  background-color: oklch(0 0 0 / 40%);
 }
-/* 대화상자 아래쪽 버튼 줄은 유리 위에 살짝 진하게 */
+/* 대화상자 아래쪽 버튼 줄은 살짝 다른 면으로 */
 [data-slot="dialog-footer"] {
-  background-color: oklch(0.5 0 0 / 5%);
+  background-color: var(--muted);
+  border-top: 1px solid var(--border);
+  border-bottom-left-radius: 1rem;
+  border-bottom-right-radius: 1rem;
 }
 [data-sonner-toast][data-styled="true"] {
-  background-color: var(--glass-tint-strong) !important;
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  backdrop-filter: blur(30px) saturate(180%);
-  border: none !important;
-  border-radius: 1rem !important;
-  box-shadow:
-    inset 0 0 0 1px var(--glass-edge),
-    inset 0 1px 0 var(--glass-rim),
-    var(--glass-shadow) !important;
-}
-[data-slot="dialog-footer"] {
-  border-bottom-left-radius: 1.25rem;
-  border-bottom-right-radius: 1.25rem;
-}
-
-/* 떠 있는 사이드바(유리). 펼친 폭에 맞춰 바깥 여백(0.5rem)만큼 띄운다. */
-[data-variant="floating"] [data-sidebar="sidebar"] {
-  border-radius: 1.125rem;
-  background-color: var(--glass-tint);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  backdrop-filter: blur(30px) saturate(180%);
-  box-shadow:
-    inset 0 0 0 1px var(--glass-edge),
-    inset 0 1px 0 var(--glass-rim),
-    0 1px 2px oklch(0 0 0 / 5%),
-    0 12px 32px -12px oklch(0 0 0 / 18%);
-  --tw-ring-shadow: 0 0 #0000;
-}
-
-/* 진짜 굴절(WebView2는 Chromium이라 동작). 작은 떠 있는 요소에만 쓴다. 지원하지 않으면 흐림만 남는다. */
-@supports (backdrop-filter: url(#a)) {
-  .liquid {
-    -webkit-backdrop-filter: url(#liquid-glass) blur(4px) saturate(190%);
-    backdrop-filter: url(#liquid-glass) blur(4px) saturate(190%);
-  }
-}
-
-/* 확인 창은 읽고 판단하는 곳이라 뒤가 거의 비치지 않게 한다 (메뉴·알림은 유리 그대로) */
-[data-slot="dialog-content"],
-[data-slot="alert-dialog-content"] {
-  background-color: color-mix(in oklch, var(--popover) 96%, transparent);
-}
-
-/* 투명 효과 줄이기: 설정에서 골랐거나 Windows가 투명 효과를 끈 경우 */
-.reduce-transparency {
-  --glass-tint: var(--popover);
-  --glass-tint-strong: var(--popover);
-}
-.reduce-transparency .glass,
-.reduce-transparency .glass-strong,
-.reduce-transparency .liquid,
-.reduce-transparency [data-variant="floating"] [data-sidebar="sidebar"],
-.reduce-transparency [data-slot="dialog-content"],
-.reduce-transparency [data-slot="alert-dialog-content"],
-.reduce-transparency [data-slot="sheet-content"],
-.reduce-transparency [data-slot="dropdown-menu-content"],
-.reduce-transparency [data-slot="dropdown-menu-sub-content"],
-.reduce-transparency [data-slot="context-menu-content"],
-.reduce-transparency [data-slot="context-menu-sub-content"],
-.reduce-transparency [data-sonner-toast] {
-  -webkit-backdrop-filter: none !important;
-  backdrop-filter: none !important;
-}
-.reduce-transparency [data-variant="floating"] [data-sidebar="sidebar"] {
-  background-color: var(--sidebar);
-}
-.reduce-transparency [data-slot="dialog-overlay"],
-.reduce-transparency [data-slot="alert-dialog-overlay"],
-.reduce-transparency [data-slot="sheet-overlay"] {
-  -webkit-backdrop-filter: none;
-  backdrop-filter: none;
-  background-color: oklch(0 0 0 / 45%);
-}
-/* Mica(창 뒤 배경이 비침)도 끄고 불투명한 바탕으로 */
-.reduce-transparency.mica:not(.dark) {
-  --background: oklch(0.975 0.002 260);
-  --sidebar: oklch(0.97 0.002 260);
-  --card: oklch(1 0 0);
-}
-.reduce-transparency.mica.dark {
-  --background: oklch(0.185 0.004 260);
-  --sidebar: oklch(0.2 0.004 260);
-  --card: oklch(0.225 0.004 260);
+  background-color: var(--popover) !important;
+  border: 1px solid var(--border) !important;
+  border-radius: 0.875rem !important;
+  box-shadow: var(--shadow-floating) !important;
 }
 
 /* 페이지를 옮길 때 제목으로 옮긴 포커스는 테두리로 보이지 않게 (스크린리더는 제목을 읽는다) */

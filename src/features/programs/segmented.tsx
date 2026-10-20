@@ -166,7 +166,7 @@ export function TextTabs<K extends string>({
 }) {
   return (
     <div
-      className="glass liquid flex h-9 items-center rounded-full p-1"
+      className="flex h-9 items-center rounded-full border bg-muted p-1"
       role="tablist"
       aria-label={label}
       onKeyDown={(e) =>

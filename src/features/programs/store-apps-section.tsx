@@ -40,7 +40,7 @@ export function StoreAppsSection() {
 
   return (
     <section className="overflow-clip rounded-2xl border bg-card shadow-sm">
-      <div className="sticky top-0 z-10 rounded-t-2xl border-b bg-popover/90 backdrop-blur-xl">
+      <div className="sticky top-0 z-10 rounded-t-2xl border-b bg-card">
         <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
           <div className="mr-auto flex items-baseline gap-2">
             <h2 className="font-semibold">Microsoft Store 앱</h2>

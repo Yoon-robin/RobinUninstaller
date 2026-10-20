@@ -312,7 +312,7 @@ export function ProgramsPage() {
           <FadeUp>
             {/* overflow-clip: 모서리는 자르되 스크롤 컨테이너가 되지 않아 안쪽 sticky가 동작한다 */}
             <section className="overflow-clip rounded-2xl border bg-card shadow-sm">
-              <div className="sticky top-0 z-10 rounded-t-2xl border-b bg-popover/90 backdrop-blur-xl">
+              <div className="sticky top-0 z-10 rounded-t-2xl border-b bg-card">
                 <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
                   <div className="mr-auto flex items-baseline gap-2">
                     <h2 className="font-semibold">설치된 프로그램</h2>
@@ -539,7 +539,7 @@ export function ProgramsPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16, transition: { duration: 0.15 } }}
             transition={{ type: "spring", duration: 0.35, bounce: 0.15 }}
-            className="glass-strong liquid sticky bottom-4 z-20 mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl px-4 py-3"
+            className="sticky bottom-4 z-20 mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border bg-popover px-4 py-3 shadow-[var(--shadow-floating)]"
           >
             <p className="mr-auto text-sm tabular-nums">
               {picked.size > 0 ? `${picked.size}개 선택` : "제거할 프로그램을 눌러 고르세요"}

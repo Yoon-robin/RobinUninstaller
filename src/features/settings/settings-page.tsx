@@ -113,7 +113,7 @@ function Choice<T extends string | number | null>({
 
 export function SettingsPage() {
   const queryClient = useQueryClient()
-  const { theme, setTheme, transparency, setTransparency } = useTheme()
+  const { theme, setTheme } = useTheme()
   const settings = useQuery({ queryKey: ["settings"], queryFn: settingsApi.get })
   const usage = useQuery({ queryKey: ["backup-usage"], queryFn: settingsApi.backupUsage })
   const [pendingRetention, setPendingRetention] = useState<number | null | undefined>(undefined)
@@ -188,7 +188,7 @@ export function SettingsPage() {
         <Section
           icon={Palette}
           title="화면"
-          description="밝기 테마와 유리 효과를 고르세요. 시스템·자동을 고르면 Windows 설정을 따라가요."
+          description="밝기 테마를 고르세요. 시스템을 고르면 Windows 설정을 따라가요."
         >
           <div className="grid gap-4">
             <div>
@@ -203,23 +203,6 @@ export function SettingsPage() {
                   { value: "system", label: "시스템", icon: Monitor },
                 ]}
               />
-            </div>
-            <div>
-              <p className="mb-2 text-sm font-medium">투명 효과</p>
-              <Choice
-                label="투명 효과"
-                value={transparency}
-                onChange={setTransparency}
-                options={[
-                  { value: "auto", label: "자동" },
-                  { value: "reduced", label: "줄이기" },
-                ]}
-              />
-              <p className="mt-2 text-xs text-muted-foreground">
-                {transparency === "auto"
-                  ? 'Windows의 "투명 효과" 설정을 따라가요.'
-                  : "사이드바·메뉴·창의 반투명과 흐림을 끄고 또렷한 바탕으로 보여 줘요. 느린 PC에서도 가벼워요."}
-              </p>
             </div>
           </div>
         </Section>

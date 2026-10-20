@@ -5,7 +5,6 @@ import { MotionConfig, motion } from "motion/react"
 
 import { AppSidebar, type Page } from "@/components/app-sidebar"
 import { IconTooltip } from "@/components/icon-tooltip"
-import { LiquidGlassFilter } from "@/components/liquid-glass"
 import { StartupSplash } from "@/components/startup-splash"
 import { UpdatesProvider } from "@/features/updates/updates"
 import { ThemeProvider, ThemeToggle } from "@/components/theme"
@@ -69,7 +68,6 @@ export default function App() {
       <ThemeProvider>
         {/* OS의 "애니메이션 효과 줄이기" 설정을 따른다. */}
         <MotionConfig reducedMotion="user">
-          <LiquidGlassFilter />
           {/* 첫 툴팁은 잠깐 기다렸다가, 이어서 옮겨 다닐 때는 바로 뜬다. */}
           <TooltipProvider delayDuration={400} skipDelayDuration={300}>
             <UpdatesProvider>
@@ -80,9 +78,9 @@ export default function App() {
                   <header
                     data-tauri-drag-region
                     className={cn(
-                      "absolute inset-x-0 top-0 z-20 flex h-12 items-center gap-1 pl-2 transition-[background-color,box-shadow,backdrop-filter] duration-300",
-                      scrolled &&
-                        "bg-background/55 shadow-[0_1px_0_var(--glass-edge)] backdrop-blur-2xl backdrop-saturate-[1.8]",
+                      // 불투명한 바탕: 스크롤한 내용이 제목 줄 뒤로 비치지 않는다. 스크롤하면 아래 구분선만 보인다.
+                      "absolute inset-x-0 top-0 z-20 flex h-12 items-center gap-1 bg-background pl-2 shadow-[0_1px_0_transparent] transition-shadow duration-200",
+                      scrolled && "shadow-[0_1px_0_var(--border)]",
                     )}
                   >
                     <IconTooltip label="사이드바 접기/펼치기">
@@ -115,10 +113,6 @@ export default function App() {
                     className="relative flex-1 overflow-y-auto pt-12"
                     onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 4)}
                   >
-                    <div
-                      aria-hidden
-                      className="pointer-events-none absolute inset-x-0 top-0 h-72 bg-[radial-gradient(60%_100%_at_30%_0%,oklch(0.82_0.12_190/9%),transparent)]"
-                    />
                     {/* 목록 페이지는 숨기기만 해서 스크롤·검색 상태를 유지한다. */}
                     <div hidden={page !== "programs"} className="min-h-full">
                       <ProgramsPage />

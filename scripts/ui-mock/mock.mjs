@@ -91,7 +91,6 @@ function defaultHandlers() {
   return {
     // 설치 프로그램 화면이 아니라 앱 화면으로 연다 (main.tsx가 가장 먼저 묻는다)
     app_mode: "app",
-    window_material: "solid",
     list_installed_apps: sample.apps,
     measure_app_sizes: sample.sizes,
     list_store_apps: sample.store,

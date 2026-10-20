@@ -174,7 +174,7 @@ export function StoragePage() {
           )}
 
           {items.length > 0 && (
-            <div className="sticky bottom-0 flex items-center gap-3 border-t bg-popover/90 px-5 py-3 backdrop-blur-xl">
+            <div className="sticky bottom-0 flex items-center gap-3 border-t bg-card px-5 py-3">
               <p className="mr-auto text-sm">
                 <span className="text-muted-foreground">{selected.length}개 선택 · </span>
                 <span className="font-semibold tabular-nums">{formatBytes(selectedBytes)}</span>

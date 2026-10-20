@@ -458,7 +458,7 @@ function Group({
   if (items.length === 0) return null
   return (
     <section>
-      <div className="sticky top-0 z-10 border-b bg-popover/95 px-5 py-2 backdrop-blur">
+      <div className="sticky top-0 z-10 border-b bg-popover px-5 py-2">
         <p className="text-sm font-semibold">
           {title} <span className="font-normal text-muted-foreground tabular-nums">{items.length}</span>
         </p>

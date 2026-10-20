@@ -72,10 +72,6 @@ export function SetupApp({ mode }: { mode: SetupMode }) {
     <ThemeProvider>
       <MotionConfig reducedMotion="user">
         <div className="relative flex h-screen flex-col overflow-hidden bg-background text-foreground select-none">
-          <div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 bg-[radial-gradient(55%_50%_at_50%_30%,oklch(0.82_0.12_190/10%),transparent)]"
-          />
           <TitleBar title={mode === "setup" ? "RobinX 설치" : "RobinX 제거"} />
           <main className="relative flex min-h-0 flex-1 flex-col px-10 pt-2 pb-8">
             {loadError ? (

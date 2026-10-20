@@ -11,13 +11,6 @@ const toneClasses = {
   "chart-5": "bg-chart-5/12 text-chart-5",
 } as const
 
-const glowClasses = {
-  "chart-1": "bg-chart-1",
-  "chart-2": "bg-chart-2",
-  "chart-3": "bg-chart-3",
-  "chart-5": "bg-chart-5",
-} as const
-
 export function StatCard({
   icon: Icon,
   tone,
@@ -48,18 +41,10 @@ export function StatCard({
           "relative flex h-full w-full items-start gap-3 overflow-hidden rounded-2xl border bg-card p-4 text-left shadow-sm lg:gap-4 lg:p-5",
           "transition-[transform,border-color,box-shadow] duration-200 ease-(--ease-out-quint)",
           onClick &&
-            "cursor-pointer hover:-translate-y-0.5 hover:border-foreground/15 hover:shadow-lg focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:translate-y-0 active:scale-[0.99]",
+            "cursor-pointer hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.99]",
           active && "border-chart-3/60 ring-1 ring-chart-3/40",
         )}
       >
-        {/* 카드 오른쪽 위의 은은한 색 번짐 (움직이지 않음) */}
-        <span
-          aria-hidden
-          className={cn(
-            "pointer-events-none absolute -top-12 -right-12 size-32 rounded-full opacity-[0.07] blur-2xl",
-            glowClasses[tone],
-          )}
-        />
         <span
           className={cn(
             "relative flex size-8 shrink-0 items-center justify-center rounded-xl lg:size-10",

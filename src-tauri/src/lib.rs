@@ -20,7 +20,6 @@ use robin_recovery::{Guard, Operation, Store};
 use robin_scanner::{Leftover, LeftoverKind, ScanReport};
 use robin_startup::{StartupEntry, ToggleError};
 use tauri::ipc::Channel;
-use tauri::window::{Effect, EffectsBuilder};
 use tauri::{Manager, State};
 
 /// 스캔 한 번의 결과. 정리 요청은 같은 프로그램의 스캔 결과에 있는 항목만 받는다
@@ -1199,37 +1198,6 @@ fn reveal_folder_item(id: String, cache: State<'_, AppCache>) -> Result<(), Stri
     open_in_explorer(&cache.folder_path(&id).ok_or("알 수 없는 항목이에요")?)
 }
 
-/// Mica 배경이 켜졌는지. 프론트엔드는 이 값을 보고 배경을 반투명하게 그린다.
-static MICA_ENABLED: AtomicBool = AtomicBool::new(false);
-
-#[tauri::command]
-fn window_material() -> &'static str {
-    if MICA_ENABLED.load(Ordering::Relaxed) {
-        "mica"
-    } else {
-        "solid"
-    }
-}
-
-/// Mica는 Windows 11(빌드 22000 이상)에서만 지원된다.
-#[cfg(windows)]
-fn supports_mica() -> bool {
-    use winreg::RegKey;
-    use winreg::enums::HKEY_LOCAL_MACHINE;
-
-    RegKey::predef(HKEY_LOCAL_MACHINE)
-        .open_subkey(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion")
-        .and_then(|k| k.get_value::<String, _>("CurrentBuildNumber"))
-        .ok()
-        .and_then(|b| b.parse::<u32>().ok())
-        .is_some_and(|build| build >= 22000)
-}
-
-#[cfg(not(windows))]
-fn supports_mica() -> bool {
-    false
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -1261,14 +1229,8 @@ pub fn run() {
             std::thread::spawn(|| {
                 let _ = settings::prune_expired();
             });
-            if supports_mica()
-                && let Some(window) = app.get_webview_window("main")
-                && window
-                    .set_effects(EffectsBuilder::new().effect(Effect::Mica).build())
-                    .is_ok()
-            {
-                MICA_ENABLED.store(true, Ordering::Relaxed);
-            }
+            // 창 배경은 불투명하게 그린다 (예전에는 Windows 11 Mica로 배경화면이 비쳤지만,
+            // 반투명한 헤더 뒤로 목록이 비쳐 겹쳐 보여서 2026-10-20에 뺐다)
             // 창은 index.html이 시작 화면을 그리면서 바로 보여 준다. 이 안전장치는 화면을 끝내 불러오지 못했을 때만
             // 창이 숨은 채 남지 않게 하려는 것이라 넉넉히 기다린다. 너무 빨리 보이면 내용 없는 빈 창이 먼저 뜬다.
             if let Some(window) = app.get_webview_window("main") {
@@ -1335,7 +1297,6 @@ pub fn run() {
             reveal_folder_item,
             find_large_files,
             cancel_large_files,
-            window_material,
             #[cfg(windows)]
             setup::app_mode,
             #[cfg(windows)]

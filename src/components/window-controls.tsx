@@ -60,7 +60,7 @@ function CaptionButton({
       onClick={onClick}
       className={cn(
         "flex size-7 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-150",
-        "hover:text-foreground hover:shadow-[inset_0_0_0_1px_var(--glass-edge),inset_0_1px_0_var(--glass-rim)] active:scale-90",
+        "hover:text-foreground active:scale-90",
         danger ? "hover:bg-[#ff5f57] hover:text-white hover:shadow-none" : "hover:bg-foreground/8",
       )}
     >
