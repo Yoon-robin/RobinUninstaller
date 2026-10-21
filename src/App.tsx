@@ -43,6 +43,25 @@ const titles: Record<Page, string> = {
   settings: "설정",
 }
 
+/**
+ * 알림은 보통 오른쪽 아래에 뜬다. 대화상자·시트·여러 개 제거 선택 바가 열려 있으면 그 아래쪽 버튼을 가리므로
+ * 제목 줄 바로 아래 가운데로 옮긴다.
+ */
+function useToastsOutOfTheWay() {
+  const [covered, setCovered] = useState(false)
+  useEffect(() => {
+    const check = () =>
+      setCovered(
+        document.querySelector('[data-slot="dialog-content"], [data-slot="sheet-content"], [data-pick-bar]') != null,
+      )
+    check()
+    const observer = new MutationObserver(check)
+    observer.observe(document.body, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [])
+  return covered
+}
+
 export default function App() {
   const [page, setPage] = useState<Page>("programs")
   // 내용을 내리면 제목 표시줄 아래에 구분선을 그린다.
@@ -51,6 +70,7 @@ export default function App() {
   const [ready, setReady] = useState(false)
   const onSplashDone = useCallback(() => setReady(true), [])
   const reduce = useReducedMotion()
+  const toastsUp = useToastsOutOfTheWay()
   // 사이드바를 접었는지 기억한다 (다음에 켜도 그대로)
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try {
@@ -238,7 +258,11 @@ export default function App() {
                   </SidebarInset>
                 </SidebarProvider>
               </motion.div>
-              <Toaster position="bottom-right" containerAriaLabel="알림" />
+              <Toaster
+                position={toastsUp ? "top-center" : "bottom-right"}
+                offset={toastsUp ? { top: 60 } : undefined}
+                containerAriaLabel="알림"
+              />
               <StartupSplash onDone={onSplashDone} />
             </UpdatesProvider>
           </TooltipProvider>

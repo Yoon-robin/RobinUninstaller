@@ -584,6 +584,8 @@ export function ProgramsPage() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: 16, transition: { duration: 0.15 } }}
             transition={{ type: "spring", duration: 0.35, bounce: 0 }}
+            // 알림 위치를 옮기는 기준 (App.tsx useToastsOutOfTheWay)
+            data-pick-bar
             className="sticky bottom-4 z-20 mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border bg-popover px-4 py-3 shadow-[var(--shadow-floating)]"
           >
             <p className="mr-auto text-sm tabular-nums">

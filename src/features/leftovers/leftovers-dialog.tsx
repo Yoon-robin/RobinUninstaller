@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
+  Check,
   Copy,
   EyeOff,
   FileText,
@@ -597,6 +598,13 @@ function LeftoverRow({
   const Icon = kindIcons[item.kind]
   const isFs = item.kind === "folder" || item.kind === "file"
   const fullPath = item.valueName ? `${item.location} › ${item.valueName}` : item.location
+  // 복사했다는 것은 그 자리에서 아이콘으로 알린다 (알림이 대화상자 아래 버튼을 가리지 않게)
+  const [copied, setCopied] = useState(false)
+  useEffect(() => {
+    if (!copied) return
+    const t = setTimeout(() => setCopied(false), 1200)
+    return () => clearTimeout(t)
+  }, [copied])
 
   return (
     <li
@@ -673,15 +681,20 @@ function LeftoverRow({
               </Button>
             </IconTooltip>
           )}
-          <IconTooltip label="경로 복사">
+          <IconTooltip label={copied ? "복사했어요" : "경로 복사"}>
             <Button
               variant="ghost"
               size="icon"
               className="size-7"
-              aria-label="경로 복사"
-              onClick={() => navigator.clipboard.writeText(fullPath).then(() => toast.success("경로를 복사했어요"))}
+              aria-label={copied ? "경로를 복사했어요" : "경로 복사"}
+              onClick={() =>
+                navigator.clipboard.writeText(fullPath).then(
+                  () => setCopied(true),
+                  (e) => toast.error(String(e)),
+                )
+              }
             >
-              <Copy />
+              {copied ? <Check className="text-success" /> : <Copy />}
             </Button>
           </IconTooltip>
         </div>
