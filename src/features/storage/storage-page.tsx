@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Check,
+  Copy,
   ChevronRight,
   CircleSlash,
   FolderOpen,
@@ -244,13 +245,17 @@ function DriveCard({
   if (!disk || used == null) return <Skeleton className="h-28 w-full rounded-2xl" />
   const usedPct = (used / disk.total) * 100
   const planPct = Math.min((plan / disk.total) * 100, usedPct)
+  // 남은 공간이 10% 아래면 경고색으로 (Windows 업데이트·임시 파일이 실패하기 시작하는 즈음)
+  const low = disk.free / disk.total < 0.1
 
   return (
     <div className="rounded-2xl border bg-card p-5 shadow-sm">
       <div className="flex flex-wrap items-baseline gap-x-3 gap-y-1">
         <p className="font-semibold">로컬 디스크 ({disk.drive.replace(/\\$/, "")})</p>
         <p className="text-sm text-muted-foreground">
-          {formatBytes(disk.total)} 중 <b className="text-foreground tabular-nums">{formatBytes(disk.free)}</b> 남음
+          {formatBytes(disk.total)} 중{" "}
+          <b className={cn("tabular-nums", low ? "text-warning" : "text-foreground")}>{formatBytes(disk.free)}</b> 남음
+          {low && <span className="ml-1.5 font-medium text-warning">· 거의 꽉 찼어요</span>}
         </p>
         {plan > 0 && (
           <p className="ml-auto text-sm text-primary tabular-nums">
@@ -260,7 +265,7 @@ function DriveCard({
       </div>
       <div className="relative mt-3 h-3 overflow-hidden rounded-full bg-muted">
         <motion.div
-          className="absolute inset-y-0 left-0 rounded-full bg-chart-2"
+          className={cn("absolute inset-y-0 left-0 rounded-full", low ? "bg-chart-3" : "bg-chart-2")}
           initial={{ width: 0 }}
           animate={{ width: `${usedPct}%` }}
           transition={{ duration: 0.8, ease: EASE_OUT_QUINT }}
@@ -376,7 +381,9 @@ function CategoryRow({
           >
             <div className="mx-5 mb-3 ml-13 space-y-2 rounded-xl border bg-muted/30 px-4 py-3 text-xs">
               <p>
-                <span className="font-medium">왜 지워도 되나요? </span>
+                <span className="font-medium">
+                  {c.risk === "irreversible" ? "지우면 어떻게 되나요? " : "왜 지워도 되나요? "}
+                </span>
                 {c.why}
               </p>
               {c.files > 0 && <p className="text-muted-foreground">파일 {formatCount(c.files)}개</p>}
@@ -401,6 +408,43 @@ function CategoryRow({
   )
 }
 
+/** 안내 문장. `…`로 감싼 명령은 코드 모양과 복사 버튼으로 보여 준다 (문장에 묻혀 고르기 어렵지 않게). */
+function Guidance({ text }: { text: string }) {
+  const parts = text.split("`")
+  return (
+    <p data-selectable className="mt-1.5 text-xs leading-6">
+      {parts.map((part, i) => (i % 2 === 1 ? <Command key={i} command={part} /> : part))}
+    </p>
+  )
+}
+
+function Command({ command }: { command: string }) {
+  const [copied, setCopied] = useState(false)
+  return (
+    <span className="mx-0.5 inline-flex items-center gap-1 rounded-md border bg-muted/60 py-0.5 pr-0.5 pl-1.5 align-middle">
+      <code className="font-mono text-[11px]">{command}</code>
+      <IconTooltip label={copied ? "복사했어요" : "명령 복사"}>
+        <button
+          type="button"
+          aria-label={copied ? "명령을 복사했어요" : `${command} 복사`}
+          className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
+          onClick={() =>
+            navigator.clipboard.writeText(command).then(
+              () => {
+                setCopied(true)
+                setTimeout(() => setCopied(false), 1200)
+              },
+              (e) => toast.error(String(e)),
+            )
+          }
+        >
+          {copied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
+        </button>
+      </IconTooltip>
+    </span>
+  )
+}
+
 function InfoSection({ items }: { items: StorageCategory[] }) {
   return (
     <section className="rounded-2xl border bg-card shadow-sm">
@@ -416,16 +460,21 @@ function InfoSection({ items }: { items: StorageCategory[] }) {
             <Info className="mt-0.5 size-4 shrink-0 text-muted-foreground" />
             <div className="min-w-0 flex-1 text-sm">
               <p className="font-medium">
-                {c.name} <span className="ml-1 font-semibold tabular-nums">{formatBytes(c.bytes)}</span>
+                {c.name}{" "}
+                <span className="ml-1 font-semibold tabular-nums">
+                  {c.bytes > 0 ? (
+                    formatBytes(c.bytes)
+                  ) : (
+                    <span className="font-normal text-muted-foreground">
+                      {c.admin ? "크기를 세려면 관리자 권한이 필요해요" : "크기를 세지 못했어요"}
+                    </span>
+                  )}
+                </span>
               </p>
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {c.description}. {c.why}
               </p>
-              {c.guidance && (
-                <p data-selectable className="mt-1.5 text-xs">
-                  {c.guidance}
-                </p>
-              )}
+              {c.guidance && <Guidance text={c.guidance} />}
             </div>
             {c.id === "hibernation" ? null : c.id === "windows-old" ? (
               <Button size="sm" variant="outline" onClick={() => storageApi.openSettings()}>
@@ -595,7 +644,11 @@ function CleanDialog({
           />
         ) : (
           <>
-            <DialogTitle>{formatBytes(total)} 정리할까요?</DialogTitle>
+            <DialogTitle>
+              {onlyIrreversible && !understood
+                ? "되돌릴 수 없는 항목을 지울까요?"
+                : `${formatBytes(total)} 정리할까요?`}
+            </DialogTitle>
             <DialogDescription className="leading-relaxed">
               아래 항목의 파일을 바로 지워요. 지금 쓰고 있는 파일은 건너뛰어요.
             </DialogDescription>
@@ -854,7 +907,9 @@ function CleanResultView({
       <DialogDescription className="leading-relaxed">
         {failed > 0
           ? `지금 쓰고 있는 파일 ${formatCount(failed)}개는 건너뛰었어요. 해당 프로그램을 닫고 다시 정리하면 더 비울 수 있어요.`
-          : "고른 항목을 정리했어요. 캐시는 프로그램이 필요할 때 다시 만들어요."}
+          : freed > 0
+            ? "고른 항목을 정리했어요. 캐시는 프로그램이 필요할 때 다시 만들어요."
+            : "아래에서 건너뛴 이유를 확인해 주세요."}
       </DialogDescription>
       <ul className="max-h-64 divide-y overflow-y-auto rounded-xl border text-sm">
         {results.map((r) => {
@@ -870,10 +925,10 @@ function CleanResultView({
                 </span>
               </div>
               <p className="mt-0.5 text-xs text-muted-foreground">
-                {r.skipped
-                  ? `건너뜀: ${r.skipped}`
-                  : r.needsAdmin
-                    ? "관리자 권한을 받지 못해 건너뛰었어요"
+                {r.needsAdmin
+                  ? "관리자 권한을 받지 못해 건너뛰었어요"
+                  : r.skipped
+                    ? r.skipped
                     : [
                         `파일 ${formatCount(r.deletedFiles)}개 지움`,
                         r.failedFiles > 0 ? `사용 중 ${formatCount(r.failedFiles)}개 건너뜀` : null,

@@ -412,8 +412,8 @@ static RULES: &[Rule] = &[
         min_age_hours: 0,
         blocked_by: &[],
         guidance: Some(
-            "최대 절전 모드를 쓰지 않는다면 관리자 권한 명령 프롬프트에서 powercfg /hibernate off 를 실행하면 이 파일이 사라져요. \
-             다시 켜려면 powercfg /hibernate on. 빠른 시작이 꺼져서 PC를 켜는 데 몇 초 더 걸릴 수 있어요.",
+            "최대 절전 모드를 쓰지 않는다면 관리자 권한 명령 프롬프트에서 `powercfg /hibernate off`를 실행하면 이 파일이 사라져요. \
+             다시 켜려면 `powercfg /hibernate on`. 빠른 시작이 꺼져서 PC를 켜는 데 몇 초 더 걸릴 수 있어요.",
         ),
     },
     Rule {
@@ -446,7 +446,7 @@ static RULES: &[Rule] = &[
         min_age_hours: 0,
         blocked_by: &[],
         guidance: Some(
-            "PowerShell에서 wsl --manage <배포판 이름> --set-sparse true 를 실행하면 빈 공간을 돌려받아요. 배포판을 지우면 안의 데이터도 사라지니 주의하세요.",
+            "PowerShell에서 `wsl --manage <배포판 이름> --set-sparse true`를 실행하면 빈 공간을 돌려받아요. 배포판을 지우면 안의 데이터도 사라지니 주의하세요.",
         ),
     },
 ];

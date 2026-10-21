@@ -81,16 +81,25 @@ export function BigProgramsCard() {
                     {app.sizeMeasured && "약 "}
                     {formatSize(kb)}
                   </span>
-                  {canUninstall(app) ? (
-                    <Button variant="outline" size="sm" onClick={() => setTarget(app)}>
-                      <Trash2 />
-                      제거
-                    </Button>
-                  ) : (
-                    <Button variant="ghost" size="sm" onClick={() => navigate("programs")}>
-                      프로그램 화면에서
-                    </Button>
-                  )}
+                  {/* 버튼 칸 폭을 고정해 크기 칸이 줄마다 같은 자리에 오게 한다 */}
+                  <span className="flex w-24 shrink-0 justify-end">
+                    {canUninstall(app) ? (
+                      <Button variant="outline" size="sm" onClick={() => setTarget(app)}>
+                        <Trash2 />
+                        제거
+                      </Button>
+                    ) : (
+                      // 언인스톨러가 없으면 강제 제거 (백업한 뒤 등록 정보와 파일을 정리)
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setLeftovers({ id: app.id, name: app.displayName, removed: false, force: true })}
+                      >
+                        <Trash2 />
+                        강제 제거
+                      </Button>
+                    )}
+                  </span>
                 </li>
               )
             })}
