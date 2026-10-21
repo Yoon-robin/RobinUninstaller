@@ -56,12 +56,18 @@ const STUCK_HINT_AFTER_MS = 8000
  */
 export function BatchUninstallDialog({
   apps: appsProp,
+  hidden = false,
   onClose,
+  onStarted,
   onRemoved,
   onFindLeftovers,
 }: {
   apps: InstalledApplication[] | null
+  /** 결과에서 흔적 찾기 창을 연 동안 잠깐 감춘다 (결과는 그대로 남아 있다가 다시 보인다) */
+  hidden?: boolean
   onClose: () => void
+  /** 제거를 시작했을 때 (이때 고르기 모드를 끝낸다. 확인 창에서 취소하면 고른 것이 그대로 남는다) */
+  onStarted?: () => void
   onRemoved: (app: InstalledApplication) => void
   onFindLeftovers: (app: InstalledApplication) => void
 }) {
@@ -72,6 +78,7 @@ export function BatchUninstallDialog({
   const [statuses, setStatuses] = useState<Record<string, Status>>({})
   const [current, setCurrent] = useState<string | null>(null)
   const [stuck, setStuck] = useState(false)
+  const [skipping, setSkipping] = useState(false)
   const stopAfterCurrent = useRef(false)
   const [stopping, setStopping] = useState(false)
 
@@ -92,6 +99,7 @@ export function BatchUninstallDialog({
   // 같은 프로그램을 오래 기다리면 "기다리지 않고 확인"을 보여 준다
   useEffect(() => {
     setStuck(false)
+    setSkipping(false)
     if (!current) return
     const t = setTimeout(() => setStuck(true), STUCK_HINT_AFTER_MS)
     return () => clearTimeout(t)
@@ -101,6 +109,7 @@ export function BatchUninstallDialog({
 
   const run = async () => {
     setPhase("running")
+    onStarted?.()
     for (const app of runnable) {
       if (stopAfterCurrent.current) {
         setStatus(app.id, { kind: "skipped" })
@@ -128,11 +137,12 @@ export function BatchUninstallDialog({
       if (outcome.kind === "removed" || outcome.kind === "removedRebootRequired") {
         onRemoved(app)
       }
-      queryClient.invalidateQueries({ queryKey: ["installed-apps"] })
-      queryClient.invalidateQueries({ queryKey: ["recently-removed"] })
     }
     setCurrent(null)
     setPhase("done")
+    // 목록 다시 읽기(와 그에 따른 크기 재기)는 다 끝난 뒤 한 번만
+    queryClient.invalidateQueries({ queryKey: ["installed-apps"] })
+    queryClient.invalidateQueries({ queryKey: ["recently-removed"] })
   }
 
   const running = phase === "running"
@@ -141,9 +151,10 @@ export function BatchUninstallDialog({
     if (!running) onClose()
   }
   const removed = runnable.filter((a) => statuses[a.id] && isRemoved(statuses[a.id]))
+  const finished = runnable.filter((a) => statuses[a.id]?.kind === "done" || statuses[a.id]?.kind === "skipped").length
 
   return (
-    <Dialog open={appsProp != null} onOpenChange={(o) => !o && close()}>
+    <Dialog open={appsProp != null && !hidden} onOpenChange={(o) => !o && close()}>
       <DialogContent
         showCloseButton={!running}
         className="flex max-h-[min(720px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
@@ -161,7 +172,7 @@ export function BatchUninstallDialog({
               {phase === "confirm"
                 ? "각 프로그램의 기본 언인스톨러를 하나씩 차례로 실행해요"
                 : phase === "running"
-                  ? "언인스톨러 창이 열리면 안내에 따라 진행해 주세요"
+                  ? `${Math.min(finished + 1, runnable.length)} / ${runnable.length}번째 · 언인스톨러 창이 열리면 안내에 따라 진행해 주세요`
                   : `${removed.length}개를 제거했어요. 남은 흔적도 찾아볼 수 있어요`}
             </DialogDescription>
           </div>
@@ -202,7 +213,8 @@ export function BatchUninstallDialog({
                   <p className="truncate text-sm font-medium">{app.displayName}</p>
                   <p
                     className={cn(
-                      "truncate text-xs",
+                      // 실패 이유는 줄여 자르지 않고 다 보여 준다
+                      status.kind === "done" ? "text-xs break-words" : "truncate text-xs",
                       status.kind === "done" ? outcomeLabel(status.outcome).tone : "text-muted-foreground",
                     )}
                   >
@@ -243,6 +255,17 @@ export function BatchUninstallDialog({
           })}
         </ul>
 
+        {/* 언인스톨러가 없어 뺀 프로그램: 결과에서도 사라지지 않게 따로 알린다 */}
+        {phase !== "confirm" && forced.length > 0 && (
+          <p className="flex gap-2 border-t bg-muted/20 px-5 py-3 text-xs text-muted-foreground">
+            <TriangleAlert className="size-4 shrink-0 text-warning" />
+            <span>
+              언인스톨러가 없어 건너뛴 {forced.length}개: {forced.map((a) => a.displayName).join(", ")}. 목록에서 하나씩
+              강제 제거해 주세요.
+            </span>
+          </p>
+        )}
+
         <div className="flex flex-wrap items-center gap-2 border-t px-5 py-3">
           {phase === "confirm" && (
             <>
@@ -258,9 +281,20 @@ export function BatchUninstallDialog({
           {phase === "running" && (
             <>
               {stuck && (
-                <Button variant="ghost" size="sm" onClick={() => api.stopWaitingUninstall()}>
-                  기다리지 않고 확인
-                </Button>
+                <span className="flex items-center gap-2 text-xs text-muted-foreground">
+                  언인스톨러 창이 이미 닫혔나요?
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    disabled={skipping}
+                    onClick={() => {
+                      setSkipping(true)
+                      api.stopWaitingUninstall()
+                    }}
+                  >
+                    기다리지 않고 확인
+                  </Button>
+                </span>
               )}
               <Button
                 variant="outline"

@@ -13,12 +13,15 @@ import { AppIcon } from "./app-icon"
 export function ProgramGrid({
   apps,
   intro,
+  animateOnMount = true,
   query,
   removingId,
   ...handlers
 }: {
   apps: InstalledApplication[]
   intro: boolean
+  /** 처음 나타날 때 앞쪽 카드를 차례로 등장시킬지 (고르기를 막 끝내고 돌아올 때는 끈다) */
+  animateOnMount?: boolean
   query: string
   removingId: string | null
 } & AppActionHandlers) {
@@ -27,7 +30,7 @@ export function ProgramGrid({
     const t = setTimeout(() => setJustMounted(false), 900)
     return () => clearTimeout(t)
   }, [])
-  const animate = intro || justMounted
+  const animate = intro || (justMounted && animateOnMount)
 
   return (
     <div className="grid grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))] gap-3 p-4">

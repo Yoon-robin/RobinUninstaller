@@ -21,7 +21,7 @@ import {
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { toast } from "sonner"
 
-import { api, storeApi, canUninstall, type InstalledApplication } from "@/lib/api"
+import { api, storeApi, canUninstall, needsForce, type InstalledApplication } from "@/lib/api"
 import { formatSize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { IconTooltip } from "@/components/icon-tooltip"
@@ -99,6 +99,8 @@ export function ProgramsPage() {
   // 여러 개 골라 한꺼번에 제거: 고르는 중이면 Set (아니면 null)
   const [picked, setPicked] = useState<Set<string> | null>(null)
   const [batch, setBatch] = useState<InstalledApplication[] | null>(null)
+  // 결과에서 흔적 찾기를 연 동안 결과 창을 감춘다 (흔적 창을 닫으면 결과로 돌아온다)
+  const [batchHidden, setBatchHidden] = useState(false)
   // 데스크톱 프로그램 / Microsoft Store 앱
   const [tab, setTab] = useState<"desktop" | "store">("desktop")
   // 데스크톱 목록에서 못 찾은 이름을 Store 앱 탭으로 넘겨 이어서 찾는다
@@ -145,6 +147,33 @@ export function ProgramsPage() {
   )
   // 여러 개 제거로 고른 프로그램 중 아직 목록에 있는 것 (새로고침으로 사라진 것은 수에서도 뺀다)
   const pickedApps = useMemo(() => (picked ? all.filter((a) => picked.has(a.id)) : []), [all, picked])
+  const pickedRunnable = pickedApps.filter((a) => !needsForce(a)).length
+  const hiddenPicked = picked ? pickedApps.filter((a) => !visible.some((v) => v.id === a.id)).length : 0
+  // 고르기를 막 끝냈으면 카드 보기로 돌아올 때 등장 애니메이션을 다시 틀지 않는다
+  const [pickEnded, setPickEnded] = useState(false)
+  const wasPicking = useRef(false)
+  useEffect(() => {
+    if (picked) {
+      wasPicking.current = true
+      return
+    }
+    if (!wasPicking.current) return
+    wasPicking.current = false
+    setPickEnded(true)
+    const t = setTimeout(() => setPickEnded(false), 1200)
+    return () => clearTimeout(t)
+  }, [picked])
+  // Esc: 고르기 끝내기 (창이나 메뉴가 열려 있으면 그쪽이 먼저 받는다)
+  useEffect(() => {
+    if (!picked) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape" || e.defaultPrevented) return
+      if ((e.target as HTMLElement | null)?.closest?.("input, textarea, [role=dialog], [role=menu]")) return
+      setPicked(null)
+    }
+    window.addEventListener("keydown", onKey)
+    return () => window.removeEventListener("keydown", onKey)
+  }, [picked])
 
   const stats = useMemo(
     () => ({
@@ -460,15 +489,16 @@ export function ProgramsPage() {
                       <ListChecks />
                       {picked ? "고르기 끝내기" : "여러 개 제거"}
                     </Button>
-                    {!picked && (
+                    {/* 고르는 중에는 목록으로만 보여 주지만, 버튼은 자리를 지켜 화면이 튀지 않게 한다 */}
+                    <div className={cn(picked && "pointer-events-none opacity-50")} aria-disabled={picked != null}>
                       <IconSegmented
                         options={viewOptions}
-                        value={view}
+                        value={picked ? "list" : view}
                         onChange={setView}
                         layoutId="view-toggle"
                         label="보기 방식"
                       />
-                    )}
+                    </div>
                     <IconTooltip
                       label={sizes.isFetching ? "크기를 다 잰 뒤에 내보낼 수 있어요" : "목록 내보내기 (CSV)"}
                     >
@@ -612,7 +642,14 @@ export function ProgramsPage() {
                         </AnimatePresence>
                       </div>
                     ) : (
-                      <ProgramGrid apps={visible} intro={intro} query={query} removingId={removingId} {...handlers} />
+                      <ProgramGrid
+                        apps={visible}
+                        intro={intro}
+                        animateOnMount={!pickEnded}
+                        query={query}
+                        removingId={removingId}
+                        {...handlers}
+                      />
                     )}
                   </motion.div>
                 </AnimatePresence>
@@ -637,13 +674,21 @@ export function ProgramsPage() {
         }
         onRemoved={markRemoved}
       />
-      <LeftoversDialog target={leftoversTarget} onClose={() => setLeftoversTarget(null)} />
+      <LeftoversDialog
+        target={leftoversTarget}
+        onClose={() => {
+          setLeftoversTarget(null)
+          setBatchHidden(false)
+        }}
+      />
       <BatchUninstallDialog
         apps={batch}
+        hidden={batchHidden}
         onClose={() => setBatch(null)}
+        onStarted={() => setPicked(null)}
         onRemoved={markRemoved}
         onFindLeftovers={(app) => {
-          setBatch(null)
+          setBatchHidden(true)
           setLeftoversTarget({ id: app.id, name: app.displayName, removed: true })
         }}
       />
@@ -662,6 +707,15 @@ export function ProgramsPage() {
           >
             <p className="mr-auto text-sm tabular-nums">
               {pickedApps.length > 0 ? `${pickedApps.length}개 선택` : "제거할 프로그램을 눌러 고르세요"}
+              {/* 검색·필터로 가려진 선택이 있으면 알린다 (보이지 않는 것까지 지우지 않게) */}
+              {hiddenPicked > 0 && (
+                <span className="block text-xs text-muted-foreground">
+                  그중 {hiddenPicked}개는 지금 목록에 안 보여요
+                </span>
+              )}
+              {pickedApps.length > 0 && pickedRunnable === 0 && (
+                <span className="block text-xs text-warning">언인스톨러가 없는 프로그램은 하나씩 강제 제거해요</span>
+              )}
             </p>
             <Button
               variant="ghost"
@@ -677,11 +731,8 @@ export function ProgramsPage() {
             <Button
               variant="destructive"
               size="sm"
-              disabled={pickedApps.length === 0}
-              onClick={() => {
-                setBatch(pickedApps)
-                setPicked(null)
-              }}
+              disabled={pickedRunnable === 0}
+              onClick={() => setBatch(pickedApps)}
             >
               <Trash2 />
               선택한 프로그램 제거
