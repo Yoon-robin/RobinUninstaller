@@ -1,4 +1,4 @@
-import { useEffect, useState, type ReactNode } from "react"
+import { useSyncExternalStore, useEffect, useState, type ReactNode } from "react"
 import { invoke } from "@tauri-apps/api/core"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { Check, Loader2, RotateCcw, TriangleAlert } from "lucide-react"
@@ -54,6 +54,23 @@ const setupApi = {
   finish: () => invoke<void>("finish_setup"),
 }
 
+/** 설치·제거가 진행 중인지. 제목 줄의 닫기가 이 값을 보고, 진행 중이면 닫지 않고 그렇다고 알린다. */
+let working = false
+const workingListeners = new Set<() => void>()
+function setWorking(next: boolean) {
+  working = next
+  for (const l of workingListeners) l()
+}
+function useWorking() {
+  return useSyncExternalStore(
+    (l) => {
+      workingListeners.add(l)
+      return () => workingListeners.delete(l)
+    },
+    () => working,
+  )
+}
+
 type Step<R> =
   { kind: "ready" } | { kind: "working" } | { kind: "done"; report: R } | { kind: "error"; message: string }
 
@@ -75,7 +92,7 @@ export function SetupApp({ mode }: { mode: SetupMode }) {
           <TitleBar title={mode === "setup" ? "RobinX 설치" : "RobinX 제거"} />
           <main className="relative flex min-h-0 flex-1 flex-col px-10 pt-2 pb-8">
             {loadError ? (
-              <Problem message={loadError} />
+              <Problem message={loadError} nothingChanged />
             ) : !info ? (
               <div className="flex flex-1 items-center justify-center">
                 <Loader2 className="size-6 animate-spin text-muted-foreground" />
@@ -95,16 +112,28 @@ export function SetupApp({ mode }: { mode: SetupMode }) {
 /** 제목 표시줄: 끌어서 옮기고, 최소화·닫기만 있다. 닫기는 제거 후 임시 파일 정리까지 맡긴다. */
 function TitleBar({ title }: { title: string }) {
   const win = getCurrentWindow()
+  const busy = useWorking()
+  // 진행 중에 닫기를 누르면 닫지 않고 잠깐 알려 준다 (예전에는 아무 반응이 없었다)
+  const [blocked, setBlocked] = useState(false)
+  useEffect(() => {
+    if (!blocked) return
+    const t = setTimeout(() => setBlocked(false), 3000)
+    return () => clearTimeout(t)
+  }, [blocked])
   return (
     <div data-tauri-drag-region className="relative flex h-11 shrink-0 items-center justify-between pl-4">
-      <span data-tauri-drag-region className="text-xs font-medium text-muted-foreground">
-        {title}
+      <span data-tauri-drag-region className="text-xs font-medium text-muted-foreground" role="status">
+        {blocked ? (
+          <span className="text-warning">진행 중이라 지금은 닫을 수 없어요. 끝날 때까지 기다려 주세요.</span>
+        ) : (
+          title
+        )}
       </span>
       <div className="flex items-center gap-1 pr-2.5">
         <CaptionButton label="최소화" onClick={() => win.minimize()}>
           <path d="M0 5h10" />
         </CaptionButton>
-        <CaptionButton label="닫기" danger onClick={() => setupApi.finish()}>
+        <CaptionButton label="닫기" danger onClick={() => (busy ? setBlocked(true) : setupApi.finish())}>
           <path d="M0.5 0.5l9 9M9.5 0.5l-9 9" />
         </CaptionButton>
       </div>
@@ -206,7 +235,16 @@ function Working({ label }: { label: string }) {
   )
 }
 
-function Problem({ message, onRetry }: { message: string; onRetry?: () => void }) {
+function Problem({
+  message,
+  onRetry,
+  nothingChanged,
+}: {
+  message: string
+  onRetry?: () => void
+  /** 설치 정보를 읽는 단계에서 실패해 아무것도 바꾸지 않았을 때 */
+  nothingChanged?: boolean
+}) {
   return (
     <div className="flex flex-1 flex-col justify-between">
       <div className="mt-4 flex flex-col gap-4">
@@ -217,7 +255,9 @@ function Problem({ message, onRetry }: { message: string; onRetry?: () => void }
           </span>
         </Note>
         <p className="text-sm text-muted-foreground">
-          아무것도 바뀌지 않았거나 일부만 바뀌었을 수 있어요. 다시 시도해도 같으면 GitHub에 알려 주세요.
+          {nothingChanged
+            ? "설치 정보를 읽지 못해 아무것도 바꾸지 않았어요. 창을 닫고 다시 실행해 보세요. 그래도 같으면 GitHub에 알려 주세요."
+            : "아무것도 바뀌지 않았거나 일부만 바뀌었을 수 있어요. 다시 시도해도 같으면 GitHub에 알려 주세요."}
         </p>
       </div>
       <div className="flex justify-end gap-2">
@@ -237,6 +277,7 @@ function Problem({ message, onRetry }: { message: string; onRetry?: () => void }
 
 function InstallFlow({ info }: { info: SetupInfo }) {
   const [step, setStep] = useState<Step<InstallReport>>({ kind: "ready" })
+  useEffect(() => setWorking(step.kind === "working"), [step.kind])
   const [desktop, setDesktop] = useState(!info.existing)
   const [openAfter, setOpenAfter] = useState(true)
   const old = info.existing
@@ -312,7 +353,7 @@ function InstallFlow({ info }: { info: SetupInfo }) {
       <div className="flex flex-1 flex-col justify-between">
         <div className="mt-4 flex flex-col gap-5">
           <Hero title="RobinX 설치">
-            프로그램을 지워도 남는 파일과 설정 찌꺼기를 찾아 주는 무료 Windows 앱이에요.
+            프로그램을 지운 뒤 남은 파일과 레지스트리를 찾아, 백업하고 정리하는 무료 Windows 앱이에요.
             <span className="mt-1 block text-xs">버전 {info.version}</span>
           </Hero>
           {old && (
@@ -325,7 +366,12 @@ function InstallFlow({ info }: { info: SetupInfo }) {
               백업과 설정은 그대로 남아요.
             </Note>
           )}
-          {info.running && <Note tone="warn">RobinX가 열려 있어요. 설치를 누르면 닫고 바꿔요.</Note>}
+          {info.running && (
+            <Note tone="warn">
+              RobinX가 열려 있어요. {old ? (old.version === info.version ? "다시 설치" : "업데이트") : "설치"}를 누르면
+              닫고 바꿔요.
+            </Note>
+          )}
           <label className="flex cursor-pointer items-center gap-2.5 text-sm">
             <Checkbox checked={desktop} onCheckedChange={(v) => setDesktop(v === true)} />
             바탕 화면에 바로 가기 만들기
@@ -352,6 +398,7 @@ function InstallFlow({ info }: { info: SetupInfo }) {
 
 function UninstallFlow({ info }: { info: SetupInfo }) {
   const [step, setStep] = useState<Step<UninstallReport>>({ kind: "ready" })
+  useEffect(() => setWorking(step.kind === "working"), [step.kind])
   const [deleteData, setDeleteData] = useState(false)
 
   const run = async () => {
@@ -441,7 +488,10 @@ function UninstallFlow({ info }: { info: SetupInfo }) {
                 백업과 설정도 지우기
               </label>
               {deleteData ? (
-                <Note tone="danger">정리한 흔적의 백업까지 함께 사라져서, 복구 기록에서 더는 되돌릴 수 없어요.</Note>
+                <Note tone="danger">
+                  정리한 흔적의 백업과 시작프로그램 변경 기록(끈 항목을 다시 켤 때 원래 값으로 되돌리는 데 써요)까지
+                  사라져요. 복구 기록에서 더는 되돌릴 수 없어요.
+                </Note>
               ) : (
                 <p className="pl-7 text-xs text-muted-foreground">
                   고르지 않으면 남겨 둬요. 다시 설치하면 그대로 이어서 쓸 수 있어요.
