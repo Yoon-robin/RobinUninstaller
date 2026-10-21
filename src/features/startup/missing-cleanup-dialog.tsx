@@ -152,12 +152,12 @@ export function MissingCleanupDialog({
                   {selected.size > 0 ? `${selected.size}개 선택` : "선택한 항목 없음"}
                 </p>
                 {error && <p className="text-xs text-destructive">{error}</p>}
+                <Button variant="outline" onClick={close}>
+                  닫기
+                </Button>
                 <Button variant="destructive" disabled={selected.size === 0} onClick={run}>
                   <Trash2 />
                   {selected.size > 0 ? `${selected.size}개 백업하고 정리` : "백업하고 정리"}
-                </Button>
-                <Button variant="outline" onClick={close}>
-                  닫기
                 </Button>
               </div>
             </motion.div>

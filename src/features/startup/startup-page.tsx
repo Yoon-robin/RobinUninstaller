@@ -55,7 +55,8 @@ const quickFilters: { key: Filter; label: string }[] = [
   { key: "task", label: "예약 작업" },
 ]
 
-const LIST_GRID = "grid grid-cols-[minmax(0,1fr)_10rem_6.5rem_2.5rem] items-center gap-4"
+const LIST_GRID =
+  "grid grid-cols-[minmax(0,1fr)_7rem_5rem_2.5rem] items-center gap-3 @2xl:grid-cols-[minmax(0,1fr)_10rem_6.5rem_2.5rem] @2xl:gap-4"
 
 function matches(e: StartupEntry, filter: Filter) {
   if (filter === "on") return e.enabled
@@ -84,27 +85,27 @@ export function StartupPage() {
   const loading = items.isLoading
 
   const all = useMemo(() => items.data ?? [], [items.data])
+  const searched = useMemo(() => {
+    const q = query.trim().toLowerCase()
+    return all.filter(
+      (e) =>
+        !q ||
+        e.name.toLowerCase().includes(q) ||
+        (e.publisher ?? "").toLowerCase().includes(q) ||
+        (e.author ?? "").toLowerCase().includes(q) ||
+        (e.description ?? "").toLowerCase().includes(q),
+    )
+  }, [all, query])
+  // 칩 옆 숫자도 검색어를 반영한다 (프로그램 화면과 같게)
   const counts = useMemo(
     () =>
-      Object.fromEntries(quickFilters.map((f) => [f.key, all.filter((e) => matches(e, f.key)).length])) as Record<
+      Object.fromEntries(quickFilters.map((f) => [f.key, searched.filter((e) => matches(e, f.key)).length])) as Record<
         Filter,
         number
       >,
-    [all],
+    [searched],
   )
-  const visible = useMemo(() => {
-    const q = query.trim().toLowerCase()
-    return all
-      .filter((e) => matches(e, filter))
-      .filter(
-        (e) =>
-          !q ||
-          e.name.toLowerCase().includes(q) ||
-          (e.publisher ?? "").toLowerCase().includes(q) ||
-          (e.author ?? "").toLowerCase().includes(q) ||
-          (e.description ?? "").toLowerCase().includes(q),
-      )
-  }, [all, filter, query])
+  const visible = useMemo(() => searched.filter((e) => matches(e, filter)), [searched, filter])
 
   const toggleFilter = (key: Filter) => setFilter((f) => (f === key ? "all" : key))
 
@@ -160,7 +161,7 @@ export function StartupPage() {
       </motion.div>
 
       <FadeUp>
-        <section className="overflow-clip rounded-2xl border bg-card shadow-sm">
+        <section className="@container overflow-clip rounded-2xl border bg-card shadow-sm">
           <div className="sticky top-0 z-10 rounded-t-2xl border-b bg-card">
             <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
               <div className="mr-auto flex items-baseline gap-2">
@@ -169,7 +170,7 @@ export function StartupPage() {
                   {loading ? "불러오는 중…" : `${visible.length}개`}
                 </span>
               </div>
-              <div className="relative">
+              <div className="relative min-w-36 flex-1 basis-40 @2xl:max-w-64">
                 <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   ref={searchRef}
@@ -182,7 +183,7 @@ export function StartupPage() {
                     }
                   }}
                   placeholder="이름 또는 게시자 검색"
-                  className="h-9 w-64 rounded-lg bg-background/60 pr-9 pl-9"
+                  className="h-9 w-full rounded-lg bg-background/60 pr-9 pl-9"
                 />
                 {query && (
                   <button
@@ -397,8 +398,13 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
           </p>
         </div>
 
-        <div className="text-xs">
-          {entry.enabled ? (
+        <div className="text-xs" aria-live="polite">
+          {busy ? (
+            <span className="flex items-center gap-1.5 text-muted-foreground">
+              <Loader2 className="size-3 animate-spin" />
+              {entry.enabled ? "끄는 중" : "켜는 중"}
+            </span>
+          ) : entry.enabled ? (
             <span className="font-medium text-primary">켜짐</span>
           ) : (
             <>
@@ -409,15 +415,15 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
         </div>
 
         <div className="flex justify-end">
-          {busy ? (
-            <Loader2 className="size-4 animate-spin text-muted-foreground" />
-          ) : (
-            <Switch
-              checked={entry.enabled}
-              onCheckedChange={toggle}
-              aria-label={`${entry.name} ${entry.enabled ? "끄기" : "켜기"}`}
-            />
-          )}
+          {/* 바꾸는 동안에도 스위치를 그대로 둔다 (스피너로 바꾸면 키보드 포커스가 사라졌다). 그동안은 누르지 않는다. */}
+          <Switch
+            checked={entry.enabled}
+            onCheckedChange={(next) => !busy && toggle(next)}
+            aria-disabled={busy}
+            aria-busy={busy}
+            className={cn(busy && "opacity-60")}
+            aria-label={`${entry.name} ${entry.enabled ? "끄기" : "켜기"}`}
+          />
         </div>
       </div>
 
@@ -432,9 +438,13 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
           >
             <dl className="mx-5 mb-3 grid grid-cols-[6rem_minmax(0,1fr)] gap-x-4 gap-y-2 rounded-xl border bg-muted/30 px-4 py-3 text-xs">
               <dt className="text-muted-foreground">실행 명령</dt>
-              <dd data-selectable className="font-mono break-all">
-                {entry.command}
-              </dd>
+              {entry.command ? (
+                <dd data-selectable className="font-mono break-all">
+                  {entry.command}
+                </dd>
+              ) : (
+                <dd className="text-muted-foreground">프로그램을 실행하지 않는 작업이에요</dd>
+              )}
               <dt className="text-muted-foreground">{isTask ? "작업 경로" : "등록 위치"}</dt>
               <dd data-selectable className="font-mono break-all">
                 {entry.location}

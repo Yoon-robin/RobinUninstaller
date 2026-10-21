@@ -44,7 +44,10 @@ export function HiddenTasksCard() {
         </p>
       )}
       {hidden.isError && !hidden.isFetching && (
-        <p className="border-t px-5 py-3 text-sm text-destructive">{String(hidden.error)}</p>
+        // UAC에서 "아니요"를 누른 것도 여기로 온다. 오류가 아니라 읽지 못했다는 안내로 보여 준다.
+        <p className="border-t px-5 py-3 text-sm text-muted-foreground" role="status">
+          관리자 권한으로 읽지 못했어요. <span className="text-xs">({String(hidden.error)})</span>
+        </p>
       )}
       {tasks && !hidden.isFetching && (
         <div className="border-t">
@@ -58,9 +61,13 @@ export function HiddenTasksCard() {
                 <li key={t.id} className="flex items-start gap-3 px-5 py-3 text-sm">
                   <div className="min-w-0 flex-1">
                     <p className="truncate font-medium">{t.name}</p>
-                    <p data-selectable className="truncate font-mono text-xs text-muted-foreground" title={t.command}>
-                      {t.command || "프로그램 실행 동작 없음"}
-                    </p>
+                    {t.command ? (
+                      <p data-selectable className="truncate font-mono text-xs text-muted-foreground" title={t.command}>
+                        {t.command}
+                      </p>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">프로그램을 실행하지 않는 작업이에요</p>
+                    )}
                     <p className="truncate text-xs text-muted-foreground">
                       {t.approvedName}
                       {t.author && ` · 만든 이 ${t.author}`}

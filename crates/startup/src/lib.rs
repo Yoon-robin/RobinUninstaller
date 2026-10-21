@@ -223,10 +223,8 @@ fn build_task(
         source: StartupSource::Task,
         location: "작업 스케줄러".to_string(),
         approved_name: task.path,
-        // 프로그램 실행이 아닌 작업(COM 처리기 등)
-        command: task
-            .command
-            .unwrap_or_else(|| "(프로그램 실행이 아닌 작업)".to_string()),
+        // 프로그램 실행이 아닌 작업(COM 처리기 등)은 비워 둔다. 화면이 일반 글꼴 문장으로 알린다.
+        command: task.command.unwrap_or_default(),
         target_path: target,
         target_missing,
         publisher: info.company,

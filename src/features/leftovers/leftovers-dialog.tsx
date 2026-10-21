@@ -554,6 +554,9 @@ function Results({
               <p className="mr-auto text-sm text-muted-foreground tabular-nums">
                 {selected.size > 0 ? `${selected.size}개 선택 · ${formatBytes(selectedBytes)}` : "선택한 항목 없음"}
               </p>
+              <Button variant="outline" onClick={onClose}>
+                닫기
+              </Button>
               <Button
                 ref={cleanButton}
                 variant="destructive"
@@ -565,9 +568,11 @@ function Results({
               </Button>
             </>
           )}
-          <Button variant="outline" onClick={onClose}>
-            닫기
-          </Button>
+          {(preview || report.items.length === 0) && (
+            <Button variant="outline" onClick={onClose}>
+              닫기
+            </Button>
+          )}
         </div>
       </motion.div>
     </>
