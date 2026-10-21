@@ -10,6 +10,7 @@ export function AppIcon({ app, className }: { app: { id: string; displayName: st
     queryKey: ["app-icon", app.id],
     queryFn: () => (app.id.startsWith("msix:") ? storeApi.icon(app.id) : api.getAppIcon(app.id)),
     staleTime: Infinity,
+    gcTime: Infinity,
   })
 
   if (icon.data) {

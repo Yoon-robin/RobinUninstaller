@@ -358,7 +358,7 @@ pub fn app_mode() -> Mode {
     mode()
 }
 
-#[tauri::command]
+#[tauri::command(async)]
 pub fn setup_info() -> Result<SetupInfo, String> {
     let env = Env::from_system().ok_or("사용자 폴더 위치를 찾지 못했어요")?;
     Ok(SetupInfo {

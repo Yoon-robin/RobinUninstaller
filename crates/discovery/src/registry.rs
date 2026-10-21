@@ -13,17 +13,36 @@ use winreg::enums::{
 
 const UNINSTALL_PATH: &str = r"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall";
 
-pub fn scan_all() -> Vec<InstalledApplication> {
-    let sources = [
-        (HKEY_LOCAL_MACHINE, KEY_WOW64_64KEY, InstallScope::Machine64),
-        (HKEY_LOCAL_MACHINE, KEY_WOW64_32KEY, InstallScope::Machine32),
-        (HKEY_CURRENT_USER, 0, InstallScope::User),
-    ];
+const SOURCES: [(winreg::HKEY, u32, InstallScope); 3] = [
+    (HKEY_LOCAL_MACHINE, KEY_WOW64_64KEY, InstallScope::Machine64),
+    (HKEY_LOCAL_MACHINE, KEY_WOW64_32KEY, InstallScope::Machine32),
+    (HKEY_CURRENT_USER, 0, InstallScope::User),
+];
 
-    sources
+pub fn scan_all() -> Vec<InstalledApplication> {
+    SOURCES
         .into_iter()
         .flat_map(|(hive, view, scope)| scan(hive, view, scope))
         .collect()
+}
+
+/// ID(`hkcu:키이름` 등)의 등록 정보 하나만 읽는다. 목록 전체를 읽는 것과 같은 기준으로 거른다
+/// (시스템 구성 요소·업데이트는 없음으로 본다). 제거 뒤 "아직 설치돼 있나" 확인처럼 하나만 볼 때 쓴다.
+pub fn find(id: &str) -> Option<InstalledApplication> {
+    let (prefix, key_name) = id.split_once(':')?;
+    let (hive, view, scope) = SOURCES
+        .into_iter()
+        .find(|(_, _, s)| s.key_prefix() == prefix)?;
+    let root = RegKey::predef(hive)
+        .open_subkey_with_flags(UNINSTALL_PATH, KEY_READ | view)
+        .ok()?;
+    // ID는 키 이름을 소문자로 바꾼 것이라, 원래 이름(MSI 제품 코드는 대문자)을 찾아 쓴다
+    let name = root
+        .enum_keys()
+        .filter_map(Result::ok)
+        .find(|n| n.eq_ignore_ascii_case(key_name))?;
+    let key = root.open_subkey_with_flags(&name, KEY_READ | view).ok()?;
+    read_entry(&key, &name, scope)
 }
 
 fn scan(hive: winreg::HKEY, view: u32, scope: InstallScope) -> Vec<InstalledApplication> {
@@ -125,6 +144,19 @@ fn get_u32(key: &RegKey, name: &str) -> Option<u32> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn find_matches_the_full_scan() {
+        // 읽기만 한다: 전체 목록의 앞쪽 몇 개를 하나씩 다시 읽어 같은지 본다
+        for app in super::scan_all().iter().take(15) {
+            let one = super::find(&app.id).expect("목록에 있는 ID는 하나만 읽어도 있어야 함");
+            assert_eq!(one.id, app.id);
+            assert_eq!(one.display_name, app.display_name);
+            assert_eq!(one.product_code, app.product_code);
+        }
+        assert!(super::find("hkcu:robinx-test-nonexistent-key").is_none());
+        assert!(super::find("nope").is_none());
+    }
+
     #[test]
     fn scan_returns_named_entries() {
         let apps = super::scan_all();

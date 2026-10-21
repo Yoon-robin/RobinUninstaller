@@ -291,6 +291,7 @@ function StartupIcon({ entry }: { entry: StartupEntry }) {
     queryKey: ["startup-icon", entry.id],
     queryFn: () => startupApi.icon(entry.id),
     staleTime: Infinity,
+    gcTime: Infinity,
   })
 
   if (icon.data) {

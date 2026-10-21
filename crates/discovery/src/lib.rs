@@ -62,6 +62,17 @@ pub fn list_installed() -> Vec<InstalledApplication> {
     apps
 }
 
+/// 등록 정보 하나만 읽는다 (없거나 목록에서 빼는 항목이면 `None`). 목록 전체를 읽는 것보다 훨씬 빠르다.
+pub fn find_installed(id: &str) -> Option<InstalledApplication> {
+    #[cfg(windows)]
+    return registry::find(id);
+    #[cfg(not(windows))]
+    {
+        let _ = id;
+        None
+    }
+}
+
 /// 현재 사용자의 Microsoft Store·MSIX 앱을 이름순으로 반환한다 (Windows 구성 요소는 뺀다).
 pub fn list_store_apps() -> Vec<StoreApp> {
     #[cfg(windows)]

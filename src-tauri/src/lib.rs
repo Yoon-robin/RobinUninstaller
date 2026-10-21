@@ -126,10 +126,24 @@ impl AppCache {
 
     /// 제거한 프로그램 목록을 고치고 파일에도 저장한다 (바뀐 게 있을 때만).
     fn update_removed(&self, f: impl FnOnce(&mut Vec<removed::RemovedApp>) -> bool) {
-        if let Ok(mut list) = self.removed.lock()
-            && f(&mut list)
+        // 고치는 동안만 잠그고, 디스크에 쓰는 동안은 잠그지 않는다 (사이드바가 목록을 읽으며 기다리지 않게).
+        // 저장 순서가 뒤바뀌어 옛 목록이 새 목록을 덮지 않게 번호를 매긴다.
+        static GENERATION: AtomicU64 = AtomicU64::new(0);
+        static SAVED: Mutex<u64> = Mutex::new(0);
+        let snapshot = {
+            let Ok(mut list) = self.removed.lock() else {
+                return;
+            };
+            if !f(&mut list) {
+                return;
+            }
+            (list.clone(), GENERATION.fetch_add(1, Ordering::SeqCst) + 1)
+        };
+        if let Ok(mut saved) = SAVED.lock()
+            && snapshot.1 > *saved
         {
-            removed::save(&list);
+            removed::save(&snapshot.0);
+            *saved = snapshot.1;
         }
     }
 
@@ -434,7 +448,7 @@ fn fit_to_work_area(window: &tauri::WebviewWindow) {
 }
 
 /// 일반 제거 확인 창 안내: 보안 프로그램·드라이버·런타임처럼 다른 프로그램이 함께 쓸 수 있는지 (막지 않음).
-#[tauri::command]
+#[tauri::command(async)]
 fn uninstall_may_be_shared(id: String, cache: State<'_, AppCache>) -> bool {
     cache
         .get(&id)
@@ -443,7 +457,7 @@ fn uninstall_may_be_shared(id: String, cache: State<'_, AppCache>) -> bool {
 
 /// 제거 확인 창에 보여 줄 "실제로 실행할 명령". 화면이 따로 흉내 내지 않고 실행할 때와 같은 계획을 쓴다
 /// (EXE로 분류된 `MsiExec.exe /I{GUID}`도 실제처럼 `/x`, `%ProgramFiles%` 같은 변수도 펼친 모양).
-#[tauri::command]
+#[tauri::command(async)]
 fn uninstall_command_preview(id: String, cache: State<'_, AppCache>) -> Result<String, String> {
     let app = cache
         .get(&id)
@@ -486,11 +500,7 @@ async fn uninstall_app(
             |event| {
                 let _ = on_event.send(event);
             },
-            || {
-                robin_discovery::list_installed()
-                    .iter()
-                    .any(|a| a.id == app.id)
-            },
+            || robin_discovery::find_installed(&app.id).is_some(),
         )
     })
     .await;
@@ -511,7 +521,7 @@ async fn uninstall_app(
 }
 
 /// 제거한 프로그램 (최근 것부터, 보관 기간 안의 것).
-#[tauri::command]
+#[tauri::command(async)]
 fn recently_removed(cache: State<'_, AppCache>) -> Vec<removed::RemovedApp> {
     cache.removed.lock().map(|r| r.clone()).unwrap_or_default()
 }
@@ -640,7 +650,7 @@ async fn clean_leftovers(
     if force_app_id.is_none() {
         let id = app_id.clone();
         let installed = tauri::async_runtime::spawn_blocking(move || {
-            robin_discovery::list_installed().iter().any(|a| a.id == id)
+            robin_discovery::find_installed(&id).is_some()
         })
         .await
         .map_err(|e| e.to_string())?;
@@ -699,7 +709,7 @@ async fn note_force_removed(cache: &AppCache, force_app_id: Option<String>) {
     };
     let id = app.id.clone();
     let still_installed = tauri::async_runtime::spawn_blocking(move || {
-        robin_discovery::list_installed().iter().any(|a| a.id == id)
+        robin_discovery::find_installed(&id).is_some()
     })
     .await
     .unwrap_or(true);
@@ -1227,7 +1237,7 @@ async fn list_drives() -> Vec<DriveInfo> {
 }
 
 /// 드라이브 용량 (`drive`가 없으면 시스템 드라이브)
-#[tauri::command]
+#[tauri::command(async)]
 fn disk_usage(drive: Option<String>) -> Result<DiskUsage, String> {
     let drive = checked_drive(drive)?;
     let (total, free) =
