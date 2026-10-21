@@ -6,6 +6,7 @@ import { Download, Loader2, RotateCcw } from "lucide-react"
 import { toast } from "sonner"
 
 import { formatBytes } from "@/lib/format"
+import { cn } from "@/lib/utils"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 
@@ -23,6 +24,10 @@ const AUTO_KEY = "robin.updates.autoCheck"
 const LAST_KEY = "robin.updates.lastChecked"
 /** 켜 둔 채로 쓰는 동안 다시 확인하는 간격 */
 const RECHECK_MS = 6 * 60 * 60 * 1000
+/** 시작 화면이 걷힌 뒤 이 시간 안에 온 켤 때 확인 결과만 창으로 띄운다 */
+const POPUP_GRACE_MS = 4000
+/** 받는 중 이 시간 동안 아무것도 오지 않으면 멈춘 것으로 본다 */
+const STALL_MS = 60_000
 
 type CheckResult = { kind: "latest" } | { kind: "available"; update: Update } | { kind: "error"; message: string }
 
@@ -100,6 +105,12 @@ export function UpdatesProvider({ ready, children }: { ready: boolean; children:
   const [popupWanted, setPopupWanted] = useState(false)
   // 한 번 띄운 창을 다시 확인할 때마다 또 띄우지 않는다
   const shownRef = useRef<string | null>(null)
+  // 시작 화면이 걷힌 때. 켤 때 확인 결과가 그 뒤 몇 초가 지나 오면 사용자가 이미 다른 일을 시작했으므로
+  // 창을 띄우지 않고 사이드바에만 알린다 ("지금 업데이트"는 앱을 닫는다).
+  const readyAt = useRef<number | null>(null)
+  useEffect(() => {
+    if (ready && readyAt.current == null) readyAt.current = Date.now()
+  }, [ready])
 
   useEffect(() => {
     getVersion()
@@ -117,12 +128,15 @@ export function UpdatesProvider({ ready, children }: { ready: boolean; children:
   }
 
   const applyResult = useCallback((result: CheckResult, manual: boolean, popup: boolean) => {
-    const now = Date.now()
-    setLastChecked(now)
-    try {
-      localStorage.setItem(LAST_KEY, String(now))
-    } catch {
-      // 무시
+    // 실패한 확인은 "마지막 확인"으로 치지 않는다
+    if (result.kind !== "error") {
+      const now = Date.now()
+      setLastChecked(now)
+      try {
+        localStorage.setItem(LAST_KEY, String(now))
+      } catch {
+        // 무시
+      }
     }
     if (result.kind === "available") {
       setPending(result.update)
@@ -157,7 +171,8 @@ export function UpdatesProvider({ ready, children }: { ready: boolean; children:
     void first.then((result) => {
       // 받은 결과는 한 번만 쓴다: 확인 중에 자동 확인을 껐다가 나중에 켜면 옛 결과 대신 새로 확인한다
       if (startupCheck === first) startupCheck = null
-      if (alive) applyResult(result, false, true)
+      const late = readyAt.current != null && Date.now() - readyAt.current > POPUP_GRACE_MS
+      if (alive) applyResult(result, false, !late)
     })
     const again = setInterval(() => void checkNow(false, false), RECHECK_MS)
     return () => {
@@ -198,7 +213,11 @@ type Stage = { step: "ready" } | { step: "downloading"; done: number; total: num
 function UpdateDialog({ update, open, onClose }: { update: Update | null; open: boolean; onClose: () => void }) {
   const [stage, setStage] = useState<Stage>({ step: "ready" })
   const [error, setError] = useState<string | null>(null)
-  const busy = stage.step !== "ready"
+  // 설치가 시작되면 앱이 곧 닫히므로 그때만 창을 잠근다. 받는 동안에는 취소할 수 있다.
+  const locked = stage.step === "installing"
+  const downloading = stage.step === "downloading"
+  // 지금 받는 시도 번호. 취소하거나 멈춰 버린 시도의 결과는 버린다 (받은 뒤 설치하지 않는다).
+  const attempt = useRef(0)
 
   useEffect(() => {
     if (open) {
@@ -207,27 +226,50 @@ function UpdateDialog({ update, open, onClose }: { update: Update | null; open: 
     }
   }, [open])
 
+  const cancel = () => {
+    attempt.current++
+    setStage({ step: "ready" })
+  }
+
   const install = async () => {
     if (!update) return
+    const mine = ++attempt.current
     setError(null)
     let done = 0
     let total: number | null = null
     setStage({ step: "downloading", done: 0, total: null })
+    // 네트워크가 멈추면 받기가 끝나지 않는다. 한동안 아무것도 오지 않으면 멈춘 것으로 보고 다시 시도하게 한다.
+    let lastTick = Date.now()
+    const watchdog = setInterval(() => {
+      if (attempt.current !== mine) return clearInterval(watchdog)
+      if (Date.now() - lastTick > STALL_MS) {
+        clearInterval(watchdog)
+        attempt.current++
+        setError("업데이트를 받는 중에 1분 넘게 응답이 없어요. 인터넷 연결을 확인하고 다시 시도해 주세요.")
+        setStage({ step: "ready" })
+      }
+    }, 2000)
     try {
-      await update.downloadAndInstall((event) => {
+      await update.download((event) => {
+        if (attempt.current !== mine) return
+        lastTick = Date.now()
         if (event.event === "Started") {
           total = event.data.contentLength ?? null
           setStage({ step: "downloading", done: 0, total })
         } else if (event.event === "Progress") {
           done += event.data.chunkLength
           setStage({ step: "downloading", done, total })
-        } else if (event.event === "Finished") {
-          setStage({ step: "installing" })
         }
       })
+      clearInterval(watchdog)
+      if (attempt.current !== mine) return
+      setStage({ step: "installing" })
+      await update.install()
       // Windows는 설치 프로그램이 앱을 닫고 설치한다. 그렇지 않은 경우를 위해 다시 시작한다.
       await relaunch()
     } catch (e) {
+      clearInterval(watchdog)
+      if (attempt.current !== mine) return
       setError(friendlyError(e))
       setStage({ step: "ready" })
     }
@@ -237,19 +279,22 @@ function UpdateDialog({ update, open, onClose }: { update: Update | null; open: 
     stage.step === "downloading" && stage.total ? Math.min(100, Math.round((stage.done / stage.total) * 100)) : null
 
   return (
-    <Dialog open={open} onOpenChange={(v) => !v && !busy && onClose()}>
-      <DialogContent className="sm:max-w-md" showCloseButton={!busy}>
+    <Dialog
+      open={open}
+      onOpenChange={(v) => {
+        if (v || locked) return
+        if (downloading) cancel()
+        onClose()
+      }}
+    >
+      <DialogContent className="sm:max-w-md" showCloseButton={!locked}>
         <DialogTitle>새 버전 {update?.version}</DialogTitle>
         <DialogDescription className="leading-relaxed">
           지금 쓰는 버전은 {update?.currentVersion}이에요. 업데이트 파일은 RobinX의 서명을 확인한 뒤에만 설치하고, 복구
           기록·설정·백업은 그대로 남아요. 설치하는 동안 앱이 잠깐 닫혔다가 다시 열려요.
         </DialogDescription>
         {/* 노트가 없거나 예전 릴리스처럼 "RobinX 0.1.9" 한 줄뿐이면 상자를 그리지 않는다 */}
-        {update?.body?.trim() && update.body.trim() !== `RobinX ${update.version}` && (
-          <div className="max-h-48 overflow-y-auto rounded-xl border bg-muted/30 px-4 py-3 text-sm whitespace-pre-wrap">
-            {update.body}
-          </div>
-        )}
+        {update?.body?.trim() && update.body.trim() !== `RobinX ${update.version}` && <Notes text={update.body} />}
         {stage.step === "downloading" && (
           <div className="flex flex-col gap-2">
             {/* 받은 크기는 계속 바뀌므로 읽어 주지 않는다 */}
@@ -280,15 +325,75 @@ function UpdateDialog({ update, open, onClose }: { update: Update | null; open: 
         )}
         {error && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
         <div className="mt-2 flex justify-end gap-2">
-          <Button variant="outline" onClick={onClose} disabled={busy}>
-            나중에
-          </Button>
-          <Button onClick={install} disabled={busy || !update}>
-            {busy ? <Loader2 className="animate-spin" /> : error ? <RotateCcw /> : <Download />}
+          {downloading ? (
+            <Button variant="outline" onClick={cancel}>
+              받기 취소
+            </Button>
+          ) : (
+            <Button variant="outline" onClick={onClose} disabled={locked}>
+              나중에
+            </Button>
+          )}
+          <Button onClick={install} disabled={locked || downloading || !update}>
+            {locked || downloading ? <Loader2 className="animate-spin" /> : error ? <RotateCcw /> : <Download />}
             {error ? "다시 시도" : "지금 업데이트"}
           </Button>
         </div>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * 릴리스 노트. 마크다운을 기호째 보이지 않게 가볍게 그린다: 제목(#), 목록(- *), 굵게(**)만.
+ * 길면 상자 안에서 스크롤하고, 아래에 더 있다는 것을 흐림으로 알린다.
+ */
+function Notes({ text }: { text: string }) {
+  const box = useRef<HTMLDivElement>(null)
+  const [more, setMore] = useState(false)
+  const update = () => {
+    const el = box.current
+    if (el) setMore(el.scrollHeight - el.scrollTop - el.clientHeight > 4)
+  }
+  useEffect(update, [text])
+  const inline = (line: string) =>
+    line
+      .split(/(\*\*[^*]+\*\*)/)
+      .map((part, i) =>
+        part.startsWith("**") && part.endsWith("**") ? <b key={i}>{part.slice(2, -2)}</b> : part.replace(/`/g, ""),
+      )
+  return (
+    <div
+      ref={box}
+      onScroll={update}
+      className={cn(
+        "max-h-48 overflow-y-auto rounded-xl border bg-muted/30 px-4 py-3 text-sm leading-relaxed",
+        more && "[mask-image:linear-gradient(to_bottom,black_75%,transparent)]",
+      )}
+    >
+      {text
+        .trim()
+        .split(/\r?\n/)
+        .map((raw, i) => {
+          const line = raw.trim()
+          if (!line) return <div key={i} className="h-2" />
+          const heading = line.match(/^#{1,6}\s+(.*)$/)
+          if (heading)
+            return (
+              <p key={i} className="mt-1 font-semibold">
+                {inline(heading[1])}
+              </p>
+            )
+          const item = line.match(/^[-*]\s+(.*)$/)
+          if (item)
+            return (
+              <p key={i} className="flex gap-2 pl-1">
+                <span aria-hidden>•</span>
+                <span>{inline(item[1])}</span>
+              </p>
+            )
+          return <p key={i}>{inline(line)}</p>
+        })}
+    </div>
   )
 }

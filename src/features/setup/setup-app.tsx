@@ -328,7 +328,9 @@ function InstallFlow({ info }: { info: SetupInfo }) {
                 <Check className="size-8" strokeWidth={2.4} />
               </span>
               <div>
-                <h1 className="text-2xl font-bold tracking-tight">설치했어요</h1>
+                <h1 className="text-2xl font-bold tracking-tight">
+                  {!old ? "설치했어요" : old.version === info.version ? "다시 설치했어요" : "업데이트했어요"}
+                </h1>
                 <p className="mt-1 text-sm text-muted-foreground">
                   시작 메뉴{desktop ? "와 바탕 화면" : ""}에서 RobinX를 찾을 수 있어요.
                 </p>
@@ -337,7 +339,8 @@ function InstallFlow({ info }: { info: SetupInfo }) {
             {step.report.warnings.length > 0 && (
               <Note tone="warn">
                 설치는 끝났지만 확인할 것이 있어요.
-                <ul className="mt-1 list-disc pl-4 text-xs">
+                {/* 경고가 많아도 아래 버튼이 창(640×480) 밖으로 밀리지 않게 목록만 스크롤 */}
+                <ul className="mt-1 max-h-24 list-disc overflow-y-auto pl-4 text-xs">
                   {step.report.warnings.map((w) => (
                     <li key={w}>{w}</li>
                   ))}
@@ -473,7 +476,8 @@ function UninstallFlow({ info }: { info: SetupInfo }) {
             {step.report.warnings.length > 0 && (
               <Note tone="warn">
                 일부는 지우지 못했어요.
-                <ul className="mt-1 list-disc pl-4 text-xs">
+                {/* 경고가 많아도 아래 버튼이 창(640×480) 밖으로 밀리지 않게 목록만 스크롤 */}
+                <ul className="mt-1 max-h-24 list-disc overflow-y-auto pl-4 text-xs">
                   {step.report.warnings.map((w) => (
                     <li key={w}>{w}</li>
                   ))}
