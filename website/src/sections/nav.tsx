@@ -28,6 +28,32 @@ function goTo(href: string) {
  * 맨 위에서는 첫 화면의 빛이 비치도록 투명하고, 내려가면 어두운 바탕을 깔아 글자 위에서도 읽힌다.
  */
 export function Nav() {
+  // 구역을 JS로 그려서, `/#faq`처럼 구역 주소로 열면 브라우저가 대상을 못 찾고 맨 위에 머문다. 그린 뒤에 직접 옮긴다.
+  useEffect(() => {
+    const id = decodeURIComponent(location.hash.slice(1))
+    const el = id ? document.getElementById(id) : null
+    if (!el) return
+    // 글꼴·그림이 늦게 들어오면 위쪽 높이가 바뀌므로 몇 번 더 맞춘다. 사용자가 먼저 스크롤하면 그만둔다.
+    let stopped = false
+    const stop = () => (stopped = true)
+    const align = () => !stopped && el.scrollIntoView({ behavior: "auto" })
+    const opts = { passive: true, once: true }
+    addEventListener("wheel", stop, opts)
+    addEventListener("touchstart", stop, opts)
+    addEventListener("keydown", stop, opts)
+    requestAnimationFrame(align)
+    document.fonts.ready.then(align)
+    addEventListener("load", align, { once: true })
+    const timers = [400, 1200].map((ms) => setTimeout(align, ms))
+    return () => {
+      stopped = true
+      timers.forEach(clearTimeout)
+      removeEventListener("wheel", stop)
+      removeEventListener("touchstart", stop)
+      removeEventListener("keydown", stop)
+    }
+  }, [])
+
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const pendingTarget = useRef<string | null>(null)
