@@ -106,8 +106,12 @@ function defaultHandlers() {
  * 가짜 응답을 넣은 새 페이지를 연다.
  * overrides 값은 JSON으로 넘어가므로, 함수가 필요하면 "(args) => ..." 문자열로 준다.
  */
-export async function openApp(browser, { scheme = "dark", overrides = {}, width = 1280, height = 860 } = {}) {
-  const page = await browser.newPage({ viewport: { width, height }, colorScheme: scheme })
+// scale: 화면 배율 (사이트용 그림은 고해상도 화면에서도 선명하게 2로 찍는다)
+export async function openApp(
+  browser,
+  { scheme = "dark", overrides = {}, width = 1280, height = 860, scale = 1 } = {},
+) {
+  const page = await browser.newPage({ viewport: { width, height }, colorScheme: scheme, deviceScaleFactor: scale })
   return prepare(page, scheme, overrides)
 }
 

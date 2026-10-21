@@ -16,6 +16,8 @@ const steps = ["남은 흔적 찾기", "찾은 항목 확인", "백업하고 정
  * - 좁은 화면에서는 창 전체를 줄이면 글자가 4~5px이 되어, 대화창 부분만 찍은 영상을 쓴다.
  */
 const NARROW_QUERY = "(max-width: 639px)"
+// 2배로 찍은 영상은 3배 무거워서, 고해상도 화면에만 준다 (휴대폰용 영상은 늘 2배)
+const wideVideo = () => demo(devicePixelRatio >= 1.5 ? "leftovers@2x.webm" : "leftovers.webm")
 
 function useNarrow() {
   const [narrow, setNarrow] = useState(() => matchMedia(NARROW_QUERY).matches)
@@ -103,7 +105,7 @@ export function Walkthrough() {
               // 폭이 바뀌어 다른 영상으로 갈아 끼울 때 처음부터 다시 읽게 한다
               key={narrow ? "narrow" : "wide"}
               ref={video}
-              src={demo(narrow ? "leftovers-narrow.webm" : "leftovers.webm")}
+              src={narrow ? demo("leftovers-narrow.webm") : wideVideo()}
               poster={demo(narrow ? "leftovers-narrow-poster.jpg" : "leftovers-poster.jpg")}
               width={narrow ? 784 : 1280}
               height={narrow ? 720 : 800}

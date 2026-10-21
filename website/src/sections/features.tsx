@@ -1,7 +1,7 @@
 import type { CSSProperties } from "react"
 
 import { cn } from "@/lib/utils"
-import { shot } from "@/lib/site"
+import { shot, shotSrcSet } from "@/lib/site"
 import { Reveal, Spotlight } from "@/components/motion"
 
 /**
@@ -81,6 +81,7 @@ function Shot({ t }: { t: Tile }) {
     >
       <img
         src={shot(t.shot)}
+        srcSet={shotSrcSet(t.shot)}
         alt={t.alt}
         width={1280}
         height={800}

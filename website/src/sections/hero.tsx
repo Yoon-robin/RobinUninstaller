@@ -2,7 +2,7 @@ import { useRef } from "react"
 import { ArrowDown, ArrowRight } from "lucide-react"
 import { m, useReducedMotion, useScroll, useTransform } from "motion/react"
 
-import { RELEASE, shot } from "@/lib/site"
+import { RELEASE, shot, shotSrcSet } from "@/lib/site"
 import { easeOutQuint } from "@/components/motion"
 import { DownloadButton, DownloadFacts } from "@/components/download"
 
@@ -118,6 +118,7 @@ export function Hero() {
           <div className="overflow-hidden rounded-[0.8rem] max-sm:aspect-[766/560] sm:rounded-[1.05rem]">
             <img
               src={shot("leftovers")}
+              srcSet={shotSrcSet("leftovers")}
               alt="RobinX의 남은 흔적 창: 설치 정보와 연결된 흔적 3개는 미리 골라 두었고, 직접 확인이 필요한 항목 4개는 고르지 않은 상태예요. 보호 규칙으로 3개를 뺐어요."
               width={1280}
               height={800}

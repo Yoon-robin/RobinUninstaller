@@ -21,5 +21,7 @@ export const RELEASE = {
 
 export const LOGO = `${import.meta.env.BASE_URL}logo.png`
 export const shot = (name: string) => `${import.meta.env.BASE_URL}shots/${name}.webp`
+/** 고해상도 화면(배율 2 근처)에는 2배로 찍은 그림을 준다 (website/scripts/capture.mjs) */
+export const shotSrcSet = (name: string) => `${shot(name)} 1x, ${import.meta.env.BASE_URL}shots/${name}@2x.webp 2x`
 /** 앱 녹화 (public/demo, scripts/ui-mock/record-demo.mjs로 만든다) */
 export const demo = (file: string) => `${import.meta.env.BASE_URL}demo/${file}`

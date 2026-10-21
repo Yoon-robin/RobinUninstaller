@@ -392,26 +392,33 @@ const overrides = {
 }
 
 const browser = await launch()
-// PNG보다 3~4배 가벼운 WebP로 저장한다. 브라우저의 canvas 인코더를 쓰므로 따로 설치할 것이 없다.
-// 글자가 많은 화면이라 품질은 높게 둔다.
+// PNG보다 가벼운 WebP로 저장한다. 브라우저의 canvas 인코더를 쓰므로 따로 설치할 것이 없다.
+// 글자가 많은 화면이라 품질은 높게 둔다. 2배로 찍어 <name>@2x.webp(2560×1600)와,
+// 그것을 줄인 <name>.webp(1280×800)를 만든다 (사이트는 화면 배율에 따라 srcset으로 고른다).
 const encoder = await browser.newPage()
 const shot = async (name, page) => {
   const png = await page.screenshot()
-  const webp = await encoder.evaluate(
+  const [big, small] = await encoder.evaluate(
     async (src) => {
       const img = new Image()
       img.src = src
       await img.decode()
-      const canvas = document.createElement("canvas")
-      canvas.width = img.naturalWidth
-      canvas.height = img.naturalHeight
-      canvas.getContext("2d").drawImage(img, 0, 0)
-      return canvas.toDataURL("image/webp", 0.9).split(",")[1]
+      const encode = (scale) => {
+        const canvas = document.createElement("canvas")
+        canvas.width = img.naturalWidth * scale
+        canvas.height = img.naturalHeight * scale
+        const ctx = canvas.getContext("2d")
+        ctx.imageSmoothingQuality = "high"
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        return canvas.toDataURL("image/webp", 0.9).split(",")[1]
+      }
+      return [encode(1), encode(0.5)]
     },
     `data:image/png;base64,${png.toString("base64")}`,
   )
-  writeFileSync(join(out, `${name}.webp`), Buffer.from(webp, "base64"))
-  console.log("saved", `website/public/shots/${name}.webp`)
+  writeFileSync(join(out, `${name}@2x.webp`), Buffer.from(big, "base64"))
+  writeFileSync(join(out, `${name}.webp`), Buffer.from(small, "base64"))
+  console.log("saved", `website/public/shots/${name}.webp, ${name}@2x.webp`)
 }
 const nav = async (page, name) => {
   await page.getByRole("button", { name, exact: true }).first().click()
@@ -423,6 +430,7 @@ const page = await openApp(browser, {
   overrides,
   width: 1280,
   height: 800,
+  scale: 2,
   scheme: process.env.CAPTURE_SCHEME ?? "dark",
 })
 await page.waitForTimeout(2500)
