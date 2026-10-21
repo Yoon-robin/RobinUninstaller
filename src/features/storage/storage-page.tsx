@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Check,
   ChevronRight,
+  CircleSlash,
   FolderOpen,
   Info,
   Loader2,
@@ -25,7 +26,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
-import { ScanProgressView } from "@/components/scan-progress"
+import { ScanProgressView, shortenPath } from "@/components/scan-progress"
 
 import { FolderAnalysisCard } from "./folder-analysis"
 import { LargeFilesCard } from "./large-files"
@@ -566,9 +567,10 @@ function CleanDialog({
         }
       }}
     >
-      <DialogContent className="sm:max-w-md" showCloseButton={!busy}>
+      {/* 안쪽 칸이 긴 경로 때문에 대화상자 밖으로 넓어지지 않게 (grid 칸은 기본으로 내용보다 줄지 않는다) */}
+      <DialogContent className="sm:max-w-md *:min-w-0" showCloseButton={!busy}>
         {busy && live ? (
-          <CleanProgressView live={live} items={items} />
+          <CleanProgressView live={live} items={items.filter((c) => c.risk !== "irreversible" || understood)} />
         ) : results ? (
           <CleanResultView
             results={results}
@@ -684,12 +686,6 @@ function formatElapsed(ms: number) {
   return s < 60 ? `${s}초` : `${Math.floor(s / 60)}분 ${s % 60}초`
 }
 
-/** 파일 경로를 "…\폴더\파일" 정도로 줄인다 */
-function shortPath(path: string) {
-  const parts = path.split("\\")
-  return parts.length > 3 ? `…\\${parts.slice(-2).join("\\")}` : path
-}
-
 /**
  * 정리하는 동안의 화면. 지금 항목, 지운 파일 수와 크기, 방금 지운 파일, 걸린 시간, 끝난 항목 기록을 보여 줘
  * 오래 걸려도 멈춘 것처럼 보이지 않게 한다. 휴지통과 관리자 권한 정리는 중간 진행을 알 수 없어 시간만 센다.
@@ -761,7 +757,7 @@ function CleanProgressView({ live, items }: { live: LiveProgress; items: Storage
                   className="mt-1 truncate font-mono text-[11px] text-muted-foreground/80"
                   title={cur.file ?? ""}
                 >
-                  {cur.file ? shortPath(cur.file) : "파일을 찾는 중"}
+                  {cur.file ? shortenPath(cur.file) : "파일을 찾는 중"}
                 </p>
               </>
             )}
@@ -775,12 +771,13 @@ function CleanProgressView({ live, items }: { live: LiveProgress; items: Storage
         <ul className="max-h-40 divide-y overflow-y-auto rounded-xl border text-xs" aria-label="끝난 항목">
           {live.done.map((r) => (
             <li key={r.id} className="flex items-center gap-2 px-3 py-2">
-              <Check
-                className={cn(
-                  "size-3.5 shrink-0",
-                  r.skipped || r.needsAdmin ? "text-muted-foreground" : "text-chart-5",
-                )}
-              />
+              {r.needsAdmin ? (
+                <ShieldAlert className="size-3.5 shrink-0 text-chart-3" />
+              ) : r.skipped ? (
+                <CircleSlash className="size-3.5 shrink-0 text-muted-foreground" />
+              ) : (
+                <Check className="size-3.5 shrink-0 text-chart-5" />
+              )}
               <span className="min-w-0 flex-1 truncate">{nameOf(r.id)}</span>
               <span className="shrink-0 text-muted-foreground tabular-nums">
                 {r.needsAdmin
