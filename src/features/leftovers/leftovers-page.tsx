@@ -24,10 +24,7 @@ export function LeftoversPage() {
     <Stagger className="relative mx-auto flex max-w-4xl min-w-0 flex-col gap-6 px-7 pt-7 pb-10">
       <FadeUp>
         <h1 className="text-2xl font-bold tracking-tight">잔여물 정리</h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          언인스톨러가 남기고 간 파일과 레지스트리를 찾아 정리해요. 정리한 항목은 백업해 두고, 백업을 보관하는 동안 복구
-          기록에서 되돌릴 수 있어요.
-        </p>
+        <p className="mt-1 text-sm text-muted-foreground">언인스톨러가 남기고 간 파일과 레지스트리를 찾아 정리해요.</p>
       </FadeUp>
 
       <FadeUp>

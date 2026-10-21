@@ -5,6 +5,7 @@ import {
   CircleAlert,
   CircleStop,
   Clock,
+  Info,
   Loader2,
   ShieldAlert,
   Sparkles,
@@ -189,6 +190,10 @@ export function BatchUninstallDialog({
             <li className="flex gap-2">
               <Check className="size-4 shrink-0 text-primary" />이 단계에서 RobinX는 파일이나 레지스트리를 지우지
               않아요. 남은 흔적은 끝난 뒤 따로 찾아요.
+            </li>
+            <li className="flex gap-2">
+              <Info className="size-4 shrink-0" />
+              제거한 프로그램은 RobinX로 되살릴 수 없어요. 다시 쓰려면 새로 설치해야 해요.
             </li>
             {forced.length > 0 && (
               <li className="flex gap-2">

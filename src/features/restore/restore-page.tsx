@@ -75,8 +75,8 @@ export function RestorePage() {
       <FadeUp>
         <h1 className="text-2xl font-bold tracking-tight">복구 기록</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          남은 흔적을 정리할 때 옮긴 파일과 레지스트리가 여기에 보관돼요. 원래 자리에 같은 이름이 새로 생겼다면 덮어쓰지
-          않고 알려 드려요. 제거한 프로그램 자체나 저장공간에서 지운 캐시는 여기서 되돌릴 수 없어요.
+          남은 흔적을 정리할 때 옮긴 파일과 레지스트리가 여기에 보관돼요. 프로그램을 다시 설치한 뒤 되돌리면 예전 설정이
+          돌아와요. 제거한 프로그램 자체와 저장공간에서 지운 캐시는 되돌릴 수 없어요.
         </p>
       </FadeUp>
 

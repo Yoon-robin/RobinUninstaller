@@ -416,13 +416,19 @@ function Results({
   })
   const overlay =
     stage.step === "confirm" ? (
-      <ConfirmClean items={selectedItems} onCancel={backToReview} onConfirm={runClean} />
+      <ConfirmClean
+        items={selectedItems}
+        forceName={forceAppId ? appName : undefined}
+        onCancel={backToReview}
+        onConfirm={runClean}
+      />
     ) : stage.step === "cleaning" ? (
       <Cleaning label="백업하고 정리하는 중이에요" progress={cleanProgress} />
     ) : stage.step === "done" ? (
       <CleanResult
         op={stage.op}
         forceAppId={forceAppId}
+        forceName={appName}
         onDone={onClose}
         onBusyChange={(busy) => onLockChange(busy ? "busy" : "stage")}
       />
@@ -476,10 +482,7 @@ function Results({
             {forceAppId && (
               <div className="flex gap-2 border-b bg-destructive/5 px-5 py-2.5 text-xs leading-relaxed text-muted-foreground">
                 <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-primary" />
-                <span>
-                  프로그램 등록 정보와 설치 폴더를 지우면 목록에서 사라져요. 백업해 두므로 보관하는 동안 복구 기록에서
-                  되돌릴 수 있어요. Windows 서비스는 건드리지 않아요.
-                </span>
+                <span>등록 정보와 설치 폴더를 지우면 프로그램 목록에서 빠져요. Windows 서비스는 건드리지 않아요.</span>
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-5 py-2.5 text-xs">

@@ -5,11 +5,12 @@ import {
   ChevronRight,
   CircleAlert,
   ExternalLink,
+  Info,
   Loader2,
   RefreshCw,
   RotateCcw,
-  Sparkles,
   ShieldAlert,
+  Sparkles,
   Trash2,
   X,
 } from "lucide-react"
@@ -201,6 +202,10 @@ function ConfirmBody({
         <li className="flex gap-2">
           <Check className="size-4 shrink-0 text-primary" />
           끝나면 설치 정보를 다시 읽어 제거됐는지 확인해요.
+        </li>
+        <li className="flex gap-2">
+          <Info className="size-4 shrink-0" />
+          제거한 프로그램은 RobinX로 되살릴 수 없어요. 다시 쓰려면 새로 설치해야 해요.
         </li>
       </ul>
       <PlannedCommand id={app.id} />

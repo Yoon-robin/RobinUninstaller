@@ -1,9 +1,10 @@
 import { useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
-import { ArchiveRestore, Loader2, ShieldAlert, TriangleAlert } from "lucide-react"
+import { ArchiveRestore, Loader2, ShieldAlert, Trash2, TriangleAlert } from "lucide-react"
 import { motion } from "motion/react"
 
 import {
+  api,
   countStatus,
   countedItems,
   navigate,
@@ -31,18 +32,20 @@ const panel = {
 /** 지우기 전 확인. 검토 항목을 골랐으면 한 번 더 짚어 준다. */
 export function ConfirmClean({
   items,
+  forceName,
   onCancel,
   onConfirm,
 }: {
   items: Leftover[]
+  /** 강제 제거면 대상 프로그램 이름 */
+  forceName?: string
   onCancel: () => void
   onConfirm: () => void
 }) {
   // 보관 기간이 정해져 있으면 그 기간 동안만 되돌릴 수 있다는 것을 정리 전에 알린다
   const settings = useQuery({ queryKey: ["settings"], queryFn: settingsApi.get })
   const days = settings.data?.backupRetentionDays
-  const retentionNote =
-    days == null ? "백업은 직접 지울 때까지 보관돼요." : `백업은 ${days}일 동안 보관된 뒤 자동으로 지워져요.`
+  const until = !settings.data ? "백업을 보관하는 동안" : days == null ? "백업을 지우기 전까지" : `${days}일 동안`
   const reviewCount = items.filter((i) => i.confidence === "review").length
   const bytes = items.reduce((sum, i) => sum + (i.sizeBytes ?? 0), 0)
   const needsAdmin = items.some((i) => i.location.startsWith("HKLM") || /\\program files/i.test(i.location))
@@ -58,16 +61,17 @@ export function ConfirmClean({
           <span className="font-normal text-muted-foreground">({formatBytes(bytes)})</span>
         </p>
         <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          바로 지우지 않고 백업 폴더로 옮겨 보관해요. 레지스트리는 원래 값을 그대로 기록해 두고요. 문제가 생기면 백업을
-          보관하는 동안 복구 기록에서 되돌릴 수 있어요. {retentionNote}
+          바로 지우지 않고 백업 폴더로 옮겨요. {until} 복구 기록에서 되돌릴 수 있어요.
+          {bytes > 0 && " 백업도 공간을 차지해서 남은 공간은 백업을 지울 때 늘어나요."}
         </p>
-        {bytes > 0 && (
-          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-            백업도 공간을 차지해서, 정리한 뒤에도 PC의 남은 공간은 바로 늘지 않아요. 백업을 지우면 그때 돌아와요.
-          </p>
-        )}
       </div>
       <ul className="flex w-full max-w-md flex-col gap-2 text-left text-xs">
+        {forceName && (
+          <li className="flex gap-2 rounded-lg border bg-muted/30 p-3 text-muted-foreground">
+            <Trash2 className="size-4 shrink-0" />
+            {forceName}의 등록 정보도 지워서 프로그램 목록에서 빠져요.
+          </li>
+        )}
         {reviewCount > 0 && (
           <li className="flex gap-2 rounded-lg border border-chart-3/40 bg-chart-3/10 p-3 text-warning">
             <TriangleAlert className="size-4 shrink-0" />
@@ -125,12 +129,15 @@ export function Cleaning({ label, progress }: { label: string; progress?: ScanPr
 export function CleanResult({
   op,
   forceAppId,
+  forceName,
   onDone,
   onBusyChange,
 }: {
   op: Operation
   /** 강제 제거 중이면 대상 프로그램 ID */
   forceAppId?: string
+  /** 강제 제거 대상 이름 */
+  forceName?: string
   onDone: () => void
   /** 관리자 권한 정리(UAC)가 도는 동안 true. 그동안 창을 닫지 못하게 하는 데 쓴다. */
   onBusyChange?: (busy: boolean) => void
@@ -153,6 +160,14 @@ export function CleanResult({
   const held = current.items.filter((i) => i.status === "removed").reduce((s, i) => s + (i.sizeBytes ?? 0), 0)
   const settings = useQuery({ queryKey: ["settings"], queryFn: settingsApi.get })
   const days = settings.data?.backupRetentionDays
+  // 강제 제거: 설치 목록을 다시 읽어 그 프로그램이 빠졌는지 본다
+  const installed = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps, enabled: !!forceAppId })
+  const forceGone =
+    !!forceAppId &&
+    removed > 0 &&
+    installed.isSuccess &&
+    !installed.isFetching &&
+    !installed.data.some((a) => a.id === forceAppId)
 
   const elevate = async () => {
     setElevating(true)
@@ -203,20 +218,24 @@ export function CleanResult({
           </motion.div>
           <div>
             <p className="text-base font-semibold">
-              {removed > 0
-                ? `${removed}개를 정리했어요`
-                : needsAdmin > 0 && problems.length === 0
-                  ? "관리자 권한이 있어야 정리할 수 있어요"
-                  : "정리하지 못했어요"}
+              {forceGone
+                ? `${forceName ?? "프로그램"} 강제 제거를 마쳤어요`
+                : removed > 0
+                  ? `${removed}개를 정리했어요`
+                  : needsAdmin > 0 && problems.length === 0
+                    ? "관리자 권한이 있어야 정리할 수 있어요"
+                    : "정리하지 못했어요"}
             </p>
             {removed > 0 && (
-              <p className="mt-1 text-sm text-muted-foreground">
-                백업 폴더로 옮겼어요. 백업을 보관하는 동안 복구 기록에서 되돌릴 수 있어요.
+              <p className="mx-auto mt-1 max-w-md text-sm text-muted-foreground">
+                {forceGone && `프로그램 목록에서 빠졌어요. 지운 ${removed}개는 `}
+                {forceGone ? "백업 폴더에 있어서" : "백업 폴더로 옮겼어요."} 백업을 보관하는 동안 복구 기록에서 되돌릴
+                수 있어요.
               </p>
             )}
             {/* 1 MB도 안 되면 공간 이야기는 하지 않는다 (시작 항목 정리처럼 거의 0인 경우) */}
             {held >= 1024 * 1024 && (
-              <p className="mt-2 max-w-md text-sm text-muted-foreground">
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
                 <span className="font-medium text-foreground">{formatBytes(held)}</span>는 백업으로 보관 중이라 PC의
                 남은 공간은 아직 그대로예요.{" "}
                 {days == null
