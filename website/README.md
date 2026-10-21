@@ -68,7 +68,7 @@ node website/scripts/capture.mjs               # 서버가 localhost(::1)에만 
 ```bash
 pnpm exec vite --port 1420 --strictPort                      # 앱 개발 서버
 node node_modules/playwright-core/cli.js install ffmpeg      # 처음 한 번
-CHROMIUM_PATH=<chrome.exe> node scripts/ui-mock/record-demo.mjs   # 앞부분을 잘라 VP9로 다시 인코딩
+CHROMIUM_PATH=<chrome.exe> node scripts/ui-mock/record-demo.mjs   # 앞부분을 잘라 VP9로 다시 인코딩 (휴대폰용 대화창만 자른 영상도 함께)
 ```
 
 ## 공유 이미지 (public/og.png)

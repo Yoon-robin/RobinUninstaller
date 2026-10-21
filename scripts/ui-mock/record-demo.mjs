@@ -6,6 +6,9 @@
 //   CHROMIUM_PATH=<chrome.exe> node scripts/ui-mock/record-demo.mjs
 //
 // 결과: website/public/demo/leftovers.webm (소리 없음, VP9) + leftovers-poster.jpg (결과 화면)
+//       leftovers-narrow.webm + leftovers-narrow-poster.jpg (휴대폰용: 대화창 부분만 잘라 글자가 덜 작아지게)
+// MP4는 만들지 않는다: Playwright의 ffmpeg에는 H.264 인코더가 없고, WebM VP9는 Safari 17.4(iOS)·14.1(macOS Sonoma)부터 재생된다.
+// 그보다 오래된 Safari는 포스터 그림만 보인다.
 // 앞부분(시작 화면, 프로그램 화면)은 Playwright가 받은 ffmpeg로 잘라 낸다.
 import { execFileSync } from "node:child_process"
 import { mkdirSync, readdirSync, rmSync } from "node:fs"
@@ -25,6 +28,8 @@ mkdirSync(tmp, { recursive: true })
 const SCHEME = process.env.RECORD_SCHEME ?? "dark"
 const W = 1280
 const H = 800
+// 휴대폰용으로 잘라 낼 부분: 남은 흔적 대화창(256~1024, 48~752)과 둘레 조금
+const NARROW = { x: 248, y: 40, width: 784, height: 720 }
 const me = String.raw`C:\Users\me\AppData`
 const fixture = { ...sample.apps[0], installLocation: String.raw`${me}\Local\Robin Test Labs\Fixture Notes` }
 
@@ -102,6 +107,7 @@ const trimAt = Math.max(0, (Date.now() - started) / 1000 - 0.3)
 await page.getByRole("button", { name: "남은 흔적 찾기" }).first().click()
 await pause(600 + 2600)
 await page.screenshot({ path: join(out, "leftovers-poster.jpg"), quality: 82, type: "jpeg" })
+await page.screenshot({ path: join(out, "leftovers-narrow-poster.jpg"), quality: 82, type: "jpeg", clip: NARROW })
 await page.getByRole("button", { name: /선택 항목 정리/ }).click()
 await pause(1700)
 await page.getByRole("button", { name: "백업하고 정리" }).click()
@@ -116,24 +122,28 @@ const ffmpegDir = readdirSync(join(process.env.LOCALAPPDATA, "ms-playwright"))
   .sort()
   .pop()
 const ffmpeg = join(process.env.LOCALAPPDATA, "ms-playwright", ffmpegDir, "ffmpeg-win64.exe")
-execFileSync(ffmpeg, [
-  "-y",
-  "-loglevel",
-  "error",
-  "-ss",
-  trimAt.toFixed(2),
-  "-i",
-  file,
-  "-an",
-  "-c:v",
-  "libvpx-vp9",
-  "-b:v",
-  "0",
-  "-crf",
-  "36",
-  "-row-mt",
-  "1",
-  join(out, "leftovers.webm"),
-])
+const encode = (name, filters) =>
+  execFileSync(ffmpeg, [
+    "-y",
+    "-loglevel",
+    "error",
+    "-ss",
+    trimAt.toFixed(2),
+    "-i",
+    file,
+    ...filters,
+    "-an",
+    "-c:v",
+    "libvpx-vp9",
+    "-b:v",
+    "0",
+    "-crf",
+    "36",
+    "-row-mt",
+    "1",
+    join(out, name),
+  ])
+encode("leftovers.webm", [])
+encode("leftovers-narrow.webm", ["-vf", `crop=${NARROW.width}:${NARROW.height}:${NARROW.x}:${NARROW.y}`])
 console.log(`잘라 낸 앞부분 ${trimAt.toFixed(1)}초`)
 console.log("saved website/public/demo/leftovers.webm, leftovers-poster.jpg", readdirSync(out))

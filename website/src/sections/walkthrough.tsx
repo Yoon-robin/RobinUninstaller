@@ -1,5 +1,6 @@
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useReducedMotion } from "motion/react"
+import { Pause, Play } from "lucide-react"
 
 import { demo } from "@/lib/site"
 import { Reveal } from "@/components/motion"
@@ -9,13 +10,42 @@ const steps = ["남은 흔적 찾기", "찾은 항목 확인", "백업하고 정
 /**
  * 앱에서 남은 흔적을 찾아 정리하는 짧은 녹화. 가짜 응답으로 찍어 실제 PC의 목록은 나오지 않는다
  * (scripts/ui-mock/record-demo.mjs).
- * - 재생·일시정지 단추는 늘 보인다 (키보드·터치로도 멈출 수 있게).
+ * - 재생·일시정지 단추는 재생 중에도 늘 보인다 (브라우저 기본 단추는 재생하면 숨어서 따로 둔다).
  * - 화면에 보일 때만 재생하고, 벗어나면 멈춘다. 움직임 줄이기를 켠 사람에게는 저절로 재생하지 않는다.
  * - 글자가 중요한 앱 화면이라 잘리지 않게 전체를 보여 준다 (object-contain).
+ * - 좁은 화면에서는 창 전체를 줄이면 글자가 4~5px이 되어, 대화창 부분만 찍은 영상을 쓴다.
  */
+const NARROW_QUERY = "(max-width: 639px)"
+
+function useNarrow() {
+  const [narrow, setNarrow] = useState(() => matchMedia(NARROW_QUERY).matches)
+  useEffect(() => {
+    const mq = matchMedia(NARROW_QUERY)
+    const onChange = () => setNarrow(mq.matches)
+    mq.addEventListener("change", onChange)
+    return () => mq.removeEventListener("change", onChange)
+  }, [])
+  return narrow
+}
+
 export function Walkthrough() {
   const reduce = useReducedMotion()
+  const narrow = useNarrow()
   const video = useRef<HTMLVideoElement>(null)
+  const [playing, setPlaying] = useState(false)
+
+  useEffect(() => {
+    const el = video.current
+    if (!el) return
+    const sync = () => setPlaying(!el.paused)
+    sync()
+    el.addEventListener("play", sync)
+    el.addEventListener("pause", sync)
+    return () => {
+      el.removeEventListener("play", sync)
+      el.removeEventListener("pause", sync)
+    }
+  }, [narrow])
 
   useEffect(() => {
     const el = video.current
@@ -48,7 +78,14 @@ export function Walkthrough() {
       el.removeEventListener("pause", onPause)
       el.removeEventListener("play", onPlay)
     }
-  }, [reduce])
+  }, [reduce, narrow])
+
+  const toggle = () => {
+    const el = video.current
+    if (!el) return
+    if (el.paused) el.play().catch(() => {})
+    else el.pause()
+  }
 
   return (
     <section id="walkthrough" className="border-y bg-white/[0.02] py-20 sm:py-24 lg:py-28">
@@ -61,20 +98,35 @@ export function Walkthrough() {
         </Reveal>
 
         <Reveal className="mx-auto mt-12 max-w-[68rem] sm:mt-14">
-          <video
-            ref={video}
-            src={demo("leftovers.webm")}
-            poster={demo("leftovers-poster.jpg")}
-            width={1280}
-            height={800}
-            muted
-            loop
-            playsInline
-            controls
-            preload="metadata"
-            aria-label="RobinX 시연: 남은 흔적 찾기, 찾은 항목 확인, 백업하고 정리, 정리 결과 화면"
-            className="window aspect-[16/10] w-full rounded-[1.5rem] object-contain p-2 sm:p-3"
-          />
+          <div className="relative">
+            <video
+              // 폭이 바뀌어 다른 영상으로 갈아 끼울 때 처음부터 다시 읽게 한다
+              key={narrow ? "narrow" : "wide"}
+              ref={video}
+              src={demo(narrow ? "leftovers-narrow.webm" : "leftovers.webm")}
+              poster={demo(narrow ? "leftovers-narrow-poster.jpg" : "leftovers-poster.jpg")}
+              width={narrow ? 784 : 1280}
+              height={narrow ? 720 : 800}
+              muted
+              loop
+              playsInline
+              preload="metadata"
+              onClick={toggle}
+              aria-label="RobinX 시연: 남은 흔적 찾기, 찾은 항목 확인, 백업하고 정리, 정리 결과 화면"
+              className={
+                "window w-full cursor-pointer rounded-[1.5rem] object-contain p-2 sm:p-3 " +
+                (narrow ? "aspect-[784/720]" : "aspect-[16/10]")
+              }
+            />
+            <button
+              type="button"
+              onClick={toggle}
+              aria-label={playing ? "시연 영상 일시정지" : "시연 영상 재생"}
+              className="absolute right-4 bottom-4 inline-flex size-11 items-center justify-center rounded-full border border-white/15 bg-background/85 text-foreground transition-colors hover:bg-background focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:right-6 sm:bottom-6"
+            >
+              {playing ? <Pause className="size-4" /> : <Play className="size-4 translate-x-px" />}
+            </button>
+          </div>
           <ol className="mt-6 flex flex-col items-center justify-center gap-x-3 gap-y-2 text-body font-medium sm:flex-row sm:flex-wrap">
             {steps.map((s, i) => (
               <li key={s} className="flex items-center gap-3">
