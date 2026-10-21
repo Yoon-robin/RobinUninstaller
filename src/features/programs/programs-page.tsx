@@ -211,7 +211,12 @@ export function ProgramsPage() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       // 다른 화면에서는 이 화면이 숨겨진 채 남아 있으므로, 검색창이 보일 때만 가로챈다
-      if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "f" && searchRef.current?.offsetParent) {
+      if (
+        (e.ctrlKey || e.metaKey) &&
+        e.key.toLowerCase() === "f" &&
+        searchRef.current?.offsetParent &&
+        !document.querySelector('[role="dialog"]')
+      ) {
         e.preventDefault()
         searchRef.current?.focus()
         searchRef.current?.select()
@@ -323,12 +328,17 @@ export function ProgramsPage() {
       else next.add(app.id)
       return next
     })
+  const [exporting, setExporting] = useState(false)
   const exportList = async () => {
+    if (exporting) return
+    setExporting(true)
     try {
       const name = await api.exportAppList()
       if (name) toast.success(`${name} 파일로 저장했어요`)
     } catch (e) {
       toast.error(String(e))
+    } finally {
+      setExporting(false)
     }
   }
   const resetFilters = () => {
@@ -466,7 +476,8 @@ export function ProgramsPage() {
           <FadeUp>
             {/* overflow-clip: 모서리는 자르되 스크롤 컨테이너가 되지 않아 안쪽 sticky가 동작한다 */}
             <section className="@container overflow-clip rounded-2xl border bg-card shadow-sm">
-              <div className="sticky top-0 z-10 rounded-t-2xl border-b bg-card">
+              {/* 창 높이가 720 이하면 고정하지 않는다 (도구 줄·필터·머리글이 화면의 1/3 넘게 가렸다) */}
+              <div className="top-0 z-10 rounded-t-2xl border-b bg-card [@media(min-height:721px)]:sticky">
                 <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
                   <div className="mr-auto flex items-baseline gap-2">
                     <h2 className="font-semibold">설치된 프로그램</h2>
@@ -559,7 +570,7 @@ export function ProgramsPage() {
                           variant="outline"
                           size="icon"
                           className="size-9 rounded-lg"
-                          disabled={loading || sizes.isFetching}
+                          disabled={loading || sizes.isFetching || exporting}
                           onClick={exportList}
                           aria-label="목록 내보내기"
                         >

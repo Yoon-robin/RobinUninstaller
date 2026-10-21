@@ -308,6 +308,27 @@ fn stop_waiting_uninstall() {
     STOP_WAITING.store(true, Ordering::SeqCst);
 }
 
+/// 창이 지금 모니터의 작업 영역(작업 표시줄을 뺀 곳)보다 크면 맞게 줄이고 가운데에 둔다.
+fn fit_to_work_area(window: &tauri::WebviewWindow) {
+    let (Ok(Some(monitor)), Ok(size)) = (window.current_monitor(), window.outer_size()) else {
+        return;
+    };
+    let area = monitor.work_area();
+    // 작업 영역에 여유(가로 16, 세로 16 물리 px)를 둔다
+    let max_w = area.size.width.saturating_sub(16);
+    let max_h = area.size.height.saturating_sub(16);
+    if size.width <= max_w && size.height <= max_h {
+        return;
+    }
+    let w = size.width.min(max_w);
+    let h = size.height.min(max_h);
+    let _ = window.set_size(tauri::PhysicalSize::new(w, h));
+    let _ = window.set_position(tauri::PhysicalPosition::new(
+        area.position.x + ((area.size.width - w) / 2) as i32,
+        area.position.y + ((area.size.height - h) / 2) as i32,
+    ));
+}
+
 /// 제거 확인 창에 보여 줄 "실제로 실행할 명령". 화면이 따로 흉내 내지 않고 실행할 때와 같은 계획을 쓴다
 /// (EXE로 분류된 `MsiExec.exe /I{GUID}`도 실제처럼 `/x`, `%ProgramFiles%` 같은 변수도 펼친 모양).
 #[tauri::command]
@@ -1397,6 +1418,11 @@ pub fn run() {
             });
             // 창 배경은 불투명하게 그린다 (예전에는 Windows 11 Mica로 배경화면이 비쳤지만,
             // 반투명한 헤더 뒤로 목록이 비쳐 겹쳐 보여서 2026-10-20에 뺐다)
+            // 기본 창(1200×780)이 작업 영역보다 크면(1366×768 @125%, 1920×1080 @150% 등) 창 버튼이 화면 밖으로 나간다.
+            // 보이기 전에 작업 영역 안으로 줄이고 가운데에 둔다.
+            if let Some(window) = app.get_webview_window("main") {
+                fit_to_work_area(&window);
+            }
             // 창은 index.html이 시작 화면을 그리면서 바로 보여 준다. 이 안전장치는 화면을 끝내 불러오지 못했을 때만
             // 창이 숨은 채 남지 않게 하려는 것이라 넉넉히 기다린다. 너무 빨리 보이면 내용 없는 빈 창이 먼저 뜬다.
             if let Some(window) = app.get_webview_window("main") {

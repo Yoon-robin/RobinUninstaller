@@ -162,7 +162,8 @@ export function StartupPage() {
 
       <FadeUp>
         <section className="@container overflow-clip rounded-2xl border bg-card shadow-sm">
-          <div className="sticky top-0 z-10 rounded-t-2xl border-b bg-card">
+          {/* 창 높이가 720 이하면 고정하지 않는다 (도구 줄·필터·머리글이 화면의 1/3 넘게 가렸다) */}
+          <div className="top-0 z-10 rounded-t-2xl border-b bg-card [@media(min-height:721px)]:sticky">
             <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
               <div className="mr-auto flex items-baseline gap-2">
                 <h2 className="font-semibold">시작 항목</h2>
