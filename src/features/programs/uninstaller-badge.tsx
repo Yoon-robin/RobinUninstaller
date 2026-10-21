@@ -2,9 +2,9 @@ import { Badge } from "@/components/ui/badge"
 import type { UninstallerStatus } from "@/lib/api"
 
 const labels: Record<UninstallerStatus, string> = {
-  available: "정상",
+  available: "언인스톨러 있음",
   missing: "언인스톨러 없음",
-  notRegistered: "제거 명령 없음",
+  notRegistered: "언인스톨러 없음 (등록 안 됨)",
   unknown: "확인 불가",
 }
 

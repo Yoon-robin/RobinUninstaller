@@ -496,7 +496,14 @@ function Results({
             <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-5 py-2.5 text-xs">
               <SummaryChip tone="primary" label="설치 정보와 연결" value={strong.length} />
               <SummaryChip tone="warn" label="직접 확인 필요" value={review.length} />
-              <span className="text-muted-foreground" title={`찾는 데 ${report.durationMs}ms 걸렸어요`}>
+              <span
+                className="text-muted-foreground"
+                title={
+                  report.durationMs < 1000
+                    ? "1초도 안 걸렸어요"
+                    : `찾는 데 ${formatDuration(report.durationMs)} 걸렸어요`
+                }
+              >
                 · {report.durationMs < 1000 ? "1초 안에 찾음" : `${formatDuration(report.durationMs)} 걸림`}
               </span>
               {!preview && (

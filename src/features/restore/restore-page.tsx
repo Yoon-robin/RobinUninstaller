@@ -80,8 +80,9 @@ export function RestorePage() {
       <FadeUp>
         <h1 className="text-2xl font-bold tracking-tight">복구 기록</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          남은 흔적을 정리할 때 옮긴 파일과 레지스트리가 여기에 보관돼요. 프로그램을 다시 설치한 뒤 되돌리면 예전 설정이
-          돌아와요. 제거한 프로그램 자체와 저장공간에서 지운 캐시는 되돌릴 수 없어요.
+          남은 흔적 정리, 강제 제거, 파일 없는 시작 항목 정리에서 옮긴 파일과 레지스트리가 여기에 보관돼요. 프로그램을
+          다시 설치한 뒤 되돌리면 예전 설정이 돌아와요. 제거한 프로그램 자체와 저장공간에서 지운 캐시는 되돌릴 수
+          없어요.
         </p>
       </FadeUp>
 
@@ -134,7 +135,7 @@ export function RestorePage() {
           <ErrorState
             className="rounded-2xl border border-destructive/40"
             title="복구 기록을 읽지 못했어요"
-            hint="백업은 지워지지 않았어요. 백업 폴더(%LOCALAPPDATA%\RobinX\backups)에 그대로 있으니 다시 시도해 보세요."
+            hint="백업은 지워지지 않았어요. 백업 폴더(설정 › 정보 › 백업 폴더 열기)에 그대로 있으니 다시 시도해 보세요."
             error={backups.error}
             onRetry={() => backups.refetch()}
             retrying={backups.isFetching}
@@ -198,7 +199,7 @@ function HeldSpace({ ops }: { ops: Operation[] }) {
           ? ""
           : days == null
             ? "지금은 직접 지울 때까지 보관하도록 설정돼 있어요."
-            : `보관 기간 ${days}일이 지난 백업은 자동으로 지워져요.`}
+            : `보관 기간 ${days}일이 지난 백업은 앱을 켤 때 지워져요.`}
       </p>
     </div>
   )

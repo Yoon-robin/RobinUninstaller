@@ -261,7 +261,7 @@ export function SettingsPage() {
         <Section
           icon={ArchiveRestore}
           title="백업 보관"
-          description="남은 흔적을 정리할 때 지운 파일과 레지스트리는 모두 백업돼요. 백업을 지우면 되돌릴 수 없어요."
+          description="남은 흔적을 정리할 때 옮긴 파일과 레지스트리는 모두 백업 폴더에 보관돼요. 백업을 지우면 되돌릴 수 없어요."
         >
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
             <span className="text-muted-foreground">

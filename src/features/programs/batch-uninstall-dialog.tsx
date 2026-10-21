@@ -38,13 +38,13 @@ function outcomeLabel(outcome: UninstallOutcome): { text: string; tone: string }
     case "removedRebootRequired":
       return { text: "제거됨 · 다시 시작 필요", tone: "text-primary" }
     case "stillInstalled":
-      return { text: "아직 설치돼 있어요 (취소했거나 실패)", tone: "text-warning" }
+      return { text: "설치된 채 남음 · 취소했거나 실패", tone: "text-warning" }
     case "elevationDenied":
-      return { text: "관리자 권한 요청이 거절됐어요", tone: "text-warning" }
+      return { text: "관리자 권한 거절됨", tone: "text-warning" }
     case "cannotRun":
-      return { text: `제거 명령을 쓸 수 없어요: ${outcome.reason}`, tone: "text-warning" }
+      return { text: `제거 명령을 쓸 수 없음 · ${outcome.reason}`, tone: "text-warning" }
     case "failed":
-      return { text: `실패: ${outcome.message}`, tone: "text-destructive" }
+      return { text: `실패 · ${outcome.message}`, tone: "text-destructive" }
   }
 }
 
@@ -167,7 +167,7 @@ export function BatchUninstallDialog({
           </div>
           <div className="min-w-0">
             <DialogTitle className="text-base">
-              {phase === "done" ? "한꺼번에 제거 결과" : `프로그램 ${runnable.length}개 제거`}
+              {phase === "done" ? "여러 개 제거 결과" : `프로그램 ${runnable.length}개 제거`}
             </DialogTitle>
             <DialogDescription>
               {phase === "confirm"
@@ -317,7 +317,7 @@ export function BatchUninstallDialog({
           )}
           {phase === "done" && (
             <Button className="ml-auto" onClick={close}>
-              완료
+              닫기
             </Button>
           )}
         </div>

@@ -241,7 +241,7 @@ export function CleanResult({
                 남은 공간은 아직 그대로예요.{" "}
                 {days == null
                   ? "복구 기록에서 백업을 지우면 공간이 돌아와요."
-                  : `${days}일 뒤 백업이 자동으로 지워지거나, 복구 기록에서 먼저 지우면 공간이 돌아와요.`}
+                  : `${days}일이 지나 앱을 켤 때 백업이 지워지거나, 복구 기록에서 먼저 지우면 공간이 돌아와요.`}
               </p>
             )}
           </div>
@@ -307,7 +307,7 @@ export function CleanResult({
           복구 기록 보기
         </Button>
         <Button onClick={onDone} disabled={elevating}>
-          완료
+          닫기
         </Button>
       </div>
     </motion.div>

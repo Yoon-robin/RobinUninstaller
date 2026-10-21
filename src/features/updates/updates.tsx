@@ -74,7 +74,8 @@ function friendlyError(e: unknown) {
   if (/404|not found|Could not fetch a valid release JSON/i.test(text)) return "아직 배포된 업데이트 정보가 없어요"
   if (/network|dns|connect|timed out|offline/i.test(text)) return "인터넷에 연결할 수 없어요"
   if (/signature/i.test(text)) return "업데이트 파일의 서명이 맞지 않아 설치하지 않았어요"
-  return text
+  // 그 밖의 원문(대개 영어)은 무엇이 실패했는지 먼저 말하고 괄호 안에 둔다
+  return `업데이트 중 문제가 생겼어요 (${text})`
 }
 
 async function runCheck(): Promise<CheckResult> {

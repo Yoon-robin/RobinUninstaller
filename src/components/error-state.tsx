@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button"
 export function ErrorState({
   title,
   error,
-  hint = "잠시 뒤 다시 시도해 보세요. 계속되면 아래 내용을 알려 주세요.",
+  hint = "잠시 뒤 다시 시도해 보세요. 계속되면 아래 내용을 복사해 GitHub 이슈로 알려 주세요.",
   onRetry,
   retrying,
   className,

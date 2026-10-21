@@ -263,7 +263,7 @@ export function StartupPage() {
                     setQuery("")
                   }}
                 >
-                  필터 초기화
+                  검색과 필터 지우기
                 </Button>
               )}
             </div>
