@@ -202,6 +202,8 @@ export const recoveryApi = {
   /** 기록을 읽지 못한 백업 폴더 이름 (손상·권한 문제). 백업은 지우지 않는다. */
   unreadable: () => invoke<string[]>("unreadable_backups"),
   openFolder: () => invoke<void>("open_backup_folder"),
+  /** 한 작업의 백업 폴더 (충돌로 백업에만 남은 파일을 꺼낼 때) */
+  openOperationFolder: (opId: string) => invoke<void>("open_backup_operation", { opId }),
   restore: (opId: string, itemIds?: string[], onProgress?: (p: ScanProgress) => void) =>
     invoke<Operation>("restore_backup", { opId, itemIds: itemIds ?? null, onProgress: progressChannel(onProgress) }),
   /** 관리자 권한으로 되돌린다. `itemIds`가 없으면 되돌릴 수 있는 항목 전부. */

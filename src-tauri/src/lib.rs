@@ -659,6 +659,23 @@ fn open_backup_folder() -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// 한 작업의 백업 폴더를 탐색기로 연다 (충돌로 백업에만 남은 파일을 직접 꺼낼 때).
+#[tauri::command(async)]
+fn open_backup_operation(op_id: String) -> Result<(), String> {
+    if !robin_recovery::store::is_valid_id(&op_id) {
+        return Err("잘못된 작업 ID예요".into());
+    }
+    let dir = store()?.dir(&op_id);
+    if !dir.is_dir() {
+        return Err("이 작업의 백업 폴더가 없어요".into());
+    }
+    std::process::Command::new("explorer.exe")
+        .arg(&dir)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 /// 작업에서 지운 항목을 되돌린다. `item_ids`가 없으면 전부.
 #[tauri::command]
 async fn restore_backup(
@@ -1386,6 +1403,7 @@ pub fn run() {
             list_backups,
             unreadable_backups,
             open_backup_folder,
+            open_backup_operation,
             restore_backup,
             restore_backup_elevated,
             delete_backup,

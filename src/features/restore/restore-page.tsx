@@ -6,6 +6,7 @@ import {
   HardDrive,
   FileText,
   Folder,
+  FolderOpen,
   KeyRound,
   ListTree,
   Loader2,
@@ -280,13 +281,21 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
     .filter((i) => isRestorable(i.status) && i.error?.startsWith("복원 실패") && i.error.includes("관리자"))
     .map((i) => i.id)
 
-  const run = async (key: string, action: () => Promise<Operation>) => {
+  /** `ids`: 이번에 되돌리려는 항목. 결과는 이 항목들만 센다 (예전에 실패한 항목이 섞이지 않게). */
+  const run = async (key: string, ids: string[], action: () => Promise<Operation>) => {
     setBusy(key)
     setProgress(null)
     try {
       const updated = await action()
-      const failed = updated.items.filter((i) => isRestorable(i.status) && i.error?.startsWith("복원 실패")).length
+      const mine = updated.items.filter((i) => ids.includes(i.id))
+      const failed = mine.filter((i) => isRestorable(i.status) && i.error?.startsWith("복원 실패")).length
+      // 같은 이름이 이미 있어 덮어쓰지 않은 항목은 백업에만 남는다
+      const clashed = mine.filter((i) => i.status === "conflicted").length
       if (failed > 0) toast.error(`${failed}개는 되돌리지 못했어요. 항목을 펼쳐 이유를 확인하세요`)
+      else if (clashed > 0)
+        toast.warning(`${clashed}개는 같은 이름이 이미 있어 백업에 남겨 뒀어요`, {
+          description: "항목을 펼쳐 백업 폴더에서 직접 꺼낼 수 있어요",
+        })
       else toast.success("되돌렸어요")
     } catch (e) {
       toast.error(String(e))
@@ -335,7 +344,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
             size="sm"
             variant="outline"
             disabled={busy != null}
-            onClick={() => run("admin", () => recoveryApi.restoreElevated(op.id, adminRestoreIds))}
+            onClick={() => run("admin", adminRestoreIds, () => recoveryApi.restoreElevated(op.id, adminRestoreIds))}
           >
             {busy === "admin" ? <Loader2 className="animate-spin" /> : <ShieldAlert />}
             관리자 권한으로 복원
@@ -345,7 +354,13 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
           size="sm"
           variant="outline"
           disabled={kept === 0 || busy != null}
-          onClick={() => run("all", () => recoveryApi.restore(op.id, undefined, setProgress))}
+          onClick={() =>
+            run(
+              "all",
+              op.items.filter((i) => isRestorable(i.status)).map((i) => i.id),
+              () => recoveryApi.restore(op.id, undefined, setProgress),
+            )
+          }
         >
           {busy === "all" ? <Loader2 className="animate-spin" /> : <RotateCcw />}
           정리 되돌리기
@@ -386,7 +401,22 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
                         {item.location}
                         {item.valueName && ` › ${item.valueName}`}
                       </p>
-                      {item.error && <p className="mt-1 text-destructive">{item.error}</p>}
+                      {item.error && (
+                        <p className={cn("mt-1", item.status === "conflicted" ? "text-chart-3" : "text-destructive")}>
+                          {item.error}
+                        </p>
+                      )}
+                      {item.status === "conflicted" && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="mt-2 h-7"
+                          onClick={() => recoveryApi.openOperationFolder(op.id).catch((e) => toast.error(String(e)))}
+                        >
+                          <FolderOpen />
+                          백업 폴더 열기
+                        </Button>
+                      )}
                     </div>
                     <span className={cn("shrink-0 font-medium", s.tone)}>{s.label}</span>
                     {isRestorable(item.status) && (
@@ -395,7 +425,9 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
                         variant="ghost"
                         className="h-7 shrink-0"
                         disabled={busy != null}
-                        onClick={() => run(item.id, () => recoveryApi.restore(op.id, [item.id], setProgress))}
+                        onClick={() =>
+                          run(item.id, [item.id], () => recoveryApi.restore(op.id, [item.id], setProgress))
+                        }
                       >
                         {busy === item.id ? <Loader2 className="animate-spin" /> : <RotateCcw />}
                         되돌리기
