@@ -355,3 +355,8 @@ h1[tabindex="-1"]:focus {
 [data-focus-inset]:focus-visible {
   outline-offset: -2px !important;
 }
+
+/* 대화상자·시트의 어두운 덮개는 창 제목 줄(오른쪽 위 띠)만 비워 둔다. 제목 줄 왼쪽 끝은 App.tsx가 --titlebar-left로 알려 준다. */
+.below-titlebar {
+  clip-path: polygon(0 0, var(--titlebar-left, 0px) 0, var(--titlebar-left, 0px) 3rem, 100% 3rem, 100% 100%, 0 100%);
+}

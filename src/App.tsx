@@ -55,6 +55,18 @@ export default function App() {
   // 페이지마다 스크롤 위치를 따로 기억한다. 모든 페이지가 <main> 하나를 같이 써서, 그대로 두면 프로그램 목록을
   // 내린 채 설정으로 가면 설정이 중간부터 열린다. 처음 여는 페이지는 맨 위에서 시작한다.
   const main = useRef<HTMLElement>(null)
+  // 제목 줄이 시작하는 곳(사이드바 오른쪽 끝). 대화상자 덮개가 이 띠만 비워 둔다 (index.css .below-titlebar).
+  const titlebar = useRef<HTMLElement>(null)
+  useLayoutEffect(() => {
+    const el = titlebar.current
+    if (!el) return
+    const update = () =>
+      document.documentElement.style.setProperty("--titlebar-left", `${el.getBoundingClientRect().left}px`)
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
   const positions = useRef<Partial<Record<Page, number>>>({})
   const restoring = useRef(false)
   useLayoutEffect(() => {
@@ -150,7 +162,12 @@ export default function App() {
                     {/* 제목 표시줄: 빈 곳을 끌면 창이 움직이고, 더블클릭하면 최대화된다. 스크롤하는 내용 위쪽에 고정돼 있다. */}
                     <header
                       data-tauri-drag-region
+                      // 대화상자·시트는 이 줄 아래에만 덮인다. 열려 있는 동안에도 창을 끌고 줄이고 닫을 수 있게
+                      // (모달이 body에 거는 pointer-events: none을 이 줄만 되돌린다).
+                      data-app-titlebar
+                      ref={titlebar}
                       className={cn(
+                        "pointer-events-auto",
                         // 불투명한 바탕: 스크롤한 내용이 제목 줄 뒤로 비치지 않는다. 스크롤하면 아래 구분선만 보인다.
                         "relative z-20 flex h-12 shrink-0 items-center gap-1 bg-background pl-2 shadow-[0_1px_0_transparent] transition-shadow duration-200",
                         scrolled && "shadow-[0_1px_0_var(--border)]",

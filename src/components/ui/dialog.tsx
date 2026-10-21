@@ -29,6 +29,17 @@ function DialogClose({
   return <DialogPrimitive.Close data-slot="dialog-close" {...props} />
 }
 
+// 창 제목 줄(끌기·최소화·닫기)은 대화상자가 열려 있어도 쓸 수 있다. 그곳을 누른 것은 바깥 클릭으로 보지 않는다.
+function keepOpenOnTitlebar(handler?: (event: Event) => void) {
+  return (event: Event) => {
+    if ((event.target as Element | null)?.closest?.("[data-app-titlebar]")) {
+      event.preventDefault()
+      return
+    }
+    handler?.(event)
+  }
+}
+
 function DialogOverlay({
   className,
   ...props
@@ -37,7 +48,7 @@ function DialogOverlay({
     <DialogPrimitive.Overlay
       data-slot="dialog-overlay"
       className={cn(
-        "fixed inset-0 isolate z-50 duration-200 ease-(--ease-out-quint) data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
+        "below-titlebar fixed inset-0 isolate z-50 duration-200 ease-(--ease-out-quint) data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0",
         className
       )}
       {...props}
@@ -49,6 +60,7 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onInteractOutside,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean
@@ -58,8 +70,9 @@ function DialogContent({
       <DialogOverlay />
       <DialogPrimitive.Content
         data-slot="dialog-content"
+        onInteractOutside={keepOpenOnTitlebar(onInteractOutside as (event: Event) => void)}
         className={cn(
-          "fixed top-1/2 left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground shadow-2xl ring-1 ring-foreground/10 duration-200 ease-(--ease-out-quint) outline-none data-closed:duration-150 sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
+          "fixed top-[calc(50%+1.5rem)] left-1/2 z-50 grid w-full max-w-[calc(100%-2rem)] -translate-x-1/2 -translate-y-1/2 gap-4 rounded-xl bg-popover p-4 text-sm text-popover-foreground shadow-2xl ring-1 ring-foreground/10 duration-200 ease-(--ease-out-quint) outline-none data-closed:duration-150 sm:max-w-sm data-open:animate-in data-open:fade-in-0 data-open:zoom-in-95 data-closed:animate-out data-closed:fade-out-0 data-closed:zoom-out-95",
           className
         )}
         {...props}
