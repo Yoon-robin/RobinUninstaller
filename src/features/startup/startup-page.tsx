@@ -19,7 +19,7 @@ import { isMachineStartup, startupApi, type StartupEntry, type StartupSource } f
 import { formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { LetterAvatar } from "@/components/letter-avatar"
-import { CountUp, EASE_OUT_QUINT, FadeUp, Stagger, staggerContainer } from "@/components/motion"
+import { CountUp, DUR, EASE_OUT_QUINT, FadeUp, Stagger, staggerContainer } from "@/components/motion"
 import { Highlight } from "@/components/highlight"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { Button } from "@/components/ui/button"
@@ -346,7 +346,7 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
         >
           <ChevronRight
             className={cn(
-              "-ml-1 size-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-(--ease-out-quint)",
+              "-ml-1 size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-(--ease-out-quint)",
               open && "rotate-90",
             )}
           />
@@ -420,8 +420,8 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: EASE_OUT_QUINT }}
+            exit={{ height: 0, opacity: 0, transition: { duration: DUR.fast } }}
+            transition={{ duration: DUR.base, ease: EASE_OUT_QUINT }}
             className="overflow-hidden"
           >
             <dl className="mx-5 mb-3 grid grid-cols-[6rem_minmax(0,1fr)] gap-x-4 gap-y-2 rounded-xl border bg-muted/30 px-4 py-3 text-xs">

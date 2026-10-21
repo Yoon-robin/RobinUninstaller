@@ -209,7 +209,7 @@ export function CleanResult({
           <motion.div
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
-            transition={{ type: "spring", duration: 0.45, bounce: 0.35 }}
+            transition={{ type: "spring", duration: 0.3, bounce: 0 }}
             className={cn(
               "flex size-14 items-center justify-center rounded-full",
               needsAdmin || problems.length ? "bg-chart-3/15 text-warning" : "bg-primary/15 text-primary",

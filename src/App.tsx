@@ -20,7 +20,7 @@ import { SidebarInset, SidebarProvider, SidebarTrigger } from "@/components/ui/s
 import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
-import { EASE_OUT_QUINT } from "@/components/motion"
+import { DUR, EASE_OUT_QUINT, EntranceContext } from "@/components/motion"
 import { isBusy } from "@/lib/busy"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { toast } from "sonner"
@@ -84,6 +84,12 @@ export default function App() {
   const onSplashDone = useCallback(() => setReady(true), [])
   const reduce = useReducedMotion()
   const toastsUp = useToastsOutOfTheWay()
+  // 페이지에 처음 들어올 때만 차례 등장 (다시 열 때는 바로 보인다)
+  const visited = useRef(new Set<Page>())
+  const firstVisit = !visited.current.has(page)
+  useEffect(() => {
+    visited.current.add(page)
+  }, [page])
   // 사이드바를 접었는지 기억한다 (다음에 켜도 그대로)
   const [sidebarOpen, setSidebarOpen] = useState(() => {
     try {
@@ -256,9 +262,9 @@ export default function App() {
                           <motion.span
                             key={page}
                             className="font-medium text-foreground"
-                            initial={{ opacity: 0, y: 4 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            transition={{ duration: 0.18, ease: EASE_OUT_QUINT }}
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            transition={{ duration: DUR.fast, ease: EASE_OUT_QUINT }}
                           >
                             {titles[page]}
                           </motion.span>
@@ -279,20 +285,22 @@ export default function App() {
                         }}
                       >
                         {/* 목록 페이지는 숨기기만 해서 스크롤·검색 상태를 유지한다. */}
-                        <motion.div
-                          hidden={page !== "programs"}
-                          className="min-h-full"
-                          initial={false}
-                          animate={page === "programs" ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
-                          transition={{ duration: 0.25, ease: EASE_OUT_QUINT }}
-                        >
-                          <ProgramsPage active={page === "programs"} />
-                        </motion.div>
-                        {page === "leftovers" && <LeftoversPage />}
-                        {page === "restore" && <RestorePage />}
-                        {page === "storage" && <StoragePage />}
-                        {page === "startup" && <StartupPage />}
-                        {page === "settings" && <SettingsPage />}
+                        <EntranceContext.Provider value={firstVisit}>
+                          <motion.div
+                            hidden={page !== "programs"}
+                            className="min-h-full"
+                            initial={false}
+                            animate={{ opacity: page === "programs" ? 1 : 0 }}
+                            transition={{ duration: DUR.fast, ease: EASE_OUT_QUINT }}
+                          >
+                            <ProgramsPage active={page === "programs"} />
+                          </motion.div>
+                          {page === "leftovers" && <LeftoversPage />}
+                          {page === "restore" && <RestorePage />}
+                          {page === "storage" && <StoragePage />}
+                          {page === "startup" && <StartupPage />}
+                          {page === "settings" && <SettingsPage />}
+                        </EntranceContext.Provider>
                       </main>
                     </SidebarInset>
                   </SidebarProvider>

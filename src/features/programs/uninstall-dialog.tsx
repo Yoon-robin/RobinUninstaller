@@ -22,7 +22,7 @@ import { isSelf, api, storeApi, type InstalledApplication, type UninstallEvent, 
 import { cn } from "@/lib/utils"
 import { useLastDefined } from "@/hooks/use-last-defined"
 import { DrawnCheck } from "@/components/drawn-check"
-import { AutoHeight, EASE_OUT_QUINT, focusMarked } from "@/components/motion"
+import { AutoHeight, DUR, EASE_OUT_QUINT, focusMarked } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { AppIcon } from "./app-icon"
@@ -279,7 +279,7 @@ function RunningBody({ event }: { event: UninstallEvent | null }) {
                       key="done"
                       initial={{ scale: 0.6, opacity: 0 }}
                       animate={{ scale: 1, opacity: 1 }}
-                      transition={{ type: "spring", duration: 0.3, bounce: 0.3 }}
+                      transition={{ type: "spring", duration: 0.25, bounce: 0 }}
                     >
                       <Check className="size-3" strokeWidth={3} />
                     </motion.span>
@@ -350,7 +350,7 @@ function CommandPreview({ command }: { command: string | null }) {
         aria-expanded={open}
       >
         <ChevronRight
-          className={cn("size-3.5 transition-transform duration-300 ease-(--ease-out-quint)", open && "rotate-90")}
+          className={cn("size-3.5 transition-transform duration-150 ease-(--ease-out-quint)", open && "rotate-90")}
         />
         실행할 명령 보기
       </button>
@@ -359,8 +359,8 @@ function CommandPreview({ command }: { command: string | null }) {
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: EASE_OUT_QUINT }}
+            exit={{ height: 0, opacity: 0, transition: { duration: DUR.fast } }}
+            transition={{ duration: DUR.base, ease: EASE_OUT_QUINT }}
             className="overflow-hidden"
           >
             <div className="mt-2 flex items-start gap-1 rounded-lg border bg-muted/40 py-1 pr-1 pl-2.5">
@@ -400,7 +400,7 @@ function ResultBody({
       <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
-        transition={{ type: "spring", duration: 0.45, bounce: 0.35, delay: 0.05 }}
+        transition={{ type: "spring", duration: 0.3, bounce: 0 }}
         className={cn("flex size-14 items-center justify-center rounded-full", view.toneClass)}
       >
         {view.icon === Check ? <DrawnCheck className="size-7" /> : <view.icon className="size-7" strokeWidth={2.4} />}

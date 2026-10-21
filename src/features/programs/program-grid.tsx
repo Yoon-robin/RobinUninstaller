@@ -58,12 +58,14 @@ export function ProgramGrid({
   const rows = Math.ceil(apps.length / cols)
   const virtualizer = useVirtualizer({
     count: rows,
-    getScrollElement: () => ref.current?.closest("main") ?? null,
+    // 스크롤 상자는 앱의 <main> 하나 (목록 요소로 찾으면 떨어졌다 붙으며 맨 위로 튀었다, programs-page.tsx 참고)
+    getScrollElement: () => document.querySelector("main"),
     estimateSize: () => ROW_ESTIMATE,
     overscan: 3,
     scrollMargin,
     enabled: active && width > 0,
     measureElement: (el) => el.getBoundingClientRect().height || ROW_ESTIMATE,
+    initialOffset: () => document.querySelector("main")?.scrollTop ?? 0,
   })
 
   return (

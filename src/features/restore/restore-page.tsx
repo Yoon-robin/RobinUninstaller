@@ -35,7 +35,7 @@ import { ScanProgressView } from "@/components/scan-progress"
 import { formatBytes, formatDateTime } from "@/lib/format"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { cn } from "@/lib/utils"
-import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
+import { DUR, EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { ErrorState, InlineError, StaleBanner } from "@/components/error-state"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
@@ -422,7 +422,7 @@ function OperationCard({
         >
           <ChevronRight
             className={cn(
-              "size-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-(--ease-out-quint)",
+              "size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-(--ease-out-quint)",
               open && "rotate-90",
             )}
           />
@@ -485,8 +485,8 @@ function OperationCard({
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: EASE_OUT_QUINT }}
+            exit={{ height: 0, opacity: 0, transition: { duration: DUR.fast } }}
+            transition={{ duration: DUR.base, ease: EASE_OUT_QUINT }}
             className="overflow-hidden"
           >
             <ul className="divide-y border-t">

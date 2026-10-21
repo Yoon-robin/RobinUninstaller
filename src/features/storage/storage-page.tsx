@@ -19,7 +19,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { storageApi, type CleanEvent, type CleanResult, type ScanProgress, type StorageCategory } from "@/lib/api"
 import { formatBytes, formatCount, formatDuration } from "@/lib/format"
 import { cn } from "@/lib/utils"
-import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
+import { DUR, EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
@@ -321,12 +321,12 @@ function DriveCard({
           )}
           initial={{ width: 0 }}
           animate={{ width: `${usedPct}%` }}
-          transition={{ duration: 0.8, ease: EASE_OUT_QUINT }}
+          transition={{ duration: 0.5, ease: EASE_OUT_QUINT }}
         >
           {/* 정리하면 비는 부분: 사용 중 막대 안쪽 끝에 붙여 둔다 (따로 두면 처음에 막대와 떨어져 떠 보였다).
               폭은 사용 중 막대에 대한 비율이고, 오른쪽 끝을 기준으로 늘고 준다. */}
           <div
-            className="forced-fill absolute inset-y-0 right-0 w-full origin-right bg-primary/70 transition-transform duration-300 ease-(--ease-out-quint)"
+            className="forced-fill absolute inset-y-0 right-0 w-full origin-right bg-primary/70 transition-transform duration-150 ease-(--ease-out-quint)"
             style={{ transform: `scaleX(${usedPct > 0 ? planPct / usedPct : 0})` }}
           />
         </motion.div>
@@ -417,7 +417,7 @@ function CategoryRow({
           </span>
           <ChevronRight
             className={cn(
-              "size-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-(--ease-out-quint)",
+              "size-4 shrink-0 text-muted-foreground transition-transform duration-150 ease-(--ease-out-quint)",
               open && "rotate-90",
             )}
           />
@@ -434,8 +434,8 @@ function CategoryRow({
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: "auto", opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.3, ease: EASE_OUT_QUINT }}
+            exit={{ height: 0, opacity: 0, transition: { duration: DUR.fast } }}
+            transition={{ duration: DUR.base, ease: EASE_OUT_QUINT }}
             className="overflow-hidden"
           >
             <div className="mx-5 mb-3 ml-13 space-y-2 rounded-xl border bg-muted/30 px-4 py-3 text-xs">
@@ -830,8 +830,8 @@ function CleanProgressView({ live, items }: { live: LiveProgress; items: Storage
           <div className="scan-sweep h-full w-1/3 rounded-full bg-primary" />
         ) : (
           <div
-            className="forced-fill h-full rounded-full bg-primary transition-[width] duration-300"
-            style={{ width: `${percent}%` }}
+            className="forced-fill h-full w-full origin-left rounded-full bg-primary transition-transform duration-200 ease-(--ease-out-quint)"
+            style={{ transform: `scaleX(${percent / 100})` }}
           />
         )}
       </div>

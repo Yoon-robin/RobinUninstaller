@@ -307,8 +307,8 @@ function UpdateDialog({ update, open, onClose }: { update: Update | null; open: 
                 <div className="scan-sweep h-full w-1/3 rounded-full bg-primary" />
               ) : (
                 <div
-                  className="forced-fill h-full rounded-full bg-primary transition-[width]"
-                  style={{ width: `${percent}%` }}
+                  className="forced-fill h-full w-full origin-left rounded-full bg-primary transition-transform duration-100 ease-linear"
+                  style={{ transform: `scaleX(${percent / 100})` }}
                 />
               )}
             </div>

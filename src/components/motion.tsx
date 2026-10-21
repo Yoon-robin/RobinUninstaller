@@ -1,7 +1,19 @@
-import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
+import { createContext, useContext, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { animate, motion, useReducedMotion, type Variants } from "motion/react"
 
 export const EASE_OUT_QUINT = [0.22, 1, 0.36, 1] as const
+
+/**
+ * 움직임 길이 (초). CSS의 --dur-fast·--dur-base·--dur-slow와 같다.
+ * fast: 누름·색·나가기, base: 펼치기·나타나기·바꾸기, slow: 시트·사이드바처럼 큰 면.
+ */
+export const DUR = { fast: 0.12, base: 0.2, slow: 0.32 } as const
+
+/**
+ * 페이지에 처음 들어올 때만 차례 등장을 한다. 같은 페이지를 다시 열 때마다 몇 단계씩 다시 나타나면 느리게 느껴졌다.
+ * App이 페이지마다 처음인지 알려 준다.
+ */
+export const EntranceContext = createContext(true)
 
 /** 순서대로 나타나는 묶음. 자식은 <FadeUp>을 쓴다. */
 export const staggerContainer: Variants = {
@@ -20,8 +32,9 @@ const fadeUpVariants: Variants = {
 }
 
 export function Stagger({ children, className }: { children: ReactNode; className?: string }) {
+  const entrance = useContext(EntranceContext)
   return (
-    <motion.div className={className} variants={staggerContainer} initial="hidden" animate="show">
+    <motion.div className={className} variants={staggerContainer} initial={entrance ? "hidden" : false} animate="show">
       {children}
     </motion.div>
   )
@@ -66,8 +79,10 @@ export function CountUp({
       if (id) lastShown.set(id, value)
       return
     }
+    // 처음은 0.5초, 그 뒤 값이 바뀔 때(크기를 다 잼 등)는 짧게 따라간다
+    const first = from.current === 0
     const controls = animate(from.current, value, {
-      duration: 0.9,
+      duration: first ? 0.5 : DUR.base,
       ease: EASE_OUT_QUINT,
       onUpdate: (n) => {
         // 중간에 멈춰도(StrictMode 재실행, 값 변경) 지금 보이는 숫자에서 이어 가도록 매 프레임 기록한다.

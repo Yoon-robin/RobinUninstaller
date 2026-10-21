@@ -25,7 +25,7 @@ import { formatSize } from "@/lib/format"
 import { useAppReady } from "@/lib/app-ready"
 import { cn } from "@/lib/utils"
 import { IconTooltip } from "@/components/icon-tooltip"
-import { CountUp, FadeUp, Stagger, staggerContainer } from "@/components/motion"
+import { CountUp, DUR, EASE_OUT_QUINT, FadeUp, Stagger, staggerContainer } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -208,7 +208,7 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
   const intro = ready && !introDone
   useEffect(() => {
     if (!apps.data || !ready) return
-    const t = setTimeout(() => setIntroDone(true), 1400)
+    const t = setTimeout(() => setIntroDone(true), 900)
     return () => clearTimeout(t)
   }, [apps.data, ready])
 
@@ -261,7 +261,9 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
   })
   const virtualizer = useVirtualizer({
     count: visible.length,
-    getScrollElement: () => listRef.current?.closest("main") ?? null,
+    // 스크롤 상자는 앱의 <main> 하나뿐이다. 목록 요소로 찾으면 카드 보기·다른 화면일 때 목록이 없어 떨어졌다가,
+    // 다시 붙을 때 떨어지기 전 위치(0)로 스크롤해 첫 스크롤에 맨 위로 튀었다.
+    getScrollElement: () => document.querySelector("main"),
     estimateSize: () => 57,
     overscan: 10,
     scrollMargin,
@@ -270,6 +272,8 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
     // (프로그램 1000개에서 저장공간을 열면 "Maximum update depth exceeded"). 숨어 있는 동안 멈추고, 0은 받지 않는다.
     enabled: active,
     measureElement: (el) => el.getBoundingClientRect().height || 57,
+    // 숨었다가 다시 켜질 때는 지금 스크롤 위치에서 시작한다 (기억한 위치가 없으면 0으로 스크롤했다)
+    initialOffset: () => document.querySelector("main")?.scrollTop ?? 0,
   })
   const virtualItems = virtualizer.getVirtualItems()
   // Tab으로 들어올 행: 기억한 행이 지금 그려져 있으면 그 행, 아니면 처음 그려진 행
@@ -608,12 +612,7 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
                   ))}
                 </div>
               ) : visible.length === 0 ? (
-                <motion.div
-                  initial={{ opacity: 0, y: 6 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.25, ease: [0.22, 1, 0.36, 1] }}
-                  className="flex flex-col items-center gap-2 px-5 py-16 text-center"
-                >
+                <div className="flex flex-col items-center gap-2 px-5 py-16 text-center">
                   <div className="mb-1 flex size-12 items-center justify-center rounded-2xl bg-muted">
                     <SearchX className="size-6 text-muted-foreground" />
                   </div>
@@ -646,7 +645,7 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
                       </Button>
                     )}
                   </div>
-                </motion.div>
+                </div>
               ) : (
                 // 보기를 바꿀 때만 짧게 교차 전환한다. 검색·필터로 항목이 바뀔 때는 움직이지 않는다.
                 <AnimatePresence mode="wait" initial={false}>
@@ -655,7 +654,7 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0, transition: { duration: 0.08 } }}
-                    transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
+                    transition={{ duration: DUR.fast, ease: EASE_OUT_QUINT }}
                   >
                     {view === "list" || picked ? (
                       // 보이는 줄(과 앞뒤 몇 줄)만 그린다. 1000개를 다 그리면 체크 하나·글자 하나에 수백 ms씩 걸렸다.
@@ -680,7 +679,7 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
                                 maxKb={stats.maxKb}
                                 query={deferredQuery}
                                 removing={app.id === removingId}
-                                introIndex={intro && v.index < 16 ? v.index : undefined}
+                                introIndex={intro && v.index < 10 ? v.index : undefined}
                                 picked={picked ? picked.has(app.id) : undefined}
                                 onPick={togglePick}
                                 tabbable={v.index === tabIndexRow}
@@ -748,10 +747,10 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
       <AnimatePresence>
         {picked && (
           <motion.div
-            initial={{ opacity: 0, y: 16 }}
+            initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 16, transition: { duration: 0.15 } }}
-            transition={{ type: "spring", duration: 0.35, bounce: 0 }}
+            exit={{ opacity: 0, y: 8, transition: { duration: DUR.fast } }}
+            transition={{ duration: DUR.base, ease: EASE_OUT_QUINT }}
             // 알림 위치를 옮기는 기준 (App.tsx useToastsOutOfTheWay)
             data-pick-bar
             className="sticky bottom-4 z-20 mx-auto flex w-full max-w-xl items-center gap-3 rounded-2xl border bg-popover px-4 py-3 shadow-[var(--shadow-floating)]"

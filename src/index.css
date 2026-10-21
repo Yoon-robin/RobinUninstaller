@@ -191,6 +191,10 @@
 :root {
   --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+  /* 움직임 길이 (components/motion.tsx의 DUR과 같다) */
+  --dur-fast: 120ms;
+  --dur-base: 200ms;
+  --dur-slow: 320ms;
 }
 
 @keyframes row-in {
@@ -209,13 +213,13 @@
 @layer components {
   /* 목록 첫 표시: 위쪽 몇 줄만 살짝 순서대로 나타난다. */
   .row-intro {
-    animation: row-in 420ms var(--ease-out-quint) both;
-    animation-delay: calc(var(--i, 0) * 28ms + 120ms);
+    animation: row-in 280ms var(--ease-out-quint) both;
+    animation-delay: calc(var(--i, 0) * 22ms + 60ms);
   }
   .bar-intro {
     transform-origin: left;
-    animation: bar-grow 700ms var(--ease-out-quint) both;
-    animation-delay: calc(var(--i, 0) * 28ms + 260ms);
+    animation: bar-grow 420ms var(--ease-out-quint) both;
+    animation-delay: calc(var(--i, 0) * 22ms + 160ms);
   }
 
   /* 눌렀을 때의 작은 반응 */
@@ -230,6 +234,15 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  /* 모든 CSS 전환·애니메이션을 사실상 없앤다 (화살표 회전, 스위치, 툴팁·알림 등장 등 목록에 없던 것까지).
+     돌아가는 아이콘(animate-spin)은 진행 중이라는 표시라 둔다. */
+  *:not(.animate-spin),
+  *::before,
+  *::after {
+    transition-duration: 1ms !important;
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+  }
   .row-intro,
   .bar-intro {
     animation: none;

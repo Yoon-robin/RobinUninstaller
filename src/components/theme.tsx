@@ -134,7 +134,7 @@ export function ThemeToggle() {
     transition.ready.then(() => {
       document.documentElement.animate(
         { clipPath: [`circle(0px at ${x}px ${y}px)`, `circle(${radius}px at ${x}px ${y}px)`] },
-        { duration: 560, easing: "cubic-bezier(0.22, 1, 0.36, 1)", pseudoElement: "::view-transition-new(root)" },
+        { duration: 350, easing: "cubic-bezier(0.22, 1, 0.36, 1)", pseudoElement: "::view-transition-new(root)" },
       )
     })
   }
@@ -153,7 +153,7 @@ export function ThemeToggle() {
             initial={{ opacity: 0, rotate: -45, scale: 0.75 }}
             animate={{ opacity: 1, rotate: 0, scale: 1 }}
             exit={{ opacity: 0, rotate: 45, scale: 0.75 }}
-            transition={{ duration: 0.3, ease: EASE_OUT_QUINT }}
+            transition={{ duration: 0.15, ease: EASE_OUT_QUINT }}
           >
             {isDark ? <Moon className="size-4" /> : <Sun className="size-4" />}
           </motion.span>

@@ -46,7 +46,7 @@ async function measure(name, act, done) {
     window.__t0 = performance.now()
   })
   await act()
-  await page.waitForFunction(done, null, { timeout: 30000 }).catch(async () => console.log(name, "TIMEOUT", await page.evaluate(() => [...document.querySelectorAll("h1")].map((h) => h.textContent + ":" + !!h.offsetParent).join(","))))
+  await page.waitForFunction(done, null, { timeout: 30000 }).catch(async () => console.log(name, "TIMEOUT", await page.evaluate(() => { const m = document.querySelector("main"); const rows = [...document.querySelectorAll("[data-app-row]")]; return JSON.stringify({ h1: [...document.querySelectorAll("h1")].filter((h) => h.offsetParent).map((h) => h.textContent), st: Math.round(m.scrollTop), sh: m.scrollHeight, ch: m.clientHeight, n: rows.length, last: rows.at(-1)?.textContent.slice(0, 20), input: document.querySelector("main input")?.value }) })))
   const r = await page.evaluate(() => ({
     t: Math.round(performance.now() - window.__t0),
   }))
@@ -76,8 +76,8 @@ await measure(
   `!!document.querySelector("[role=dialog]")`,
 )
 await page.keyboard.press("Escape")
-// 창을 닫은 뒤 4초 동안은 포커스를 잃으면 마지막 행으로 돌아가므로(스크롤도 따라감) 기다린다
-await page.waitForTimeout(4500)
+// 창을 닫은 뒤 4초 동안은 포커스를 잃으면 마지막 행으로 돌아가므로(스크롤도 따라감) 기다린다. 이 스크립트는 DOM click이라 행에 포커스가 가지 않아 생기는 일 (실제 클릭은 행에 포커스가 남는다)
+await page.waitForTimeout(6000)
 await measure(
   "카드 보기",
   () => page.evaluate(() => [...document.querySelectorAll("[role=radio]")].find((b) => /카드/.test(b.getAttribute("aria-label") ?? b.textContent)).click()),
