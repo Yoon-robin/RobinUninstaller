@@ -79,7 +79,8 @@ const operation = `(ids) => ({
 const handlers = {
   recently_removed: [fixture],
   get_settings: { ...sample.settings, backupRetentionDays: 30 },
-  scan_leftovers: `() => new Promise((r) => setTimeout(() => r(${JSON.stringify(report)}), 1600))`,
+  // 찾는 화면이 길면 영상 앞부분이 빈 창으로 보여서 짧게 둔다
+  scan_leftovers: `() => new Promise((r) => setTimeout(() => r(${JSON.stringify(report)}), 600))`,
   clean_leftovers: `(args) => new Promise((r) => setTimeout(() => r((${operation})(args.itemIds)), 1300))`,
 }
 
@@ -97,9 +98,9 @@ const pause = (ms) => page.waitForTimeout(ms)
 
 await page.getByRole("button", { name: "잔여물 정리", exact: true }).first().click()
 await pause(1400)
-const trimAt = Math.max(0, (Date.now() - started) / 1000 - 0.8)
+const trimAt = Math.max(0, (Date.now() - started) / 1000 - 0.3)
 await page.getByRole("button", { name: "남은 흔적 찾기" }).first().click()
-await pause(1600 + 2600)
+await pause(600 + 2600)
 await page.screenshot({ path: join(out, "leftovers-poster.jpg"), quality: 82, type: "jpeg" })
 await page.getByRole("button", { name: /선택 항목 정리/ }).click()
 await pause(1700)
