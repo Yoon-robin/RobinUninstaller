@@ -14,7 +14,10 @@ import { Skeleton } from "@/components/ui/skeleton"
 import { AppIcon } from "./app-icon"
 import { ErrorState } from "@/components/error-state"
 
-const STORE_GRID = "grid grid-cols-[minmax(0,1fr)_minmax(0,10rem)_6.5rem_5.75rem_7rem] items-center gap-4"
+/** 목록 열. 좁은 창에서는 설치일·출처를 숨겨 이름 칸이 사라지지 않게 한다 (숨긴 칸에는 `STORE_WIDE_ONLY`). */
+const STORE_GRID =
+  "grid grid-cols-[minmax(0,1fr)_minmax(0,10rem)_7rem] items-center gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,10rem)_6.5rem_5.75rem_7rem]"
+const STORE_WIDE_ONLY = "hidden lg:block"
 
 const sourceLabels: Record<PackageSource, { label: string; className: string }> = {
   store: { label: "Store", className: "border-primary/30 text-primary" },
@@ -102,8 +105,8 @@ export function StoreAppsSection({ initialQuery = "" }: { initialQuery?: string 
           <div className={cn(STORE_GRID, "border-t bg-muted/30 px-5 py-2 text-xs font-medium text-muted-foreground")}>
             <span>이름</span>
             <span>게시자</span>
-            <span>설치일</span>
-            <span>출처</span>
+            <span className={STORE_WIDE_ONLY}>설치일</span>
+            <span className={STORE_WIDE_ONLY}>출처</span>
             <span />
           </div>
         )}
@@ -125,8 +128,8 @@ export function StoreAppsSection({ initialQuery = "" }: { initialQuery?: string 
                 <Skeleton className="h-4 w-40" />
               </div>
               <Skeleton className="h-4 w-24" />
-              <Skeleton className="h-4 w-20" />
-              <Skeleton className="h-4 w-14" />
+              <Skeleton className={cn(STORE_WIDE_ONLY, "h-4 w-20")} />
+              <Skeleton className={cn(STORE_WIDE_ONLY, "h-4 w-14")} />
             </div>
           ))}
         </div>
@@ -155,8 +158,10 @@ export function StoreAppsSection({ initialQuery = "" }: { initialQuery?: string 
                 <span className="truncate text-muted-foreground" title={app.publisher ?? undefined}>
                   {app.publisher ? <Highlight text={app.publisher} query={query} /> : "—"}
                 </span>
-                <span className="text-muted-foreground tabular-nums">{formatInstallDate(app.installDate)}</span>
-                <span>
+                <span className={cn(STORE_WIDE_ONLY, "text-muted-foreground tabular-nums")}>
+                  {formatInstallDate(app.installDate)}
+                </span>
+                <span className={STORE_WIDE_ONLY}>
                   <span className={cn("rounded-md border px-1.5 py-0.5 text-[10px] font-medium", source.className)}>
                     {source.label}
                   </span>
