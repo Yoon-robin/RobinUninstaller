@@ -54,6 +54,7 @@ export type UninstallOutcome =
   | { kind: "removedRebootRequired" }
   | { kind: "stillInstalled"; exitCode: number | null }
   | { kind: "elevationDenied" }
+  | { kind: "cannotRun"; reason: string; command: string | null }
   | { kind: "failed"; message: string }
 
 export const api = {

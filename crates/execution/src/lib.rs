@@ -43,6 +43,12 @@ pub enum UninstallOutcome {
     StillInstalled { exit_code: Option<u32> },
     /// UAC 창에서 거절함
     ElevationDenied,
+    /// 등록된 제거 명령을 쓸 수 없음 (명령이 없거나 안전하게 실행할 수 없는 형식).
+    /// 다시 시도해도 같으므로 화면은 Windows 설정이나 강제 제거로 안내한다.
+    CannotRun {
+        reason: String,
+        command: Option<String>,
+    },
     /// 실행할 수 없음
     Failed { message: String },
 }
@@ -96,9 +102,13 @@ pub fn run_uninstaller(
     let plan = match plan_for(app, |name| std::env::var(name).ok()) {
         Ok(plan) => plan,
         Err(e) => {
-            return UninstallOutcome::Failed {
-                message: e.to_string(),
+            let (reason, command) = match e {
+                plan::PlanError::Unsupported(cmd) => {
+                    ("지원하지 않는 제거 명령 형식이에요".to_string(), Some(cmd))
+                }
+                other => (other.to_string(), None),
             };
+            return UninstallOutcome::CannotRun { reason, command };
         }
     };
     let (file, args) = plan.file_and_args();

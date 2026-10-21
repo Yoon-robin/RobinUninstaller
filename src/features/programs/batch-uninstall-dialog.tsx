@@ -40,6 +40,8 @@ function outcomeLabel(outcome: UninstallOutcome): { text: string; tone: string }
       return { text: "아직 설치돼 있어요 (취소했거나 실패)", tone: "text-chart-3" }
     case "elevationDenied":
       return { text: "관리자 권한 요청이 거절됐어요", tone: "text-chart-3" }
+    case "cannotRun":
+      return { text: `제거 명령을 쓸 수 없어요: ${outcome.reason}`, tone: "text-chart-3" }
     case "failed":
       return { text: `실패: ${outcome.message}`, tone: "text-destructive" }
   }

@@ -1,10 +1,23 @@
 import { useEffect, useRef, useState } from "react"
 import { useQueryClient } from "@tanstack/react-query"
-import { Check, ChevronRight, CircleAlert, Loader2, RotateCcw, Sparkles, ShieldAlert, Trash2, X } from "lucide-react"
+import {
+  Check,
+  ChevronRight,
+  CircleAlert,
+  ExternalLink,
+  Loader2,
+  RotateCcw,
+  Sparkles,
+  ShieldAlert,
+  Trash2,
+  X,
+} from "lucide-react"
+import { toast } from "sonner"
 import { AnimatePresence, motion } from "motion/react"
 
 import {
   api,
+  storeApi,
   uninstallCommandPreview,
   type InstalledApplication,
   type UninstallEvent,
@@ -28,11 +41,14 @@ export function UninstallDialog({
   onClose,
   onRemoved,
   onFindLeftovers,
+  onForceUninstall,
 }: {
   app: InstalledApplication | null
   onClose: () => void
   onRemoved: (app: InstalledApplication) => void
   onFindLeftovers: (app: InstalledApplication) => void
+  /** 제거 명령을 쓸 수 없을 때 강제 제거로 이어 간다 (없으면 그 버튼을 감춘다) */
+  onForceUninstall?: (app: InstalledApplication) => void
 }) {
   // 닫히는 동안에도 내용이 남아 있게 마지막 대상을 그린다
   const app = useLastDefined(appProp)
@@ -110,6 +126,13 @@ export function UninstallDialog({
                         close()
                         onFindLeftovers(app)
                       }}
+                      onForceUninstall={
+                        onForceUninstall &&
+                        (() => {
+                          close()
+                          onForceUninstall(app)
+                        })
+                      }
                     />
                   )}
                 </motion.div>
@@ -293,11 +316,13 @@ function ResultBody({
   onClose,
   onRetry,
   onFindLeftovers,
+  onForceUninstall,
 }: {
   outcome: UninstallOutcome
   onClose: () => void
   onRetry: () => void
   onFindLeftovers: () => void
+  onForceUninstall?: () => void
 }) {
   const removed = outcome.kind === "removed" || outcome.kind === "removedRebootRequired"
   const view = describe(outcome)
@@ -315,6 +340,7 @@ function ResultBody({
         <p className="text-base font-semibold">{view.title}</p>
         <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{view.body}</p>
       </div>
+      {outcome.kind === "cannotRun" && outcome.command && <CommandPreview command={outcome.command} />}
       <div className="mt-2 flex gap-2">
         {view.retry && (
           <Button variant="outline" onClick={onRetry}>
@@ -322,7 +348,23 @@ function ResultBody({
             다시 시도
           </Button>
         )}
-        {removed ? (
+        {outcome.kind === "cannotRun" ? (
+          <>
+            <Button variant="outline" onClick={onClose}>
+              닫기
+            </Button>
+            <Button variant="outline" onClick={() => storeApi.openSettings().catch((e) => toast.error(String(e)))}>
+              <ExternalLink />
+              Windows 설정에서 제거
+            </Button>
+            {onForceUninstall && (
+              <Button onClick={onForceUninstall}>
+                <Sparkles />
+                강제 제거
+              </Button>
+            )}
+          </>
+        ) : removed ? (
           <>
             <Button variant="outline" onClick={onClose}>
               닫기
@@ -378,6 +420,14 @@ function describe(outcome: UninstallOutcome) {
         title: "관리자 권한이 거절됐어요",
         body: "이 프로그램을 지우려면 관리자 권한 요청을 허용해야 해요.",
         retry: true,
+      }
+    case "cannotRun":
+      return {
+        icon: CircleAlert,
+        toneClass: "bg-chart-3/15 text-chart-3",
+        title: "이 프로그램의 제거 명령은 쓸 수 없어요",
+        body: `${outcome.reason}. Windows 설정에서 제거하거나, RobinX가 백업한 뒤 등록 정보와 파일을 정리하는 강제 제거를 쓸 수 있어요.`,
+        retry: false,
       }
     case "failed":
       return {

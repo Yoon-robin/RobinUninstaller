@@ -549,6 +549,9 @@ export function ProgramsPage() {
         app={uninstallTarget}
         onClose={() => setUninstallTarget(null)}
         onFindLeftovers={(app) => setLeftoversTarget({ id: app.id, name: app.displayName, removed: true })}
+        onForceUninstall={(app) =>
+          setLeftoversTarget({ id: app.id, name: app.displayName, removed: false, force: true })
+        }
         onRemoved={markRemoved}
       />
       <LeftoversDialog target={leftoversTarget} onClose={() => setLeftoversTarget(null)} />
