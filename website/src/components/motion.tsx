@@ -17,6 +17,7 @@ export function Reveal({
   y = 16,
   as = "div",
   heading = false,
+  outerClassName,
 }: {
   children: ReactNode
   delay?: number
@@ -24,18 +25,41 @@ export function Reveal({
   y?: number
   as?: "div" | "li"
   heading?: boolean
+  /** `heading`일 때 바깥 판의 클래스 (그리드 칸 차지처럼 부모 배치에 쓰는 것) */
+  outerClassName?: string
 }) {
   const reduce = useReducedMotion()
   const Comp = as === "li" ? motion.li : motion.div
-  const hidden = heading ? { opacity: 0, y: 28, clipPath: "inset(0% 0% 100% 0%)" } : { opacity: 0, y }
-  const shown = heading ? { opacity: 1, y: 0, clipPath: "inset(0% 0% -20% 0%)" } : { opacity: 1, y: 0 }
+  if (heading) {
+    // 걷히는 판(clip-path)을 지켜보면 Chromium이 잘린 영역으로 화면 안인지 따져 좁은 화면에서 끝내 나타나지 않았다.
+    // 그래서 잘리지 않은 바깥 판이 화면에 들어왔는지 보고, 안쪽 판만 걷히게 한다.
+    return (
+      <motion.div
+        className={outerClassName}
+        initial={reduce ? false : "hidden"}
+        whileInView="shown"
+        viewport={{ once: true, margin: "-70px" }}
+      >
+        <motion.div
+          className={className}
+          variants={{
+            hidden: { opacity: 0, y: 28, clipPath: "inset(0% 0% 100% 0%)" },
+            shown: { opacity: 1, y: 0, clipPath: "inset(0% 0% -20% 0%)" },
+          }}
+          transition={{ duration: 0.9, delay, ease: easeOutQuint }}
+        >
+          {children}
+        </motion.div>
+      </motion.div>
+    )
+  }
   return (
     <Comp
       className={className}
-      initial={reduce ? false : hidden}
-      whileInView={shown}
+      initial={reduce ? false : { opacity: 0, y }}
+      whileInView={{ opacity: 1, y: 0 }}
       viewport={{ once: true, margin: "-70px" }}
-      transition={{ duration: heading ? 0.9 : 0.6, delay, ease: easeOutQuint }}
+      transition={{ duration: 0.6, delay, ease: easeOutQuint }}
     >
       {children}
     </Comp>
