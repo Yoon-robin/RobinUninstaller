@@ -53,7 +53,7 @@ export function Nav() {
         </a>
         <nav
           aria-label="페이지 메뉴"
-          className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border bg-white/[0.03] p-1 md:flex"
+          className="absolute left-1/2 hidden -translate-x-1/2 items-center gap-1 rounded-full border bg-white/[0.03] p-1 lg:flex"
         >
           {links.map((l) => (
             <a
@@ -88,7 +88,7 @@ export function Nav() {
             <button
               type="button"
               aria-label="메뉴 열기"
-              className="-mr-2 inline-flex size-11 items-center justify-center rounded-full transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none md:hidden"
+              className="-mr-2 inline-flex size-11 items-center justify-center rounded-full transition-colors hover:bg-muted focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none lg:hidden"
             >
               <Menu className="size-5" />
             </button>
