@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
+import { useCallback, memo, Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   ArchiveRestore,
@@ -37,6 +37,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { CleanResult, Cleaning, ConfirmClean } from "./clean-flow"
 import { formatBytes, formatDuration } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { liveStore } from "@/lib/live-store"
 import { useLastDefined } from "@/hooks/use-last-defined"
 import { EASE_OUT_QUINT } from "@/components/motion"
 import { IconTooltip } from "@/components/icon-tooltip"
@@ -373,14 +374,13 @@ function Results({
   )
   const selectedItems = report.items.filter((i) => selected.has(i.id))
   // 정리하는 동안의 진행 (지금 옮기는 항목, 복사한 파일 수)
-  const [cleanProgress, setCleanProgress] = useState<ScanProgress | null>(null)
 
   const runClean = async () => {
     setStage({ step: "cleaning" })
     setCleanError(null)
-    setCleanProgress(null)
+    cleanProgress.set(null)
     try {
-      const op = await recoveryApi.clean(appId, appName, [...selected], forceAppId, setCleanProgress)
+      const op = await recoveryApi.clean(appId, appName, [...selected], forceAppId, cleanProgress.set)
       setStage({ step: "done", op })
       onCleaned?.(appId)
     } catch (e) {
@@ -431,7 +431,7 @@ function Results({
         onConfirm={runClean}
       />
     ) : stage.step === "cleaning" ? (
-      <Cleaning label="백업하고 정리하는 중이에요" progress={cleanProgress} />
+      <LiveCleaning label="백업하고 정리하는 중이에요" />
     ) : stage.step === "done" ? (
       <CleanResult
         op={stage.op}
@@ -442,31 +442,38 @@ function Results({
       />
     ) : null
 
-  const exclude = (id: string) =>
-    settingsApi
-      .addExclusion(id)
-      .then((added) => {
-        setExcluded((s) => new Set(s).add(id))
-        setSelected((s) => {
-          const next = new Set(s)
-          next.delete(id)
-          return next
+  // 행은 memo라서 손잡이를 한 번만 만든다 (정리 진행·체크 하나마다 수백 줄이 다시 그려졌다)
+  const exclude = useCallback(
+    (id: string) =>
+      settingsApi
+        .addExclusion(id)
+        .then((added) => {
+          setExcluded((s) => new Set(s).add(id))
+          setSelected((s) => {
+            const next = new Set(s)
+            next.delete(id)
+            return next
+          })
+          // 설정 화면의 제외 목록이 바로 바뀌게
+          queryClient.invalidateQueries({ queryKey: ["settings"] })
+          toast.success(added ? "이번 정리와 다음 찾기에서 이 위치는 빼요" : "이미 제외 목록에 있어요", {
+            description: "되돌리려면 설정 › 남은 흔적 찾기에서 뺄 항목을 보세요",
+          })
         })
-        // 설정 화면의 제외 목록이 바로 바뀌게
-        queryClient.invalidateQueries({ queryKey: ["settings"] })
-        toast.success(added ? "이번 정리와 다음 찾기에서 이 위치는 빼요" : "이미 제외 목록에 있어요", {
-          description: "되돌리려면 설정 › 남은 흔적 찾기에서 뺄 항목을 보세요",
-        })
-      })
-      .catch(failed("제외 목록에 넣지 못했어요"))
+        .catch(failed("제외 목록에 넣지 못했어요")),
+    [queryClient],
+  )
 
-  const toggle = (id: string) =>
-    setSelected((s) => {
-      const next = new Set(s)
-      if (next.has(id)) next.delete(id)
-      else next.add(id)
-      return next
-    })
+  const toggle = useCallback(
+    (id: string) =>
+      setSelected((s) => {
+        const next = new Set(s)
+        if (next.has(id)) next.delete(id)
+        else next.add(id)
+        return next
+      }),
+    [],
+  )
   const selectable = report.items.filter((i) => !excluded.has(i.id))
   const allSelected = selectable.length > 0 && selectable.every((i) => selected.has(i.id))
 
@@ -684,13 +691,20 @@ function Group({
             index={offset + i}
             checked={selected.has(item.id)}
             excluded={excluded.has(item.id)}
-            onToggle={onToggle && (() => onToggle(item.id))}
-            onExclude={onExclude && (() => onExclude(item.id))}
+            onToggle={onToggle}
+            onExclude={onExclude}
           />
         ))}
       </ul>
     </section>
   )
+}
+
+/** 정리 진행 (0.15초마다 온다). 받는 것은 LiveCleaning 하나뿐이라 숨겨 둔 흔적 목록은 다시 그리지 않는다. */
+const cleanProgress = liveStore<ScanProgress | null>(null)
+
+function LiveCleaning({ label }: { label: string }) {
+  return <Cleaning label={label} progress={cleanProgress.use()} />
 }
 
 const kindIcons: Record<LeftoverKind, typeof Folder> = {
@@ -700,21 +714,23 @@ const kindIcons: Record<LeftoverKind, typeof Folder> = {
   registryValue: KeyRound,
 }
 
-function LeftoverRow({
+const LeftoverRow = memo(function LeftoverRow({
   item,
   index,
   checked,
   excluded,
-  onToggle,
-  onExclude,
+  onToggle: toggleId,
+  onExclude: excludeId,
 }: {
   item: Leftover
   index: number
   checked: boolean
   excluded: boolean
-  onToggle?: () => void
-  onExclude?: () => void
+  onToggle?: (id: string) => void
+  onExclude?: (id: string) => void
 }) {
+  const onToggle = toggleId && (() => toggleId(item.id))
+  const onExclude = excludeId && (() => excludeId(item.id))
   const Icon = kindIcons[item.kind]
   const isFs = item.kind === "folder" || item.kind === "file"
   const fullPath = item.valueName ? `${item.location} › ${item.valueName}` : item.location
@@ -845,7 +861,7 @@ function LeftoverRow({
       </div>
     </li>
   )
-}
+})
 
 function Clean({ protectedSkipped, excludedByUser }: { protectedSkipped: number; excludedByUser: number }) {
   return (

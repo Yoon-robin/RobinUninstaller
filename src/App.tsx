@@ -57,9 +57,20 @@ function useToastsOutOfTheWay() {
         document.querySelector('[data-slot="dialog-content"], [data-slot="sheet-content"], [data-pick-bar]') != null,
       )
     check()
-    const observer = new MutationObserver(check)
+    // 스크롤·진행 소식마다 DOM이 바뀌므로, 한 프레임에 여러 번 와도 다음 프레임에 한 번만 찾는다
+    let frame = 0
+    const observer = new MutationObserver(() => {
+      if (frame) return
+      frame = requestAnimationFrame(() => {
+        frame = 0
+        check()
+      })
+    })
     observer.observe(document.body, { childList: true, subtree: true })
-    return () => observer.disconnect()
+    return () => {
+      observer.disconnect()
+      cancelAnimationFrame(frame)
+    }
   }, [])
   return covered
 }

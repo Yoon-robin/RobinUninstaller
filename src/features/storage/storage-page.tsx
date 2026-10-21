@@ -71,22 +71,27 @@ const runningNames = (exes: string[]) => [...new Set(exes.map((e) => APP_NAMES[e
  * 찾는 중에 찾은 항목과 진행 상황. 화면 밖에 둬서 찾는 도중 다른 화면에 다녀와도 이어서 보인다
  * (찾기 자체는 쿼리 캐시에서 계속 돈다).
  */
-const scanLive = liveStore<{ partial: StorageCategory[]; progress: ScanProgress | null }>({
-  partial: [],
-  progress: null,
-})
+const scanLive = liveStore<StorageCategory[]>([])
+/** 진행은 따로 둔다: 0.15초마다 오므로 페이지 전체가 아니라 진행 표시만 다시 그리게 */
+const scanProgress = liveStore<ScanProgress | null>(null)
+
+/** 찾는 중 진행 표시 (진행 소식은 이 컴포넌트만 받는다) */
+function LiveScanProgress(props: Omit<React.ComponentProps<typeof ScanProgressView>, "progress">) {
+  return <ScanProgressView {...props} progress={scanProgress.use()} />
+}
 
 export function StoragePage() {
   const queryClient = useQueryClient()
   // 처음 찾을 때는 다 셀 때까지 기다리지 않고, 찾은 항목부터 보여 준다. 지금 재는 항목과 센 파일 수도 함께.
-  const { partial, progress } = scanLive.use()
+  const partial = scanLive.use()
   const scan = useQuery({
     queryKey: SCAN_KEY,
     queryFn: () => {
-      scanLive.set({ partial: [], progress: null })
+      scanLive.set([])
+      scanProgress.set(null)
       return storageApi.scan(
-        (item) => scanLive.set((s) => ({ ...s, partial: [...s.partial, item] })),
-        (progress) => scanLive.set((s) => ({ ...s, progress })),
+        (item) => scanLive.set((s) => [...s, item]),
+        (progress) => scanProgress.set(progress),
       )
     },
   })
@@ -182,10 +187,10 @@ export function StoragePage() {
               retrying={scan.isFetching}
             />
           ) : finding && items.length === 0 ? (
-            <ScanProgressView
+            <LiveScanProgress
               className="px-5 py-6"
               label="정리할 수 있는 항목을 찾는 중이에요"
-              progress={progress}
+
               showBytes={false}
             />
           ) : items.length === 0 ? (
@@ -204,9 +209,9 @@ export function StoragePage() {
               {/* 찾은 항목이 계속 늘어나므로 진행 표시는 목록 위에 둔다 (아래에 두면 화면 밖으로 밀려난다) */}
               {scan.isFetching && (
                 <li className="bg-muted/20 px-5 py-4">
-                  <ScanProgressView
+                  <LiveScanProgress
                     label={finding ? "나머지 항목을 찾는 중이에요" : "다시 찾는 중이에요"}
-                    progress={progress}
+
                     showBytes={false}
                   />
                 </li>
