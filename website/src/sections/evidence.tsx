@@ -94,6 +94,19 @@ const rows: {
     reason: "이름 일치",
     size: "1.2 GB",
   },
+  {
+    group: "review",
+    icon: ListTree,
+    path: String.raw`HKCU\SOFTWARE\Forge Interactive\Pixel Forge 3D`,
+    reason: "게시자 › 제품 이름 일치",
+  },
+  {
+    group: "review",
+    icon: Folder,
+    path: String.raw`C:\Users\me\Documents\Pixel Forge Projects`,
+    reason: "이름 일부 일치 · 직접 만든 문서 14개 포함",
+    size: "92 MB",
+  },
 ]
 
 /** 앱의 체크 상자. 확실한 항목은 화면에 들어오면 차례로 체크가 그어진다 */
@@ -166,7 +179,7 @@ export function Evidence() {
             >
               <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3 text-[12px] sm:px-5">
                 <span className="rounded-full bg-sure/12 px-2 py-0.5 font-medium text-sure">연결 정보 일치 3</span>
-                <span className="rounded-full bg-review/12 px-2 py-0.5 font-medium text-review">직접 확인 필요 2</span>
+                <span className="rounded-full bg-review/12 px-2 py-0.5 font-medium text-review">직접 확인 필요 4</span>
                 <span
                   className={cn(
                     "ml-auto inline-flex items-center gap-1 rounded-full px-2 py-0.5 transition-colors duration-300",

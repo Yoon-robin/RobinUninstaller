@@ -27,6 +27,11 @@ const rows: { task: string; level: Level; note: string }[] = [
     note: "백업해 둔 등록 정보와 파일만 돌아와요. 프로그램이 다시 설치되는 건 아니에요.",
   },
   {
+    task: "파일 없는 시작 항목 정리",
+    level: "백업이 있는 동안",
+    note: "백업해 둔 등록 값과 바로 가기가 돌아와요.",
+  },
+  {
     task: "프로그램 제거",
     level: "안 됨",
     note: "원래 언인스톨러가 지운 것은 RobinX가 되돌릴 수 없어요. 다시 설치해야 해요.",
@@ -51,7 +56,7 @@ export function Restore() {
         <Reveal heading className="grid gap-5 lg:grid-cols-12 lg:items-end lg:gap-8">
           <h2 className="section-title lg:col-span-7">되돌릴 수 있는 것, 없는 것</h2>
           <p className="max-w-[34ch] text-lead leading-snug text-muted-foreground lg:col-span-5">
-            백업은 직접 지우거나, 보관 기간(처음 설정은 30일)이 지나면 사라져요. 그 뒤로는 되돌릴 수 없어요.
+            백업은 직접 지우거나, 보관 기간(처음 설정은 30일)이 지난 뒤 앱을 켤 때 지워져요. 그 뒤로는 되돌릴 수 없어요.
           </p>
         </Reveal>
 

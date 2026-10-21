@@ -24,7 +24,7 @@ type Tile = {
 const tiles: Tile[] = [
   {
     name: "프로그램 제거",
-    text: "설치된 프로그램과 크기를 보고, 원래 언인스톨러로 지워요. 끝나면 바로 남은 흔적을 찾아 줘요.",
+    text: "설치된 프로그램과 크기를 보고, 원래 언인스톨러로 지워요. 끝나면 바로 남은 흔적을 찾아볼 수 있어요.",
     span: "lg:col-span-4",
     shot: "programs",
     alt: "설치된 프로그램 화면: 프로그램 수, 전체 용량, 언인스톨러가 없는 프로그램 수와 목록",
@@ -34,7 +34,7 @@ const tiles: Tile[] = [
   },
   {
     name: "복구 기록",
-    text: "정리할 때마다 백업이 남아요. 보관하는 동안 원래 자리로 되돌릴 수 있어요.",
+    text: "남은 흔적을 정리할 때마다 백업이 남아요. 보관하는 동안 원래 자리로 되돌릴 수 있어요.",
     span: "lg:col-span-2",
     shot: "restore",
     alt: "복구 기록 화면: 정리한 작업마다 되돌리기 단추가 있어요",
@@ -50,7 +50,7 @@ const tiles: Tile[] = [
   },
   {
     name: "시작프로그램",
-    text: "PC를 켤 때 같이 실행되는 프로그램을 끄고 켜요. 꺼 두기만 하고 지우지는 않아요.",
+    text: "PC를 켤 때 같이 실행되는 프로그램을 끄고 켜요. 끄고 켜는 건 설정만 바꾸고, 실행 파일이 사라진 항목은 백업한 뒤 정리할 수 있어요.",
     span: "lg:col-span-3",
     shot: "startup",
     alt: "시작프로그램 화면",
@@ -98,9 +98,9 @@ export function Features() {
     <section id="features" className="py-20 sm:py-28 lg:py-32">
       <div className="frame">
         <Reveal heading className="mx-auto max-w-3xl text-center">
-          <h2 className="section-title">제거 말고도 할 수 있는 일</h2>
+          <h2 className="section-title">남은 흔적 말고도 할 수 있는 일</h2>
           <p className="mx-auto mt-5 max-w-[34ch] text-lead leading-snug text-balance text-muted-foreground">
-            저장공간 정리, 시작프로그램, 백업 관리도 같이 들어 있어요.
+            프로그램 제거와 저장공간 정리, 시작프로그램, 백업 관리도 들어 있어요.
           </p>
         </Reveal>
 
