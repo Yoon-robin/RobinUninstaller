@@ -33,12 +33,9 @@ function hideBoot() {
     window.addEventListener("robin:boot-opened", hideBoot, { once: true });
     return;
   }
-  requestAnimationFrame(() => {
-    const boot = document.getElementById("boot");
-    if (!boot) return;
-    boot.style.opacity = "0";
-    setTimeout(() => boot.remove(), 300);
-  });
+  // 아래의 StartupSplash가 같은 색·자리라서 흐리게 지우지 않고 바로 뗀다.
+  // 흐리게 지우는 동안에는 두 화면의 진행 막대가 어긋난 채 겹쳐 보였다.
+  requestAnimationFrame(() => document.getElementById("boot")?.remove());
 }
 
 // 배포판에서는 웹 브라우저 기본 메뉴(뒤로, 새로고침, 검사)를 막는다. 입력칸은 복사·붙여넣기를 위해 둔다.

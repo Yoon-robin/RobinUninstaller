@@ -7,8 +7,8 @@ import { Logo } from "@/components/logo"
 import { WindowControls } from "@/components/window-controls"
 import { EASE_OUT_QUINT } from "@/components/motion"
 
-/** 오래 걸릴 때 보여 줄 안내 (몇 초마다 바뀐다) */
-const STEPS = ["설치된 프로그램을 읽는 중이에요", "아이콘과 크기 정보를 모으는 중이에요", "거의 다 됐어요"]
+/** 실제로 기다리는 것(설치 목록 읽기)만 말한다. 오래 걸리면 한 번 덧붙인다. */
+const STEPS = ["설치된 프로그램을 읽는 중이에요", "프로그램이 많으면 조금 더 걸려요"]
 
 /** 이보다 오래 걸리면 시작 화면을 걷고 목록 화면(스켈레톤)으로 넘어간다 */
 const MAX_MS = 8000
@@ -34,16 +34,20 @@ export function StartupSplash({ onDone }: { onDone?: () => void }) {
 
   useEffect(() => {
     const t = setTimeout(() => setTimedOut(true), MAX_MS)
-    const s = setInterval(() => setStep((i) => Math.min(i + 1, STEPS.length - 1)), 2200)
+    const s = setTimeout(() => setStep(1), 3000)
     return () => {
       clearTimeout(t)
-      clearInterval(s)
+      clearTimeout(s)
     }
   }, [])
 
-  const visible = (apps.isLoading || !minElapsed) && !timedOut
+  // 한 번 걷히면 다시 덮지 않는다 (목록 읽기가 실패해 "다시 시도"를 누르면 isLoading이 다시 true가 된다)
+  const [finished, setFinished] = useState(false)
+  const visible = !finished && (apps.isLoading || !minElapsed) && !timedOut
   useEffect(() => {
-    if (!visible) onDone?.()
+    if (visible) return
+    setFinished(true)
+    onDone?.()
   }, [visible, onDone])
 
   return (
