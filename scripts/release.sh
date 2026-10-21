@@ -3,7 +3,7 @@
 # 설치 파일은 RobinX가 직접 만든 것이다: robinx.exe를 setup 이름으로 복사하면 스스로 설치한다 (docs/INSTALLER.md).
 #
 #   bash scripts/release.sh            # 빌드 + 서명 + latest.json (올리지 않음)
-#   bash scripts/release.sh --publish  # 위 작업 뒤 GitHub Release v<버전>을 만들어 올린다
+#   bash scripts/release.sh --publish  # 위 작업 뒤 GitHub Release v<버전>을 만들어 올리고 사이트도 다시 배포한다
 #
 # 필요한 것:
 # - 비밀 키: %USERPROFILE%\.tauri\robinx-updater.key (pnpm tauri signer generate로 만든 것. 저장소에 넣지 않는다)
@@ -119,6 +119,8 @@ if (p.signature.trim() !== fs.readFileSync(sigPath, "utf8").trim()) throw new Er
 ' "$CHECK_DIR/latest.json" "$SIG" "$VERSION"
   rm -rf "$CHECK_DIR"
   echo "확인함: 올라간 설치 파일·latest.json·서명이 로컬과 같아요"
+  # 사이트의 받기 단추·버전·SHA-256은 배포할 때 최신 릴리스에서 읽으므로, 사이트도 다시 배포한다
+  bash website/scripts/deploy.sh || echo "사이트 배포에 실패했어요. 나중에 bash website/scripts/deploy.sh 로 다시 올리세요" >&2
 else
   echo "아직 올리지 않았어요. 올리려면: bash scripts/release.sh --publish"
 fi

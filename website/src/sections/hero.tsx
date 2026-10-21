@@ -52,6 +52,8 @@ function Words({
  */
 export function Hero() {
   const reduce = useReducedMotion()
+  // 공개하고 14일 안에만 "새 버전"으로 부른다
+  const fresh = Date.now() - RELEASE.publishedAt.getTime() < 14 * 24 * 60 * 60 * 1000
   const stage = useRef<HTMLElement>(null)
   const { scrollYProgress } = useScroll({ target: stage, offset: ["start start", "end start"] })
   const tilt = useTransform(scrollYProgress, [0, 0.45], [reduce ? 0 : 14, 0])
@@ -71,9 +73,14 @@ export function Hero() {
           rel="noreferrer"
           className="group inline-flex items-center gap-2 rounded-full border bg-white/[0.04] py-1 pr-3 pl-1 text-fine text-foreground/85 transition-colors hover:bg-white/[0.07]"
         >
-          <span className="rounded-full bg-primary px-2 py-0.5 font-semibold text-primary-foreground">새 버전</span>
+          {/* 공개하고 2주가 지나면 "새 버전"이라 부르지 않는다 */}
+          {fresh ? (
+            <span className="rounded-full bg-primary px-2 py-0.5 font-semibold text-primary-foreground">새 버전</span>
+          ) : (
+            <span className="pl-2">최신</span>
+          )}
           <span>v{RELEASE.version} 공개 · 릴리스 노트</span>
-          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
+          <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-x-0" />
         </m.a>
         <h1 className="display mt-7">
           <Words text="남은 흔적" start={0.08} reduce={reduce} className="text-stage" />
@@ -95,7 +102,7 @@ export function Hero() {
             className="group inline-flex h-12 items-center gap-1.5 rounded-full border bg-white/[0.03] px-6 text-body font-medium transition-colors hover:bg-white/[0.07] focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
           >
             정리하는 모습 보기
-            <ArrowDown className="size-4 transition-transform group-hover:translate-y-0.5" />
+            <ArrowDown className="size-4 transition-transform group-hover:translate-y-0.5 motion-reduce:transition-none motion-reduce:group-hover:translate-y-0" />
           </a>
         </m.div>
         <m.div {...rise(0.62, reduce)}>
@@ -112,10 +119,10 @@ export function Hero() {
       >
         <m.div
           style={{ rotateX: tilt, scale, transformOrigin: "50% 0%" }}
-          className="window mx-auto max-w-[68rem] overflow-hidden rounded-[1.25rem] p-2 sm:rounded-[1.6rem] sm:p-3"
+          className="window mx-auto max-w-[68rem] overflow-hidden p-2 sm:p-3"
         >
           {/* 좁은 화면에서는 창 전체가 너무 작아 글자가 안 보이므로 "남은 흔적" 창 부분만 잘라 크게 보여 준다 */}
-          <div className="overflow-hidden rounded-[0.8rem] max-sm:aspect-[766/560] sm:rounded-[1.05rem]">
+          <div className="overflow-hidden rounded-[0.75rem] max-sm:aspect-[766/560]">
             <img
               src={shot("leftovers")}
               srcSet={shotSrcSet("leftovers")}

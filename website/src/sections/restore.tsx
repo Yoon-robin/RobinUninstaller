@@ -55,7 +55,7 @@ export function Restore() {
       <div className="frame">
         <Reveal heading className="grid gap-5 lg:grid-cols-12 lg:items-end lg:gap-8">
           <h2 className="section-title lg:col-span-7">되돌릴 수 있는 것, 없는 것</h2>
-          <p className="max-w-[34ch] text-lead leading-snug text-muted-foreground lg:col-span-5">
+          <p className="max-w-[34ch] text-lead leading-snug text-pretty text-muted-foreground lg:col-span-5">
             백업은 직접 지우거나, 보관 기간(처음 설정은 30일)이 지난 뒤 앱을 켤 때 지워져요. 그 뒤로는 되돌릴 수 없어요.
           </p>
         </Reveal>

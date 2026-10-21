@@ -116,7 +116,7 @@ export function Walkthrough() {
               onClick={toggle}
               aria-label="RobinX 시연: 남은 흔적 찾기, 찾은 항목 확인, 백업하고 정리, 정리 결과 화면"
               className={
-                "window w-full cursor-pointer rounded-[1.5rem] object-contain p-2 sm:p-3 " +
+                "window w-full cursor-pointer object-contain p-2 sm:p-3 " +
                 (narrow ? "aspect-[784/720]" : "aspect-[16/10]")
               }
             />

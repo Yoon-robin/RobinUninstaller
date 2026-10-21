@@ -1,0 +1,14 @@
+{
+  "name": "RobinX",
+  "short_name": "RobinX",
+  "description": "지운 프로그램의 남은 흔적까지 정리하는 무료 Windows 앱",
+  "lang": "ko",
+  "start_url": "./",
+  "display": "browser",
+  "background_color": "#060a13",
+  "theme_color": "#060a13",
+  "icons": [
+    { "src": "logo.png", "sizes": "256x256", "type": "image/png" },
+    { "src": "logo.svg", "sizes": "any", "type": "image/svg+xml" }
+  ]
+}

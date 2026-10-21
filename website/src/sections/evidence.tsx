@@ -209,10 +209,10 @@ export function Evidence() {
             <figure
               ref={panel}
               data-ui
-              className="window overflow-hidden rounded-[1.25rem]"
+              className="window overflow-hidden"
               aria-label="남은 흔적 창 예시: 연결 정보가 일치하는 3개는 미리 골라 두고, 직접 확인이 필요한 4개는 고르지 않은 상태"
             >
-              <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3 text-[12px] sm:px-5">
+              <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3 text-fine sm:px-5">
                 <span className="rounded-full bg-sure/12 px-2 py-0.5 font-medium text-sure">연결 정보 일치 3</span>
                 <span className="rounded-full bg-review/12 px-2 py-0.5 font-medium text-review">직접 확인 필요 4</span>
                 <span
@@ -240,7 +240,7 @@ export function Evidence() {
                       <span className="sr-only">{r.group === "sure" ? "미리 골라 둠:" : "직접 확인 필요:"}</span>
                       <r.icon className="mt-px size-4 shrink-0 text-muted-foreground" aria-hidden />
                       <div className="min-w-0 flex-1">
-                        <p className="text-[12px] leading-5 [overflow-wrap:anywhere]">
+                        <p className="text-fine leading-5 [overflow-wrap:anywhere]">
                           <code>
                             {/* 좁은 화면에서 낱말 중간이 아니라 폴더 구분자 뒤에서 줄이 바뀌게 */}
                             {r.path.split("\\").map((part, j) => (
@@ -256,23 +256,23 @@ export function Evidence() {
                             ))}
                           </code>
                           {r.value && (
-                            <span className="ml-1.5 rounded bg-white/[0.08] px-1.5 py-0.5 font-sans text-[11px] whitespace-nowrap">
+                            <span className="ml-1.5 rounded bg-white/[0.08] px-1.5 py-0.5 font-sans text-fine whitespace-nowrap">
                               값: {r.value}
                             </span>
                           )}
                         </p>
-                        <span className="mt-1.5 inline-flex rounded-md border px-1.5 py-0.5 text-[11px] text-muted-foreground">
+                        <span className="mt-1.5 inline-flex rounded-md border px-1.5 py-0.5 text-fine text-muted-foreground">
                           {r.reason}
                         </span>
                       </div>
                       {r.size && (
-                        <span className="shrink-0 text-[12px] text-muted-foreground tabular-nums">{r.size}</span>
+                        <span className="shrink-0 text-fine text-muted-foreground tabular-nums">{r.size}</span>
                       )}
                     </m.li>
                   )
                 })}
               </ul>
-              <div className="flex items-center gap-3 border-t px-4 py-3 text-[12px] text-muted-foreground sm:px-5">
+              <div className="flex items-center gap-3 border-t px-4 py-3 text-fine text-muted-foreground sm:px-5">
                 3개 선택 · 204 MB
                 <span className="ml-auto rounded-md bg-destructive/15 px-2.5 py-1 font-medium text-destructive">
                   선택 항목 정리

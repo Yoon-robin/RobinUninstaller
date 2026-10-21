@@ -75,7 +75,7 @@ function Shot({ t }: { t: Tile }) {
     <div
       className={cn(
         // 그림은 타일 오른쪽 끝에서 잘리므로, 문장이 칼로 자른 듯 끊기지 않게 오른쪽을 흐리게 지운다
-        "mt-auto ml-7 overflow-hidden rounded-tl-[1rem] border-t border-l bg-card [mask-image:linear-gradient(to_right,#000_calc(100%-5rem),transparent)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/spot:-translate-y-1 sm:ml-8",
+        "mt-auto ml-7 overflow-hidden rounded-tl-[1rem] border-t border-l bg-card [mask-image:linear-gradient(to_right,#000_calc(100%-5rem),transparent)] transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/spot:-translate-y-1 motion-reduce:transition-none motion-reduce:group-hover/spot:translate-y-0 sm:ml-8",
         t.frame ?? "h-56 sm:h-72",
       )}
     >

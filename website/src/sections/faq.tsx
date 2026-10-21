@@ -57,7 +57,7 @@ function List({ items }: { items: Faq[] }) {
       {items.map((f) => (
         <div key={f.q}>
           <dt className="text-lead leading-snug font-semibold tracking-tight">{f.q}</dt>
-          <dd className="mt-3 text-body leading-relaxed text-muted-foreground">{f.a}</dd>
+          <dd className="mt-3 text-body leading-relaxed text-pretty text-muted-foreground">{f.a}</dd>
         </div>
       ))}
     </dl>

@@ -28,7 +28,13 @@ const blocks = [
   },
 ]
 
-const released = RELEASE.publishedAt.toLocaleDateString("ko-KR", { year: "numeric", month: "long", day: "numeric" })
+const released = RELEASE.publishedAt.toLocaleDateString("ko-KR", {
+  year: "numeric",
+  month: "long",
+  day: "numeric",
+  // 방문자 시간대가 아니라 공개한 곳(한국) 날짜로 적는다
+  timeZone: "Asia/Seoul",
+})
 
 export function Status() {
   return (
@@ -43,7 +49,7 @@ export function Status() {
           </Reveal>
 
           {/* 최신 릴리스: 흰 판 하나에 버전·날짜·확인 방법 */}
-          <Reveal delay={0.06} className="window rounded-[1.75rem] p-7 sm:p-8 lg:col-span-7">
+          <Reveal delay={0.06} className="window p-7 sm:p-8 lg:col-span-7">
             <p className="text-section leading-none font-bold tracking-tight tabular-nums">v{RELEASE.version}</p>
             <p className="mt-3 text-body text-muted-foreground">
               최신 미리보기 · {released} 공개 · {RELEASE.file} · {RELEASE.sizeMb} MB
@@ -78,7 +84,7 @@ export function Status() {
           {blocks.map((g, i) => (
             <Reveal key={g.title} delay={0.04 * i}>
               <h3 className="text-lead font-semibold">{g.title}</h3>
-              <ul className="mt-4 flex list-disc flex-col gap-2.5 pl-5 text-body marker:text-muted-foreground">
+              <ul className="mt-4 flex list-disc flex-col gap-2.5 pl-5 text-body text-pretty marker:text-muted-foreground">
                 {g.items.map((t) => (
                   <li key={t}>{t}</li>
                 ))}
