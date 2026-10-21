@@ -71,28 +71,49 @@ function Choice<T extends string | number | null>({
   onChange,
   disabled,
   label,
+  focusOnly,
 }: {
   options: { value: T; label: string; icon?: typeof Sun }[]
   value: T
   onChange: (value: T) => void
   disabled?: boolean
   label: string
+  /** 방향키는 포커스만 옮기고 Space·Enter로 고른다 (고르는 순간 저장되거나 확인 창이 뜨는 묶음) */
+  focusOnly?: boolean
 }) {
   return (
     <div
       role="radiogroup"
       aria-label={label}
       className="inline-flex flex-wrap gap-1 rounded-xl border bg-muted/40 p-1"
-      onKeyDown={(e) =>
-        !disabled &&
-        rovingKeyDown(
-          e,
-          options.map((o) => o.value),
-          value,
-          () => false,
-          onChange,
-        )
-      }
+      onKeyDown={(e) => {
+        if (disabled) return
+        if (!focusOnly) {
+          rovingKeyDown(
+            e,
+            options.map((o) => o.value),
+            value,
+            () => false,
+            onChange,
+          )
+          return
+        }
+        const buttons = [...e.currentTarget.querySelectorAll<HTMLButtonElement>("[role=radio]")]
+        const at = buttons.indexOf(document.activeElement as HTMLButtonElement)
+        const next =
+          e.key === "ArrowRight" || e.key === "ArrowDown"
+            ? (at + 1) % buttons.length
+            : e.key === "ArrowLeft" || e.key === "ArrowUp"
+              ? (at - 1 + buttons.length) % buttons.length
+              : e.key === "Home"
+                ? 0
+                : e.key === "End"
+                  ? buttons.length - 1
+                  : null
+        if (next == null) return
+        e.preventDefault()
+        buttons[next]?.focus()
+      }}
     >
       {options.map((o) => {
         const active = o.value === value
@@ -271,8 +292,16 @@ export function SettingsPage() {
               <Choice
                 label="백업 보관 기간"
                 value={retention}
-                disabled={busy}
-                onChange={(days) => (days == null ? applyRetention(null) : setPendingRetention(days))}
+                // 저장하는 동안 버튼을 끄면 키보드 포커스가 사라지므로, 끄지 않고 그동안 누른 것만 무시한다
+                focusOnly
+                // 더 오래 보관하는 쪽(계속 보관 포함)은 지우는 것이 줄어드니 바로 저장하고, 줄일 때만 확인한다
+                onChange={(days) =>
+                  busy
+                    ? undefined
+                    : days == null || (retention != null && days > retention)
+                      ? applyRetention(days)
+                      : setPendingRetention(days)
+                }
                 options={retentionOptions}
               />
             )}
