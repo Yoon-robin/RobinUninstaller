@@ -19,6 +19,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
 import {
+  countedItems,
   isRestorable,
   recoveryApi,
   settingsApi,
@@ -268,7 +269,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
   // 되돌리는 동안: 지금 항목, 복사한 파일 수 (관리자 권한 작업자는 따로 도는 프로세스라 진행을 알 수 없다)
   const [progress, setProgress] = useState<ScanProgress | null>(null)
 
-  const kept = op.items.filter((i) => isRestorable(i.status)).length
+  const kept = countedItems(op).filter((i) => isRestorable(i.status)).length
   const restored = op.items.filter((i) => i.status === "restored").length
   const conflicted = op.items.filter((i) => i.status === "conflicted").length
   const keptBytes = op.items.filter((i) => isRestorable(i.status)).reduce((s, i) => s + (i.sizeBytes ?? 0), 0)
@@ -452,7 +453,7 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
   useEffect(() => {
     if (op) setShown(op)
   }, [op])
-  const kept = shown ? shown.items.filter((i) => isRestorable(i.status)).length : 0
+  const kept = shown ? countedItems(shown).filter((i) => isRestorable(i.status)).length : 0
   const conflicted = shown ? shown.items.filter((i) => i.status === "conflicted").length : 0
 
   const confirm = async () => {

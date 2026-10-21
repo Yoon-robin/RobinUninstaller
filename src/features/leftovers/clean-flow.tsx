@@ -5,6 +5,7 @@ import { motion } from "motion/react"
 
 import {
   countStatus,
+  countedItems,
   navigate,
   recoveryApi,
   settingsApi,
@@ -140,12 +141,13 @@ export function CleanResult({
   useBusy(elevating)
   const [error, setError] = useState<string | null>(null)
 
+  const counted = countedItems(current)
   const removed = countStatus(current, "removed") + countStatus(current, "alreadyGone")
   // 관리자 권한이 없어 일부만 정리된 항목도 관리자 권한으로 마저 정리할 수 있다
-  const needsAdmin =
-    countStatus(current, "needsAdmin") + current.items.filter((i) => i.status === "partial" && i.needsAdmin).length
-  const problems = current.items.filter(
-    (i) => i.status === "failed" || i.status === "blocked" || i.status === "partial",
+  const adminItems = counted.filter((i) => i.status === "needsAdmin" || (i.status === "partial" && i.needsAdmin))
+  const needsAdmin = adminItems.length
+  const problems = counted.filter(
+    (i) => i.status === "failed" || i.status === "blocked" || (i.status === "partial" && !i.needsAdmin),
   )
   // 정리한 파일은 지워진 게 아니라 백업 폴더에 있다. 공간은 백업을 지워야 돌아온다.
   const held = current.items.filter((i) => i.status === "removed").reduce((s, i) => s + (i.sizeBytes ?? 0), 0)
@@ -179,74 +181,97 @@ export function CleanResult({
 
   return (
     <motion.div {...panel} className="flex min-h-0 flex-1 flex-col">
-      {/* 정리하지 못한 항목이 없으면 확인·진행 화면처럼 세로 가운데에, 있으면 위에 두고 아래에 목록을 보인다 */}
-      <div
-        className={cn(
-          "flex flex-col items-center gap-3 px-6 text-center",
-          problems.length > 0 ? "border-b pt-8 pb-6" : "flex-1 justify-center py-8",
-        )}
-      >
-        <motion.div
-          initial={{ scale: 0.8, opacity: 0 }}
-          animate={{ scale: 1, opacity: 1 }}
-          transition={{ type: "spring", duration: 0.45, bounce: 0.35 }}
+      {/* 위쪽 요약과 정리하지 못한 목록을 한 스크롤 안에 둔다 (900×600에서도 목록이 보이게) */}
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto">
+        {/* 정리하지 못한 항목이 없으면 확인·진행 화면처럼 세로 가운데에, 있으면 위에 두고 아래에 목록을 보인다 */}
+        <div
           className={cn(
-            "flex size-14 items-center justify-center rounded-full",
-            needsAdmin || problems.length ? "bg-chart-3/15 text-warning" : "bg-primary/15 text-primary",
+            "flex flex-col items-center gap-3 px-6 text-center",
+            problems.length > 0 ? "border-b pt-8 pb-6" : "flex-1 justify-center py-8",
           )}
         >
-          {needsAdmin || problems.length ? <TriangleAlert className="size-7" /> : <DrawnCheck className="size-7" />}
-        </motion.div>
-        <div>
-          <p className="text-base font-semibold">{removed}개를 정리했어요</p>
-          <p className="mt-1 text-sm text-muted-foreground">
-            백업 폴더로 옮겼어요. 백업을 보관하는 동안 복구 기록에서 되돌릴 수 있어요.
-          </p>
-          {held > 0 && (
-            <p className="mt-2 max-w-md text-sm text-muted-foreground">
-              <span className="font-medium text-foreground">{formatBytes(held)}</span>는 백업으로 보관 중이라 PC의 남은
-              공간은 아직 그대로예요.{" "}
-              {days == null
-                ? "복구 기록에서 백업을 지우면 공간이 돌아와요."
-                : `${days}일 뒤 백업이 자동으로 지워지거나, 복구 기록에서 먼저 지우면 공간이 돌아와요.`}
+          <motion.div
+            initial={{ scale: 0.8, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            transition={{ type: "spring", duration: 0.45, bounce: 0.35 }}
+            className={cn(
+              "flex size-14 items-center justify-center rounded-full",
+              needsAdmin || problems.length ? "bg-chart-3/15 text-warning" : "bg-primary/15 text-primary",
+            )}
+          >
+            {needsAdmin || problems.length ? <TriangleAlert className="size-7" /> : <DrawnCheck className="size-7" />}
+          </motion.div>
+          <div>
+            <p className="text-base font-semibold">
+              {removed > 0
+                ? `${removed}개를 정리했어요`
+                : needsAdmin > 0 && problems.length === 0
+                  ? "관리자 권한이 있어야 정리할 수 있어요"
+                  : "정리하지 못했어요"}
             </p>
+            {removed > 0 && (
+              <p className="mt-1 text-sm text-muted-foreground">
+                백업 폴더로 옮겼어요. 백업을 보관하는 동안 복구 기록에서 되돌릴 수 있어요.
+              </p>
+            )}
+            {/* 1 MB도 안 되면 공간 이야기는 하지 않는다 (시작 항목 정리처럼 거의 0인 경우) */}
+            {held >= 1024 * 1024 && (
+              <p className="mt-2 max-w-md text-sm text-muted-foreground">
+                <span className="font-medium text-foreground">{formatBytes(held)}</span>는 백업으로 보관 중이라 PC의
+                남은 공간은 아직 그대로예요.{" "}
+                {days == null
+                  ? "복구 기록에서 백업을 지우면 공간이 돌아와요."
+                  : `${days}일 뒤 백업이 자동으로 지워지거나, 복구 기록에서 먼저 지우면 공간이 돌아와요.`}
+              </p>
+            )}
+          </div>
+          {needsAdmin > 0 && (
+            <div className="mt-1 w-full max-w-lg rounded-xl border bg-muted/30 px-4 py-3 text-left text-sm">
+              <div className="flex items-center gap-3">
+                <ShieldAlert className="size-5 shrink-0 text-warning" />
+                <span className="flex-1">
+                  {needsAdmin}개는 관리자 권한이 있어야 지울 수 있어요.
+                  {error && <span className="block text-xs text-destructive">{error}</span>}
+                </span>
+                <Button size="sm" onClick={elevate} disabled={elevating}>
+                  {elevating ? <Loader2 className="animate-spin" /> : <ShieldAlert />}
+                  관리자 권한으로 정리
+                </Button>
+              </div>
+              {/* 승인하기 전에 무엇을 지우는지 보여 준다 */}
+              <ul className="mt-2 flex max-h-32 flex-col gap-1 overflow-y-auto border-t pt-2">
+                {adminItems.map((i) => (
+                  <li key={i.id} data-selectable className="font-mono text-xs break-all text-muted-foreground">
+                    {i.location}
+                    {i.valueName && ` › ${i.valueName}`}
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
         </div>
-        {needsAdmin > 0 && (
-          <div className="mt-1 flex items-center gap-3 rounded-xl border bg-muted/30 px-4 py-3 text-left text-sm">
-            <ShieldAlert className="size-5 shrink-0 text-warning" />
-            <span>
-              {needsAdmin}개는 관리자 권한이 있어야 지울 수 있어요.
-              {error && <span className="block text-xs text-destructive">{error}</span>}
-            </span>
-            <Button size="sm" onClick={elevate} disabled={elevating}>
-              {elevating ? <Loader2 className="animate-spin" /> : <ShieldAlert />}
-              관리자 권한으로 정리
-            </Button>
+
+        {problems.length > 0 && (
+          <div className="px-5 py-3">
+            <p className="mb-2 text-xs font-medium text-muted-foreground">정리하지 못한 항목 {problems.length}개</p>
+            <ul className="flex flex-col gap-2">
+              {problems.map((i) => (
+                <li key={i.id} className="rounded-lg border p-3 text-xs">
+                  <p data-selectable className="font-mono break-all">
+                    {i.location}
+                    {i.valueName && ` › ${i.valueName}`}
+                  </p>
+                  {/* 보호돼 건너뛴 것은 실패가 아니라 중립 색으로. 이유 문장이 이미 "…않았어요"라 앞말을 붙이지 않는다. */}
+                  <p className={cn("mt-1", i.status === "blocked" ? "text-muted-foreground" : "text-destructive")}>
+                    {i.status === "partial" ? "일부만 정리됐어요 (백업은 온전해요): " : ""}
+                    {i.error}
+                  </p>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
       </div>
-
-      {problems.length > 0 && (
-        <div className="min-h-0 flex-1 overflow-y-auto px-5 py-3">
-          <p className="mb-2 text-xs font-medium text-muted-foreground">정리하지 못한 항목 {problems.length}개</p>
-          <ul className="flex flex-col gap-2">
-            {problems.map((i) => (
-              <li key={i.id} className="rounded-lg border p-3 text-xs">
-                <p data-selectable className="font-mono break-all">
-                  {i.location}
-                  {i.valueName && ` › ${i.valueName}`}
-                </p>
-                <p className={cn("mt-1", i.status === "blocked" ? "text-primary" : "text-destructive")}>
-                  {i.status === "blocked" ? "안전을 위해 건드리지 않았어요: " : ""}
-                  {i.status === "partial" ? "일부만 정리됐어요 (백업은 온전해요): " : ""}
-                  {i.error}
-                </p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
 
       <div className="mt-auto flex items-center justify-end gap-2 border-t px-5 py-3">
         <Button

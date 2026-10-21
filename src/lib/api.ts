@@ -216,7 +216,17 @@ export const recoveryApi = {
     invoke<void>("delete_backup", { opId, onProgress: progressChannel(onProgress) }),
 }
 
-export const countStatus = (op: Operation, status: ItemStatus) => op.items.filter((i) => i.status === status).length
+/**
+ * 시작 항목을 정리하면 Run 값(또는 바로 가기)과 짝인 `StartupApproved` 값이 함께 작업 항목이 된다.
+ * 사람에게 보여 주는 개수에서는 이 짝을 세지 않는다 (시작 항목 3개를 정리했는데 "6개"로 보이지 않게).
+ */
+export const isCompanionItem = (item: OperationItem) => /\\Explorer\\StartupApproved\\/i.test(item.location)
+
+/** 개수로 보여 줄 항목 (짝 값 제외) */
+export const countedItems = (op: Operation) => op.items.filter((i) => !isCompanionItem(i))
+
+export const countStatus = (op: Operation, status: ItemStatus) =>
+  countedItems(op).filter((i) => i.status === status).length
 
 /** 복구 기록에서 되돌릴 수 있는 항목 (정리했거나 일부만 정리한 항목) */
 export const isRestorable = (status: ItemStatus) => status === "removed" || status === "partial"
