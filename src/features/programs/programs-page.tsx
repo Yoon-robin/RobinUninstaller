@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import {
   ArrowDownWideNarrow,
@@ -83,6 +84,8 @@ let statsShownOnce = false
 
 export function ProgramsPage() {
   const [query, setQuery] = useState("")
+  // 검색은 입력을 먼저 그리고 목록·숫자는 조금 미뤄 다시 계산한다 (글자를 칠 때 끊기지 않게)
+  const deferredQuery = useDeferredValue(query)
   const [sort, setSort] = useState<SortKey>("name")
   const [filter, setFilter] = useState<QuickFilter>("all")
   const [view, setViewState] = useState<ViewMode>(loadView)
@@ -141,8 +144,11 @@ export function ProgramsPage() {
     [apps.data, sizes.data],
   )
   const visible = useMemo(
-    () => all.filter((a) => matchesFilter(a, filter) && matchesQuery(a, query)).sort((a, b) => compareApps(a, b, sort)),
-    [all, query, sort, filter],
+    () =>
+      all
+        .filter((a) => matchesFilter(a, filter) && matchesQuery(a, deferredQuery))
+        .sort((a, b) => compareApps(a, b, sort)),
+    [all, deferredQuery, sort, filter],
   )
   // 같은 검색어로 Store 앱 탭에서 찾은 수 (데스크톱 목록에 없을 때 알려 준다)
   const storeMatches = useMemo(
@@ -174,11 +180,14 @@ export function ProgramsPage() {
       measured: all.filter((a) => a.sizeMeasured).length,
       // 칩 옆 숫자는 검색어까지 반영한다.
       counts: Object.fromEntries(
-        quickFilters.map((f) => [f.key, all.filter((a) => matchesFilter(a, f.key) && matchesQuery(a, query)).length]),
+        quickFilters.map((f) => [
+          f.key,
+          all.filter((a) => matchesFilter(a, f.key) && matchesQuery(a, deferredQuery)).length,
+        ]),
       ) as Record<QuickFilter, number>,
       broken: all.filter((a) => matchesFilter(a, "broken")).length,
     }),
-    [all, query],
+    [all, deferredQuery],
   )
 
   const loading = apps.isLoading
@@ -235,10 +244,43 @@ export function ProgramsPage() {
   // 키보드: 목록은 Tab 한 번으로 들어가고 ↑/↓/Home/End로 행을 옮긴다.
   const listRef = useRef<HTMLDivElement>(null)
   const [rowFocus, setRowFocus] = useState(0)
+  /** 목록에서 index번째 행으로 포커스 (그려져 있지 않으면 먼저 그 자리로 스크롤한다) */
+  const focusRow = (index: number) => {
+    const target = Math.max(0, Math.min(index, visible.length - 1))
+    virtualizer.scrollToIndex(target, { align: "auto" })
+    const tryFocus = (left: number) => {
+      const row = listRef.current?.querySelector<HTMLElement>(`[data-index="${target}"] [data-app-row]`)
+      if (row) row.focus({ preventScroll: true })
+      else if (left > 0) requestAnimationFrame(() => tryFocus(left - 1))
+    }
+    requestAnimationFrame(() => tryFocus(5))
+  }
+  // 가상 목록: 스크롤 상자는 앱의 <main>. 목록이 그 안에서 얼마나 아래에 있는지(scrollMargin)를 잰다.
+  const [scrollMargin, setScrollMargin] = useState(0)
+  useLayoutEffect(() => {
+    const list = listRef.current
+    const main = list?.closest("main")
+    if (!list || !main) return
+    const next = Math.round(list.getBoundingClientRect().top - main.getBoundingClientRect().top + main.scrollTop)
+    if (next !== scrollMargin && list.offsetParent) setScrollMargin(next)
+  })
+  const virtualizer = useVirtualizer({
+    count: visible.length,
+    getScrollElement: () => listRef.current?.closest("main") ?? null,
+    estimateSize: () => 57,
+    overscan: 10,
+    scrollMargin,
+    getItemKey: (i) => visible[i]?.id ?? i,
+  })
+  const virtualItems = virtualizer.getVirtualItems()
+  // Tab으로 들어올 행: 기억한 행이 지금 그려져 있으면 그 행, 아니면 처음 그려진 행
+  const rendered = virtualItems.map((v) => v.index)
+  const remembered = Math.min(rowFocus, visible.length - 1)
+  const tabIndexRow = rendered.includes(remembered) ? remembered : (rendered[0] ?? -1)
   const moveRowFocus = (e: React.KeyboardEvent) => {
-    const rows = [...(listRef.current?.querySelectorAll<HTMLElement>("[data-app-row]") ?? [])]
-    const at = rows.indexOf(e.target as HTMLElement)
-    if (at < 0) return
+    const holder = (e.target as HTMLElement).closest<HTMLElement>("[data-index]")
+    if (!holder || !(e.target as HTMLElement).hasAttribute("data-app-row")) return
+    const at = Number(holder.dataset.index)
     const next =
       e.key === "ArrowDown"
         ? at + 1
@@ -247,11 +289,11 @@ export function ProgramsPage() {
           : e.key === "Home"
             ? 0
             : e.key === "End"
-              ? rows.length - 1
+              ? visible.length - 1
               : null
     if (next == null) return
     e.preventDefault()
-    rows[Math.max(0, Math.min(next, rows.length - 1))]?.focus()
+    focusRow(next)
   }
   // 제거·흔적 창을 닫았을 때 포커스가 갈 곳을 잃었으면(행이 사라짐 등) 목록의 같은 자리(없으면 다음) 행으로 돌린다
   const dialogOpen = selected != null || uninstallTarget != null || leftoversTarget != null || batch != null
@@ -268,8 +310,7 @@ export function ProgramsPage() {
     // 창은 닫히는 애니메이션이 끝난 뒤에야 포커스를 놓으므로 몇 번 나눠 확인한다
     const refocus = () => {
       if (document.activeElement && document.activeElement !== document.body) return
-      const rows = listRef.current?.querySelectorAll<HTMLElement>("[data-app-row]")
-      if (rows?.length) rows[Math.min(rowFocus, rows.length - 1)].focus()
+      if (visible.length > 0) focusRow(Math.min(rowFocus, visible.length - 1))
     }
     const timers = [60, 350, 700].map((ms) => setTimeout(refocus, ms))
     return () => timers.forEach(clearTimeout)
@@ -635,24 +676,38 @@ export function ProgramsPage() {
                     transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
                   >
                     {view === "list" || picked ? (
-                      <div className="divide-y" ref={listRef} onKeyDown={moveRowFocus}>
-                        <AnimatePresence initial={false}>
-                          {visible.map((app, i) => (
-                            <ProgramRow
+                      // 보이는 줄(과 앞뒤 몇 줄)만 그린다. 1000개를 다 그리면 체크 하나·글자 하나에 수백 ms씩 걸렸다.
+                      <div
+                        ref={listRef}
+                        onKeyDown={moveRowFocus}
+                        className="relative"
+                        style={{ height: virtualizer.getTotalSize() }}
+                      >
+                        {virtualItems.map((v) => {
+                          const app = visible[v.index]
+                          return (
+                            <div
                               key={app.id}
-                              app={app}
-                              maxKb={stats.maxKb}
-                              query={query}
-                              removing={app.id === removingId}
-                              introIndex={intro && i < 16 ? i : undefined}
-                              picked={picked ? picked.has(app.id) : undefined}
-                              onPick={togglePick}
-                              tabbable={i === Math.min(rowFocus, visible.length - 1)}
-                              onRowFocus={() => setRowFocus(i)}
-                              {...handlers}
-                            />
-                          ))}
-                        </AnimatePresence>
+                              data-index={v.index}
+                              ref={virtualizer.measureElement}
+                              className={cn("absolute inset-x-0 top-0", v.index < visible.length - 1 && "border-b")}
+                              style={{ transform: `translateY(${v.start - scrollMargin}px)` }}
+                            >
+                              <ProgramRow
+                                app={app}
+                                maxKb={stats.maxKb}
+                                query={deferredQuery}
+                                removing={app.id === removingId}
+                                introIndex={intro && v.index < 16 ? v.index : undefined}
+                                picked={picked ? picked.has(app.id) : undefined}
+                                onPick={togglePick}
+                                tabbable={v.index === tabIndexRow}
+                                onRowFocus={() => setRowFocus(v.index)}
+                                {...handlers}
+                              />
+                            </div>
+                          )
+                        })}
                       </div>
                     ) : (
                       <ProgramGrid
