@@ -244,7 +244,8 @@ function UpdateDialog({ update, open, onClose }: { update: Update | null; open: 
           지금 쓰는 버전은 {update?.currentVersion}이에요. 업데이트 파일은 RobinX의 서명을 확인한 뒤에만 설치하고, 복구
           기록·설정·백업은 그대로 남아요. 설치하는 동안 앱이 잠깐 닫혔다가 다시 열려요.
         </DialogDescription>
-        {update?.body && (
+        {/* 노트가 없거나 예전 릴리스처럼 "RobinX 0.1.9" 한 줄뿐이면 상자를 그리지 않는다 */}
+        {update?.body?.trim() && update.body.trim() !== `RobinX ${update.version}` && (
           <div className="max-h-48 overflow-y-auto rounded-xl border bg-muted/30 px-4 py-3 text-sm whitespace-pre-wrap">
             {update.body}
           </div>

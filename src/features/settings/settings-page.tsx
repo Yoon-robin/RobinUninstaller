@@ -28,6 +28,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { useUpdates } from "@/features/updates/updates"
+import { useLastDefined } from "@/hooks/use-last-defined"
+import { IconTooltip } from "@/components/icon-tooltip"
 import { useBusy } from "@/lib/busy"
 
 function Section({
@@ -159,16 +161,29 @@ export function SettingsPage() {
     }
   }
 
-  const removeExclusion = async (index: number, location: string) => {
+  // 빼는 중인 항목 (두 번 눌러 다른 항목까지 빠지지 않게 그동안 막는다)
+  const [removing, setRemoving] = useState<number | null>(null)
+  const removeExclusion = async (index: number, location: string, valueName: string | null) => {
+    if (removing != null) return
+    setRemoving(index)
     try {
-      await settingsApi.removeExclusion(index, location)
+      await settingsApi.removeExclusion(index, location, valueName)
       toast.success("제외 목록에서 뺐어요. 다음 스캔부터 다시 찾아요")
     } catch (e) {
       toast.error(String(e))
     } finally {
+      await queryClient.invalidateQueries({ queryKey: ["settings"] })
+      setRemoving(null)
       refresh()
     }
   }
+  // 보관 기간 확인 창: 닫히는 동안에도 숫자가 남게, 그리고 지금 기준으로 무엇이 지워지는지
+  const shownRetention = useLastDefined(pendingRetention ?? undefined)
+  const retentionPreview = useQuery({
+    queryKey: ["old-backups", shownRetention],
+    queryFn: () => settingsApi.oldBackups(shownRetention!),
+    enabled: pendingRetention != null,
+  })
 
   const retention = settings.data?.backupRetentionDays ?? null
   const retentionOptions = [
@@ -287,15 +302,18 @@ export function SettingsPage() {
                       {e.location}
                       {e.valueName && ` › ${e.valueName}`}
                     </p>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-7 shrink-0 text-muted-foreground"
-                      aria-label={`${e.location}${e.valueName ? ` › ${e.valueName}` : ""} 제외 목록에서 빼기`}
-                      onClick={() => removeExclusion(i, e.location)}
-                    >
-                      <X />
-                    </Button>
+                    <IconTooltip label="제외 목록에서 빼기">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 shrink-0 text-muted-foreground"
+                        aria-label={`${e.location}${e.valueName ? ` › ${e.valueName}` : ""} 제외 목록에서 빼기`}
+                        disabled={removing != null}
+                        onClick={() => removeExclusion(i, e.location, e.valueName ?? null)}
+                      >
+                        {removing === i ? <Loader2 className="animate-spin" /> : <X />}
+                      </Button>
+                    </IconTooltip>
                   </li>
                 )
               })}
@@ -306,11 +324,19 @@ export function SettingsPage() {
 
       <Dialog open={pendingRetention != null} onOpenChange={(o) => !o && !busy && setPendingRetention(undefined)}>
         <DialogContent className="sm:max-w-md">
-          <DialogTitle>{pendingRetention}일이 지난 백업을 지울까요?</DialogTitle>
+          <DialogTitle>{shownRetention}일이 지난 백업을 지울까요?</DialogTitle>
           <DialogDescription className="leading-relaxed">
-            앱을 켤 때마다 {pendingRetention}일이 지난 백업을 지워요.{" "}
+            앱을 켤 때마다 {shownRetention}일이 지난 백업을 지워요.{" "}
             <b className="text-foreground">지운 백업으로는 되돌릴 수 없어요.</b> 나중에 "계속 보관"으로 바꿀 수 있어요.
           </DialogDescription>
+          {/* 지금 기준으로 다음에 켤 때 지워질 것 */}
+          <p className="rounded-lg bg-muted/50 px-3 py-2 text-sm" role="status">
+            {retentionPreview.isLoading
+              ? "지금 기준으로 지워질 백업을 세는 중이에요"
+              : (retentionPreview.data?.count ?? 0) === 0
+                ? `지금은 ${shownRetention}일이 지난 백업이 없어요.`
+                : `지금 기준으로 ${retentionPreview.data?.count}개(${formatBytes(retentionPreview.data?.bytes ?? 0)})가 다음에 켤 때 지워져요.`}
+          </p>
           <div className="mt-2 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setPendingRetention(undefined)} disabled={busy}>
               취소
@@ -347,12 +373,12 @@ export function SettingsPage() {
 }
 
 function UpdatesSection() {
-  const { version, autoCheck, setAutoCheck, lastChecked, checking, checkNow } = useUpdates()
+  const { version, autoCheck, setAutoCheck, lastChecked, checking, checkNow, available, openUpdate } = useUpdates()
   return (
     <Section
       icon={Download}
       title="업데이트"
-      description="새 버전이 나오면 업데이트 창을 띄워 알려 드려요. 설치는 직접 누를 때만 하고, 서명을 확인한 파일만 설치해요."
+      description="앱을 켤 때 새 버전이 있으면 업데이트 창으로, 쓰는 동안 나오면 사이드바에 알려 드려요. 설치는 직접 누를 때만 하고, 서명을 확인한 파일만 설치해요."
     >
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="min-w-0 flex-1 text-sm">
@@ -363,10 +389,17 @@ function UpdatesSection() {
             {lastChecked ? `마지막 확인 ${formatDateTime(lastChecked)}` : "아직 확인하지 않았어요"}
           </p>
         </div>
-        <Button variant="outline" onClick={() => void checkNow(true)} disabled={checking}>
-          {checking ? <Loader2 className="animate-spin" /> : <Download />}
-          업데이트 확인
-        </Button>
+        {/* 이미 새 버전을 알고 있으면 다시 확인하지 않고 바로 설치 창을 연다 */}
+        {available ? (
+          <Button onClick={openUpdate}>
+            <Download />새 버전 {available} 설치
+          </Button>
+        ) : (
+          <Button variant="outline" onClick={() => void checkNow(true)} disabled={checking}>
+            {checking ? <Loader2 className="animate-spin" /> : <Download />}
+            업데이트 확인
+          </Button>
+        )}
       </div>
       <label className="mt-4 flex cursor-pointer items-center justify-between gap-4 rounded-xl border bg-muted/30 px-4 py-3 text-sm">
         <span>

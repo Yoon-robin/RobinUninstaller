@@ -431,7 +431,8 @@ export const settingsApi = {
   setRetention: (days: number | null) => invoke<void>("set_backup_retention", { days }),
   /** 마지막 스캔 결과의 항목을 다음 스캔부터 뺀다. 이미 빠져 있으면 false */
   addExclusion: (itemId: string) => invoke<boolean>("add_exclusion", { itemId }),
-  removeExclusion: (index: number, location: string) => invoke<void>("remove_exclusion", { index, location }),
+  removeExclusion: (index: number, location: string, valueName: string | null) =>
+    invoke<void>("remove_exclusion", { index, location, valueName }),
   backupUsage: () => invoke<BackupUsage>("backup_usage"),
   pruneBackups: (onProgress?: (p: ScanProgress) => void) =>
     invoke<{ deleted: number; failed: number }>("prune_backups", { onProgress: progressChannel(onProgress) }),

@@ -68,7 +68,8 @@ const fs = require("fs")
 const [version, sigPath, asset, tag, out] = process.argv.slice(1)
 const json = {
   version,
-  notes: process.env.RELEASE_NOTES || `RobinX ${version}`,
+  // 노트가 없으면 비워 둔다 (업데이트 창이 제목만 되풀이하는 빈 상자를 그리지 않게)
+  notes: process.env.RELEASE_NOTES || "",
   pub_date: new Date().toISOString(),
   platforms: {
     "windows-x86_64": {

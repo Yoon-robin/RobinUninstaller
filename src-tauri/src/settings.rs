@@ -85,12 +85,17 @@ pub async fn add_exclusion(item_id: String, cache: State<'_, AppCache>) -> Resul
 /// 제외 목록에서 `index`번째를 뺀다. `location`은 화면이 본 그 항목의 위치로, 그사이 목록이 바뀌었으면(두 번 누름 등)
 /// 다른 항목을 빼지 않도록 확인만 한다.
 #[tauri::command]
-pub async fn remove_exclusion(index: usize, location: String) -> Result<(), String> {
+pub async fn remove_exclusion(
+    index: usize,
+    location: String,
+    value_name: Option<String>,
+) -> Result<(), String> {
     blocking(move || {
         robin_settings::update(&settings_store()?, |s| {
+            // 위치만 보면 같은 키의 값 두 개 중 엉뚱한 것을 뺄 수 있어 값 이름도 맞춰 본다
             if s.exclusions
                 .get(index)
-                .is_none_or(|e| e.location != location)
+                .is_none_or(|e| e.location != location || e.value_name != value_name)
             {
                 return Err("목록이 바뀌었어요. 다시 확인해 주세요".into());
             }
