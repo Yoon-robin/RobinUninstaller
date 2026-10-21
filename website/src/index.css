@@ -62,7 +62,7 @@
   --card-foreground: oklch(0.97 0.004 260);
   --popover: oklch(0.2 0.022 264);
   --popover-foreground: oklch(0.97 0.004 260);
-  --primary: oklch(0.6 0.17 252);
+  --primary: oklch(0.55 0.17 252); /* 흰 글자 대비 4.7:1 (0.6이면 3.9:1) */
   --primary-foreground: oklch(0.99 0 0);
   --secondary: oklch(1 0 0 / 5%);
   --secondary-foreground: oklch(0.97 0.004 260);

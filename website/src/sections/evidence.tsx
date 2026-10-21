@@ -197,7 +197,7 @@ export function Evidence() {
                     <motion.li
                       key={r.path + (r.value ?? "")}
                       initial={reduce ? false : { opacity: 0, x: -8 }}
-                      animate={seen ? { opacity: lit ? 1 : 0.32, x: 0 } : undefined}
+                      animate={seen ? { opacity: lit ? 1 : 0.5, x: 0 } : undefined}
                       transition={{ duration: 0.45, delay: seen && !touched ? 0.06 * i : 0, ease: easeOutQuint }}
                       className="flex gap-3 border-b border-white/[0.06] px-4 py-3 last:border-b-0 sm:px-5"
                     >
