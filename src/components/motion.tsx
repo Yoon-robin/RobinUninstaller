@@ -37,10 +37,24 @@ export function FadeUp({ children, className }: { children: ReactNode; className
 
 const formatInteger = (n: number) => Math.round(n).toLocaleString()
 
-/** 숫자가 0에서 목표값까지 올라간다. 처음 한 번만 움직이고, 이후 값이 바뀌면 거기서부터 이어서 움직인다. */
-export function CountUp({ value, format = formatInteger }: { value: number; format?: (n: number) => string }) {
+/** `id`를 준 숫자가 마지막으로 보여 준 값. 화면을 옮겼다 돌아와도 0부터 다시 세지 않게 한다. */
+const lastShown = new Map<string, number>()
+
+/**
+ * 숫자가 0에서 목표값까지 올라간다. 처음 한 번만 움직이고, 이후 값이 바뀌면 거기서부터 이어서 움직인다.
+ * `id`를 주면 다시 마운트돼도(다른 화면에 다녀오기) 마지막 값에서 시작한다.
+ */
+export function CountUp({
+  value,
+  format = formatInteger,
+  id,
+}: {
+  value: number
+  format?: (n: number) => string
+  id?: string
+}) {
   const ref = useRef<HTMLSpanElement>(null)
-  const from = useRef(0)
+  const from = useRef(id ? (lastShown.get(id) ?? 0) : 0)
   const reduce = useReducedMotion()
 
   useEffect(() => {
@@ -49,6 +63,7 @@ export function CountUp({ value, format = formatInteger }: { value: number; form
     if (reduce) {
       el.textContent = format(value)
       from.current = value
+      if (id) lastShown.set(id, value)
       return
     }
     const controls = animate(from.current, value, {
@@ -57,11 +72,12 @@ export function CountUp({ value, format = formatInteger }: { value: number; form
       onUpdate: (n) => {
         // 중간에 멈춰도(StrictMode 재실행, 값 변경) 지금 보이는 숫자에서 이어 가도록 매 프레임 기록한다.
         from.current = n
+        if (id) lastShown.set(id, n)
         el.textContent = format(n)
       },
     })
     return () => controls.stop()
-  }, [value, reduce, format])
+  }, [value, reduce, format, id])
 
   return <span ref={ref}>{format(reduce ? value : from.current)}</span>
 }

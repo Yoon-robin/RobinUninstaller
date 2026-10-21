@@ -261,7 +261,7 @@ export function ProgramsPage() {
               <p className="mt-1 text-muted-foreground">
                 지울 프로그램을 오른쪽 클릭해 <b className="text-foreground">제거</b>를 고르면, 끝난 뒤 남은 흔적을 찾아
                 백업하고 정리할 수 있어요. 지우기 전에 무엇이 남을지 보려면{" "}
-                <b className="text-foreground">흔적 미리 보기</b>를 고르세요.
+                <b className="whitespace-nowrap text-foreground">흔적 미리 보기</b>를 고르세요.
               </p>
             </div>
             <Button variant="ghost" size="sm" onClick={dismissIntro}>

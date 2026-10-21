@@ -67,7 +67,8 @@ export const sample = {
     },
     {
       id: "folder-user:2",
-      name: "Robin Ghost Tool.lnk",
+      // 실제 엔진은 시작 폴더 바로 가기의 확장자를 뺀 이름을 보낸다 (approvedName은 파일 이름 그대로)
+      name: "Robin Ghost Tool",
       source: "folderUser",
       location: "C:\\Users\\me\\AppData\\Roaming\\Microsoft\\Windows\\Start Menu\\Programs\\Startup",
       approvedName: "Robin Ghost Tool.lnk",

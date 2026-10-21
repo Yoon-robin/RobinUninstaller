@@ -130,7 +130,7 @@ export function StartupPage() {
           icon={Power}
           tone="chart-1"
           label="켜진 항목"
-          value={loading ? null : items.isError ? "—" : <CountUp value={counts.on} />}
+          value={loading ? null : items.isError ? "—" : <CountUp id="startup-on" value={counts.on} />}
           unit="개"
           hint={filter === "on" ? "필터 적용 중 · 다시 누르면 해제" : "로그인할 때 실행돼요"}
           active={filter === "on"}
@@ -140,7 +140,7 @@ export function StartupPage() {
           icon={PowerOff}
           tone="chart-2"
           label="꺼진 항목"
-          value={loading ? null : items.isError ? "—" : <CountUp value={counts.off} />}
+          value={loading ? null : items.isError ? "—" : <CountUp id="startup-off" value={counts.off} />}
           unit="개"
           hint={filter === "off" ? "필터 적용 중 · 다시 누르면 해제" : "다시 켜면 원래대로 돌아가요"}
           active={filter === "off"}
@@ -150,7 +150,7 @@ export function StartupPage() {
           icon={FileWarning}
           tone={counts.missing > 0 ? "chart-3" : "chart-5"}
           label="파일 없음"
-          value={loading ? null : items.isError ? "—" : <CountUp value={counts.missing} />}
+          value={loading ? null : items.isError ? "—" : <CountUp id="startup-missing" value={counts.missing} />}
           unit="개"
           hint={
             filter === "missing"
