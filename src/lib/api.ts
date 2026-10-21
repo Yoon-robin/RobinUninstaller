@@ -62,6 +62,8 @@ export const api = {
   getAppIcon: (id: string) => invoke<string | null>("get_app_icon", { id }),
   /** 제거할 때 실제로 실행할 명령 (Rust의 실행 계획과 같다) */
   uninstallCommandPreview: (id: string) => invoke<string>("uninstall_command_preview", { id }),
+  /** 보안 프로그램·드라이버·런타임처럼 다른 프로그램이 함께 쓸 수 있는지 (안내만, 막지 않음) */
+  uninstallMayBeShared: (id: string) => invoke<boolean>("uninstall_may_be_shared", { id }),
   openInstallLocation: (id: string) => invoke<void>("open_install_location", { id }),
   uninstallApp: (id: string, onEvent: (event: UninstallEvent) => void) => {
     const channel = new Channel<UninstallEvent>()

@@ -459,9 +459,9 @@ export function ProgramsPage() {
                 !known || noneInstalled
                   ? undefined
                   : filter === "broken"
-                    ? "필터 적용 중 · 다시 누르면 해제"
+                    ? "항목 메뉴(⋯)에서 강제 제거 · 다시 누르면 해제"
                     : stats.broken > 0
-                      ? "눌러서 해당 항목만 보기"
+                      ? "제거 도구가 없는 프로그램 · 눌러서 보기"
                       : "모든 프로그램에 언인스톨러가 있어요"
               }
               active={filter === "broken"}

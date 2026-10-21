@@ -44,7 +44,7 @@ import { BorderBeam } from "@/components/ui/border-beam"
 import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
-import { describeEvidence, kindLabels } from "./evidence"
+import { describeEvidence, describeKind, kindLabels } from "./evidence"
 import { ErrorState } from "@/components/error-state"
 import { useBusy } from "@/lib/busy"
 
@@ -486,7 +486,7 @@ function Results({
               </div>
             )}
             <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-5 py-2.5 text-xs">
-              <SummaryChip tone="primary" label="연결 정보 일치" value={strong.length} />
+              <SummaryChip tone="primary" label="설치 정보와 연결" value={strong.length} />
               <SummaryChip tone="warn" label="직접 확인 필요" value={review.length} />
               <span className="text-muted-foreground" title={`찾는 데 ${report.durationMs}ms 걸렸어요`}>
                 · {report.durationMs < 1000 ? "1초 안에 찾음" : `${formatDuration(report.durationMs)} 걸림`}
@@ -740,7 +740,8 @@ function LeftoverRow({
       )}
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-label={kindLabels[item.kind]} />
       <div className={cn("min-w-0 flex-1", excluded && "opacity-50")}>
-        <p data-selectable className="font-mono text-xs leading-5 break-all" title={fullPath}>
+        <p className="text-xs font-medium">{describeKind(item)}</p>
+        <p data-selectable className="font-mono text-xs leading-5 break-all text-muted-foreground" title={fullPath}>
           {item.location}
           {item.valueName && (
             <span className="ml-1.5 rounded bg-muted px-1.5 py-0.5 font-sans text-[11px] text-foreground">

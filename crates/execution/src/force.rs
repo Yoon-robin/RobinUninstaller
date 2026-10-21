@@ -128,6 +128,27 @@ pub fn sensitive_reason(app: &InstalledApplication) -> Option<String> {
     })
 }
 
+/// 런타임·재배포 패키지처럼 다른 프로그램이 함께 쓰는 구성 요소로 보이는 이름
+const SHARED_NAMES: &[&str] = &[
+    "redistributable",
+    "runtime",
+    "visual c++",
+    ".net",
+    "directx",
+    "webview2",
+    "java",
+    "openal",
+    "physx",
+    "vcredist",
+];
+
+/// 일반 제거 전에 "다른 프로그램이 함께 쓸 수 있어요"를 알릴지. 보안 프로그램·드라이버(강제 제거 제외 대상)와
+/// 런타임·재배포 패키지. 막지는 않는다. 순수 함수.
+pub fn may_be_shared(app: &InstalledApplication) -> bool {
+    let name = app.display_name.to_lowercase();
+    sensitive_reason(app).is_some() || SHARED_NAMES.iter().any(|w| name.contains(w))
+}
+
 /// `word`가 단어 경계로 들어 있는지 ("eset"이 "Preset"에 걸리지 않게).
 fn contains_word(text: &str, word: &str) -> bool {
     text.match_indices(word).any(|(i, _)| {
@@ -259,6 +280,15 @@ mod tests {
 
     #[test]
     fn blocks_security_vpn_and_drivers() {
+        assert!(may_be_shared(&app(
+            "Microsoft Visual C++ 2015-2022 Redistributable (x64)",
+            Some("Microsoft Corporation")
+        )));
+        assert!(may_be_shared(&app("Realtek Audio Driver", None)));
+        assert!(!may_be_shared(&app(
+            "Fixture Notes",
+            Some("Robin Test Labs")
+        )));
         assert!(sensitive_reason(&app("ESET Security", Some("ESET, spol. s r.o."))).is_some());
         assert!(sensitive_reason(&app("Riot Vanguard", Some("Riot Games, Inc."))).is_some());
         assert!(sensitive_reason(&app("WireGuard", None)).is_some());

@@ -12,6 +12,7 @@ import {
   ShieldAlert,
   Sparkles,
   Trash2,
+  TriangleAlert,
   X,
 } from "lucide-react"
 import { toast } from "sonner"
@@ -184,16 +185,24 @@ function ConfirmBody({
   onStart: () => void
 }) {
   const needsAdmin = app.scope !== "user"
+  const shared = useQuery({ queryKey: ["may-be-shared", app.id], queryFn: () => api.uninstallMayBeShared(app.id) })
   return (
     <div className="flex flex-col gap-4 p-5">
       <p className="text-sm leading-relaxed">
-        이 프로그램에 들어 있는 언인스톨러를 실행해요. 언인스톨러 창이 열리면 안내에 따라 진행해 주세요.
+        이 프로그램에 들어 있는 언인스톨러(프로그램을 지우는 자체 도구)를 실행해요. 언인스톨러 창이 열리면 안내에 따라
+        진행해 주세요.
       </p>
       <ul className="flex flex-col gap-2 rounded-xl border bg-muted/30 p-3.5 text-xs text-muted-foreground">
         {needsAdmin && (
           <li className="flex gap-2">
             <ShieldAlert className="size-4 shrink-0 text-warning" />
             모든 사용자용 프로그램이라 관리자 권한 요청(UAC)이 뜰 수 있어요.
+          </li>
+        )}
+        {shared.data && (
+          <li className="flex gap-2 text-warning">
+            <TriangleAlert className="size-4 shrink-0" />
+            보안 프로그램·드라이버·런타임으로 보여요. 다른 프로그램이 함께 쓸 수 있어요.
           </li>
         )}
         <li className="flex gap-2">

@@ -349,6 +349,14 @@ fn fit_to_work_area(window: &tauri::WebviewWindow) {
     ));
 }
 
+/// 일반 제거 확인 창 안내: 보안 프로그램·드라이버·런타임처럼 다른 프로그램이 함께 쓸 수 있는지 (막지 않음).
+#[tauri::command]
+fn uninstall_may_be_shared(id: String, cache: State<'_, AppCache>) -> bool {
+    cache
+        .get(&id)
+        .is_some_and(|app| robin_execution::force::may_be_shared(&app))
+}
+
 /// 제거 확인 창에 보여 줄 "실제로 실행할 명령". 화면이 따로 흉내 내지 않고 실행할 때와 같은 계획을 쓴다
 /// (EXE로 분류된 `MsiExec.exe /I{GUID}`도 실제처럼 `/x`, `%ProgramFiles%` 같은 변수도 펼친 모양).
 #[tauri::command]
@@ -1480,6 +1488,7 @@ pub fn run() {
             open_install_location,
             uninstall_app,
             uninstall_command_preview,
+            uninstall_may_be_shared,
             stop_waiting_uninstall,
             recently_removed,
             scan_leftovers,

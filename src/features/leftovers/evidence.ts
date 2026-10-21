@@ -1,4 +1,4 @@
-import type { Evidence, LeftoverKind } from "@/lib/api"
+import type { Evidence, Leftover, LeftoverKind } from "@/lib/api"
 
 /** 근거를 사람이 읽을 문장으로. `warn`이면 경고색으로 보여 준다. */
 export function describeEvidence(e: Evidence): { label: string; warn?: boolean } {
@@ -37,4 +37,27 @@ export const kindLabels: Record<LeftoverKind, string> = {
   file: "파일",
   registryKey: "레지스트리 키",
   registryValue: "레지스트리 값",
+}
+
+/** 이 흔적이 무엇인지 한마디로 (경로만으로는 알기 어려워서). 위치로만 짐작한다. */
+export function describeKind(item: Leftover): string {
+  const loc = item.location.toLowerCase()
+  if (item.kind === "registryValue") {
+    if (/\\currentversion\\run(once)?$/.test(loc)) return "시작할 때 자동 실행 등록"
+    return "레지스트리 값"
+  }
+  if (item.kind === "registryKey") {
+    if (loc.includes("\\currentversion\\uninstall\\")) return "제거 등록 정보"
+    if (loc.includes("\\classes\\")) return "파일 연결·구성 요소 등록"
+    return "설정이 담긴 레지스트리 키"
+  }
+  if (item.kind === "file") {
+    if (!loc.endsWith(".lnk")) return "파일"
+    return loc.includes("\\startup\\") ? "시작할 때 자동 실행 바로 가기" : "바로 가기"
+  }
+  if (item.evidence.some((e) => e.kind === "installLocation")) return "설치 폴더"
+  if (/\\(temp|tmp)(\\|$)/.test(loc)) return "임시 폴더"
+  if (/\\appdata\\|\\programdata\\/.test(loc)) return "설정·데이터 폴더"
+  if (/\\program files( \(x86\))?\\/.test(loc)) return "프로그램 폴더"
+  return "폴더"
 }
