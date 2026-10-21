@@ -26,8 +26,12 @@ import { toast } from "sonner"
 
 // retry: false — 모두 이 PC를 읽는 작업이라 다시 해도 결과가 같다. 기본값(3번 다시)이면 실패한 스캔을
 // 오류를 보여 주기 전에 몇 초씩 세 번 더 돈다.
+// refetchOnReconnect: false — 인터넷과 상관없는 작업이다. 켜 두면 연결이 끊겼다 이어질 때 남은 흔적 찾기가
+// 다시 돌아, 확인 화면이나 정리 중인 창이 처음으로 돌아가고 고른 것을 잃었다.
 const queryClient = new QueryClient({
-  defaultOptions: { queries: { refetchOnWindowFocus: false, staleTime: 60_000, retry: false } },
+  defaultOptions: {
+    queries: { refetchOnWindowFocus: false, refetchOnReconnect: false, staleTime: 60_000, retry: false },
+  },
 })
 
 const titles: Record<Page, string> = {

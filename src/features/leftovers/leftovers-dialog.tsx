@@ -81,6 +81,9 @@ export function LeftoversDialog({
     enabled: open && ready,
     staleTime: 0,
     gcTime: 0,
+    // 창이 열려 있는 동안에는 저절로 다시 찾지 않는다 (다시 찾기 버튼으로만)
+    refetchOnMount: false,
+    refetchOnReconnect: false,
   })
 
   return (
