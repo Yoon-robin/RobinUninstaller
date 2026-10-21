@@ -119,6 +119,7 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
                   key="gate"
                   check={check.data}
                   error={check.error}
+                  checking={check.isFetching}
                   onRetry={() => check.refetch()}
                   onClose={onClose}
                 />
@@ -158,34 +159,40 @@ export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | 
 function ForceGate({
   check,
   error,
+  checking,
   onRetry,
   onClose,
 }: {
   check: ForceCheck | undefined
   error: unknown
+  /** 다시 확인하는 중 */
+  checking: boolean
   onRetry: () => void
   onClose: () => void
 }) {
+  // "다시 확인"을 한 번이라도 눌렀으면, 아직 실행 중일 때 그렇다고 알려 준다 (눌러도 화면이 그대로라 확인됐는지 모르니까)
+  const [rechecked, setRechecked] = useState(false)
+  const retry = () => {
+    setRechecked(true)
+    onRetry()
+  }
   const panel = "flex flex-1 flex-col items-center justify-center gap-4 p-8 text-center"
   const motionProps = {
     initial: { opacity: 0 },
     animate: { opacity: 1 },
     exit: { opacity: 0, transition: { duration: 0.12 } },
   }
+  const retryButton = (
+    <Button onClick={retry} disabled={checking}>
+      {checking ? <Loader2 className="animate-spin" /> : <RefreshCw />}
+      다시 확인
+    </Button>
+  )
 
   if (error) {
     return (
-      <motion.div {...motionProps} className={panel}>
-        <p className="text-sm text-destructive">확인하지 못했어요: {String(error)}</p>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={onClose}>
-            닫기
-          </Button>
-          <Button onClick={onRetry}>
-            <RefreshCw />
-            다시 확인
-          </Button>
-        </div>
+      <motion.div {...motionProps} className="flex flex-1 flex-col items-center justify-center p-8">
+        <ErrorState title="강제 제거해도 되는지 확인하지 못했어요" error={error} onRetry={retry} retrying={checking} />
       </motion.div>
     )
   }
@@ -213,37 +220,45 @@ function ForceGate({
       </motion.div>
     )
   }
+  // 같은 실행 파일이 여러 개 돌면(Electron 앱 등) 한 줄로 묶는다
+  const running = [
+    ...check.running.reduce((m, p) => m.set(p.path, (m.get(p.path) ?? 0) + 1), new Map<string, number>()),
+  ]
   return (
-    <motion.div {...motionProps} className={panel}>
-      <div className="flex size-14 items-center justify-center rounded-full bg-chart-3/15 text-chart-3">
-        <TriangleAlert className="size-7" />
+    <motion.div {...motionProps} className="flex min-h-0 flex-1 flex-col">
+      {/* 목록이 길어도 아래 버튼은 늘 보이게, 위쪽만 스크롤한다 */}
+      <div className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto p-8 text-center">
+        <div className="mt-auto flex size-14 shrink-0 items-center justify-center rounded-full bg-chart-3/15 text-chart-3">
+          <TriangleAlert className="size-7" />
+        </div>
+        <div className="max-w-md">
+          <p className="text-base font-semibold">프로그램이 실행 중이에요</p>
+          <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
+            실행 중인 파일은 옮길 수 없어요. 아래 프로그램을 직접 닫은 뒤 다시 확인해 주세요. 작업 중인 내용이 있을 수
+            있어 RobinX가 대신 끄지는 않아요.
+          </p>
+        </div>
+        <ul className="mb-auto flex w-full max-w-md flex-col gap-1.5 text-left">
+          {running.map(([path, count]) => (
+            <li key={path} className="flex items-start gap-2 rounded-lg border bg-muted/30 px-3 py-2 text-xs">
+              <span data-selectable className="min-w-0 flex-1 font-mono break-all">
+                {path}
+              </span>
+              {count > 1 && <span className="shrink-0 text-muted-foreground tabular-nums">×{count}</span>}
+            </li>
+          ))}
+        </ul>
       </div>
-      <div className="max-w-md">
-        <p className="text-base font-semibold">프로그램이 실행 중이에요</p>
-        <p className="mt-2 text-sm leading-relaxed text-muted-foreground">
-          실행 중인 파일은 옮길 수 없어요. 아래 프로그램을 직접 닫은 뒤 다시 확인해 주세요. 작업 중인 내용이 있을 수
-          있어 RobinX가 대신 끄지는 않아요.
-        </p>
-      </div>
-      <ul className="flex w-full max-w-md flex-col gap-1.5 text-left">
-        {check.running.map((p) => (
-          <li
-            key={p.pid}
-            data-selectable
-            className="rounded-lg border bg-muted/30 px-3 py-2 font-mono text-xs break-all"
-          >
-            {p.path}
-          </li>
-        ))}
-      </ul>
-      <div className="flex gap-2">
-        <Button variant="outline" onClick={onClose}>
+      <div className="flex items-center gap-2 border-t px-5 py-3">
+        {rechecked && !checking && (
+          <p className="text-xs text-muted-foreground" role="status">
+            방금 다시 확인했어요. 아직 실행 중이에요.
+          </p>
+        )}
+        <Button variant="outline" className="ml-auto" onClick={onClose}>
           닫기
         </Button>
-        <Button onClick={onRetry}>
-          <RefreshCw />
-          다시 확인
-        </Button>
+        {retryButton}
       </div>
     </motion.div>
   )
