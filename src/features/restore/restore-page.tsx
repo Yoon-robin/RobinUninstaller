@@ -41,7 +41,8 @@ import { ErrorState, InlineError, StaleBanner } from "@/components/error-state"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { rovingKeyDown } from "@/features/programs/segmented"
-import { useBusy } from "@/lib/busy"
+import { beginBusy, useBusy } from "@/lib/busy"
+import { liveStore } from "@/lib/live-store"
 import { failed, notifyError } from "@/lib/notify"
 
 const statusLabels: Record<ItemStatus, { label: string; tone: string }> = {
@@ -324,6 +325,9 @@ function expiryText(op: Operation, retentionDays: number | null | undefined): { 
   return { text: `${left}일 뒤 지워져요`, soon: left <= 3 }
 }
 
+/** 되돌리는 중인 기록 (기록 ID → 누른 버튼과 진행). 화면 밖에 둔다. */
+const restoreLive = liveStore<Record<string, { key: string; progress: ScanProgress | null }>>({})
+
 function OperationCard({
   op,
   retentionDays,
@@ -345,10 +349,12 @@ function OperationCard({
     const t = setTimeout(() => cardRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }), 300)
     return () => clearTimeout(t)
   }, [focused])
-  const [busy, setBusy] = useState<string | null>(null)
-  useBusy(busy != null)
-  // 되돌리는 동안: 지금 항목, 복사한 파일 수 (관리자 권한 작업자는 따로 도는 프로세스라 진행을 알 수 없다)
-  const [progress, setProgress] = useState<ScanProgress | null>(null)
+  // 되돌리는 중인 것(어느 버튼인지)과 진행: 화면 밖에 둬서 다른 화면에 다녀와도 이어서 보이고 버튼도 계속 막힌다
+  const running = restoreLive.use()[op.id]
+  const busy = running?.key ?? null
+  const progress = running?.progress ?? null
+  const setProgress = (p: ScanProgress | null) =>
+    restoreLive.set((all) => (all[op.id] ? { ...all, [op.id]: { ...all[op.id], progress: p } } : all))
 
   const kept = countedItems(op).filter((i) => isRestorable(i.status)).length
   const expiry = kept > 0 ? expiryText(op, retentionDays) : null
@@ -362,8 +368,9 @@ function OperationCard({
 
   /** `ids`: 이번에 되돌리려는 항목. 결과는 이 항목들만 센다 (예전에 실패한 항목이 섞이지 않게). */
   const run = async (key: string, ids: string[], action: () => Promise<Operation>) => {
-    setBusy(key)
-    setProgress(null)
+    if (restoreLive.get()[op.id]) return
+    restoreLive.set((all) => ({ ...all, [op.id]: { key, progress: null } }))
+    const endBusy = beginBusy()
     try {
       const updated = await action()
       const mine = updated.items.filter((i) => ids.includes(i.id))
@@ -383,7 +390,12 @@ function OperationCard({
     } catch (e) {
       notifyError("되돌리지 못했어요", e, { persist: true })
     } finally {
-      setBusy(null)
+      endBusy()
+      restoreLive.set((all) => {
+        const next = { ...all }
+        delete next[op.id]
+        return next
+      })
       // 복원하면 프로그램·시작 항목이 다시 생길 수 있다
       for (const key of [
         "backups",

@@ -26,6 +26,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { ScanProgressView, shortenPath } from "@/components/scan-progress"
+import { liveStore } from "@/lib/live-store"
 
 import { FolderAnalysisCard } from "./folder-analysis"
 import { LargeFilesCard } from "./large-files"
@@ -64,18 +65,27 @@ const APP_NAMES: Record<string, string> = {
 }
 const runningNames = (exes: string[]) => [...new Set(exes.map((e) => APP_NAMES[e] ?? e))].join(", ")
 
+/**
+ * 찾는 중에 찾은 항목과 진행 상황. 화면 밖에 둬서 찾는 도중 다른 화면에 다녀와도 이어서 보인다
+ * (찾기 자체는 쿼리 캐시에서 계속 돈다).
+ */
+const scanLive = liveStore<{ partial: StorageCategory[]; progress: ScanProgress | null }>({
+  partial: [],
+  progress: null,
+})
+
 export function StoragePage() {
   const queryClient = useQueryClient()
-  // 처음 찾을 때는 다 셀 때까지 기다리지 않고, 찾은 항목부터 크기 순으로 보여 준다
-  const [partial, setPartial] = useState<StorageCategory[]>([])
-  // 지금 재는 항목과 센 파일 수 (멈춘 것처럼 보이지 않게)
-  const [progress, setProgress] = useState<ScanProgress | null>(null)
+  // 처음 찾을 때는 다 셀 때까지 기다리지 않고, 찾은 항목부터 보여 준다. 지금 재는 항목과 센 파일 수도 함께.
+  const { partial, progress } = scanLive.use()
   const scan = useQuery({
     queryKey: SCAN_KEY,
     queryFn: () => {
-      setPartial([])
-      setProgress(null)
-      return storageApi.scan((item) => setPartial((p) => [...p, item]), setProgress)
+      scanLive.set({ partial: [], progress: null })
+      return storageApi.scan(
+        (item) => scanLive.set((s) => ({ ...s, partial: [...s.partial, item] })),
+        (progress) => scanLive.set((s) => ({ ...s, progress })),
+      )
     },
   })
   // 찾는 동안은 찾은 순서대로 아래에 붙이고(누르려던 줄이 밀리지 않게), 다 찾으면 한 번 크기순으로 정렬한다
