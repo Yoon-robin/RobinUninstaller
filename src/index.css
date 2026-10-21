@@ -251,8 +251,9 @@
     transform: translateX(300%);
   }
 }
+/* 일정한 속도로 지나간다. 끝으로 갈수록 느려지는 곡선을 쓰면 막대가 오른쪽 끝에서 점처럼 오래 머물러 멈춘 것처럼 보였다. */
 .scan-sweep {
-  animation: scan-sweep 1.1s var(--ease-out-quint) infinite;
+  animation: scan-sweep 1.4s linear infinite;
 }
 @media (prefers-reduced-motion: reduce) {
   .scan-sweep {
