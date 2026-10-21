@@ -2,10 +2,12 @@ import { useEffect, useState } from "react"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 
 import { cn } from "@/lib/utils"
+import { IconTooltip } from "@/components/icon-tooltip"
 
 /**
  * 제목 표시줄을 없앤 창(decorations: false)의 최소화/최대화/닫기 버튼.
- * 자리와 순서는 Windows 사용자에게 익숙하게 오른쪽 위에 두고, 모양은 macOS처럼 둥근 유리 버튼으로 만든다.
+ * Windows 창 버튼처럼 제목 줄 높이를 다 채우고 오른쪽 모서리까지 붙인다. 최대화한 창에서 마우스를
+ * 오른쪽 위 끝으로 밀어 두고 눌러도 닫히고, 닫기 위에서는 Windows와 같은 빨강이 된다.
  */
 export function WindowControls() {
   const [appWindow] = useState(getCurrentWindow)
@@ -25,7 +27,7 @@ export function WindowControls() {
   }, [appWindow])
 
   return (
-    <div className="flex items-center gap-1 pr-2.5">
+    <div className="flex h-full items-stretch">
       <CaptionButton label="최소화" onClick={() => appWindow.minimize()}>
         <path d="M0 5h10" />
       </CaptionButton>
@@ -58,20 +60,24 @@ function CaptionButton({
   children: React.ReactNode
 }) {
   return (
-    <button
-      type="button"
-      aria-label={label}
-      title={label}
-      onClick={onClick}
-      className={cn(
-        "flex size-7 items-center justify-center rounded-full text-muted-foreground transition-[color,background-color,box-shadow,transform] duration-150",
-        "hover:text-foreground active:scale-90",
-        danger ? "hover:bg-[#ff5f57] hover:text-white hover:shadow-none" : "hover:bg-foreground/8",
-      )}
-    >
-      <svg viewBox="0 0 10 10" className="size-2.5" fill="none" stroke="currentColor" strokeWidth="1">
-        {children}
-      </svg>
-    </button>
+    <IconTooltip label={label}>
+      <button
+        type="button"
+        aria-label={label}
+        onClick={onClick}
+        className={cn(
+          "flex w-[46px] items-center justify-center text-muted-foreground transition-colors duration-150",
+          "hover:text-foreground",
+          // 흰 아이콘과 대비 5.6:1 (Windows 닫기 빨강)
+          danger
+            ? "hover:bg-[#c42b1c] hover:text-white active:bg-[#c42b1c]/85"
+            : "hover:bg-foreground/8 active:bg-foreground/12",
+        )}
+      >
+        <svg viewBox="0 0 10 10" className="size-2.5" fill="none" stroke="currentColor" strokeWidth="1">
+          {children}
+        </svg>
+      </button>
+    </IconTooltip>
   )
 }

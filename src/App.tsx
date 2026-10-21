@@ -51,6 +51,22 @@ export default function App() {
   const [ready, setReady] = useState(false)
   const onSplashDone = useCallback(() => setReady(true), [])
   const reduce = useReducedMotion()
+  // 사이드바를 접었는지 기억한다 (다음에 켜도 그대로)
+  const [sidebarOpen, setSidebarOpen] = useState(() => {
+    try {
+      return localStorage.getItem("robin.sidebar") !== "closed"
+    } catch {
+      return true
+    }
+  })
+  const changeSidebar = useCallback((open: boolean) => {
+    setSidebarOpen(open)
+    try {
+      localStorage.setItem("robin.sidebar", open ? "open" : "closed")
+    } catch {
+      // 저장하지 못해도 이번 실행에서는 그대로 쓴다
+    }
+  }, [])
 
   // 페이지마다 스크롤 위치를 따로 기억한다. 모든 페이지가 <main> 하나를 같이 써서, 그대로 두면 프로그램 목록을
   // 내린 채 설정으로 가면 설정이 중간부터 열린다. 처음 여는 페이지는 맨 위에서 시작한다.
@@ -156,7 +172,7 @@ export default function App() {
                 animate={ready || reduce ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.985 }}
                 transition={{ duration: 0.55, ease: EASE_OUT_QUINT }}
               >
-                <SidebarProvider className="h-svh">
+                <SidebarProvider className="h-svh" open={sidebarOpen} onOpenChange={changeSidebar}>
                   <AppSidebar page={page} onNavigate={setPage} />
                   <SidebarInset className="relative h-svh min-w-0 overflow-hidden bg-transparent">
                     {/* 제목 표시줄: 빈 곳을 끌면 창이 움직이고, 더블클릭하면 최대화된다. 스크롤하는 내용 위쪽에 고정돼 있다. */}
@@ -174,7 +190,7 @@ export default function App() {
                       )}
                     >
                       <IconTooltip label="사이드바 접기/펼치기">
-                        <SidebarTrigger className="text-muted-foreground" />
+                        <SidebarTrigger className="size-8 rounded-md text-muted-foreground hover:bg-foreground/8 hover:text-foreground" />
                       </IconTooltip>
                       <div
                         data-tauri-drag-region
@@ -196,7 +212,7 @@ export default function App() {
                       </div>
                       <div data-tauri-drag-region className="h-full flex-1" />
                       <ThemeToggle />
-                      <div className="mx-1.5 h-4 w-px bg-border" />
+                      <div className="ml-1.5 h-4 w-px bg-border" />
                       <WindowControls />
                     </header>
                     {/* 스크롤은 제목 줄 아래에서 시작한다 (제목 줄이 스크롤바 위쪽을 가리지 않게) */}

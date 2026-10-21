@@ -52,7 +52,8 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           isActive={page === item.page}
           onClick={() => onNavigate(item.page)}
           tooltip={item.label}
-          className="relative isolate h-9 rounded-[0.625rem] data-[active=true]:bg-transparent data-[active=true]:font-semibold"
+          // 마우스를 올린 항목은 선택된 항목(진한 알약)보다 옅게
+          className="relative isolate h-9 rounded-[0.625rem] hover:bg-sidebar-accent/45 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:hover:bg-transparent"
         >
           {page === item.page && (
             // 선택 표시(둥근 알약)가 메뉴 사이를 미끄러지듯 옮겨 간다.
@@ -77,7 +78,11 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
     // 창 가장자리에서 떨어져 떠 있는 유리 사이드바 (macOS 스타일)
     <Sidebar collapsible="icon" variant="sidebar">
       <SidebarHeader data-tauri-drag-region className="h-[4.5rem] justify-center">
-        <div data-tauri-drag-region className="flex items-center gap-2.5 px-1">
+        {/* 로고와 글자 위에서도 창이 끌리도록 마우스를 아래 끌기 영역으로 넘긴다. 접히면 로고를 아이콘과 같은 선에 둔다. */}
+        <div
+          data-tauri-drag-region
+          className="flex items-center gap-2.5 px-1 group-data-[collapsible=icon]:px-0 [&>*]:pointer-events-none"
+        >
           <Logo className="size-8 shrink-0" />
           <div className="grid leading-tight group-data-[collapsible=icon]:hidden">
             <span className="font-semibold tracking-tight">RobinX</span>
