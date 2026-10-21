@@ -24,6 +24,7 @@ import { EASE_OUT_QUINT } from "@/components/motion"
 import { isBusy } from "@/lib/busy"
 import { getCurrentWindow } from "@tauri-apps/api/window"
 import { toast } from "sonner"
+import { recoveryApi } from "@/lib/api"
 
 // retry: false — 모두 이 PC를 읽는 작업이라 다시 해도 결과가 같다. 기본값(3번 다시)이면 실패한 스캔을
 // 오류를 보여 주기 전에 몇 초씩 세 번 더 돈다.
@@ -140,6 +141,25 @@ export default function App() {
       el.removeEventListener("keydown", stop)
     }
   }, [page])
+  // 앱을 켤 때 보관 기간이 지난 백업을 지웠으면 한 번 알린다 (뒤에서 조용히 지우지 않게)
+  useEffect(() => {
+    if (!ready) return
+    recoveryApi
+      .startupPruneResult()
+      .then((r) => {
+        if (!r) return
+        if (r.failed > 0)
+          toast.warning(`보관 기간이 지난 백업 ${r.deleted}개를 지우고, ${r.failed}개는 지우지 못했어요`, {
+            description: "복구 기록에서 하나씩 지울 수 있어요",
+            duration: 10000,
+          })
+        else
+          toast.info(`보관 기간이 지난 백업 ${r.deleted}개를 지웠어요`, {
+            description: "보관 기간은 설정에서 바꿀 수 있어요",
+          })
+      })
+      .catch(() => {})
+  }, [ready])
   // 정리·되돌리기·제거 중에 창을 닫으면(X, Alt+F4) 한 번 막고 묻는다. 그래도 닫겠다면 그때 닫는다.
   useEffect(() => {
     const win = getCurrentWindow()

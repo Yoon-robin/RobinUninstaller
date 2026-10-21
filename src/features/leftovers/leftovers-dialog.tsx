@@ -1,6 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
+  ArchiveRestore,
   EyeOff,
   FileText,
   Folder,
@@ -9,17 +10,18 @@ import {
   ListTree,
   Loader2,
   RefreshCw,
+  ScanSearch,
   ShieldCheck,
   ShieldX,
   Sparkles,
   Trash2,
   TriangleAlert,
-  ScanSearch,
 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
 import {
+  navigate,
   forceApi,
   recoveryApi,
   scanApi,
@@ -343,6 +345,10 @@ function Results({
   const queryClient = useQueryClient()
   const [stage, setStage] = useState<Stage>({ step: "review" })
   const [cleanError, setCleanError] = useState<string | null>(null)
+  // 작업 기록을 저장하지 못해 멈췄으면 일부는 이미 옮겨졌다. 같은 목록으로 다시 정리하면 새 기록이 생기므로 막는다.
+  const saveFailed = cleanError?.includes("작업 기록을 저장하지 못해") ?? false
+  // 다시 찾아 새 목록이 오면 오류를 지운다
+  useEffect(() => setCleanError(null), [report])
   const cleanButton = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     onLockChange(stage.step === "review" ? "none" : stage.step === "cleaning" ? "busy" : "stage")
@@ -555,9 +561,30 @@ function Results({
         )}
 
         {cleanError && (
-          <p role="alert" className="border-t bg-destructive/5 px-5 py-2 text-xs break-all text-destructive">
-            {cleanError}
-          </p>
+          <div role="alert" className="flex flex-wrap items-center gap-3 border-t bg-destructive/5 px-5 py-2">
+            <p data-selectable className="min-w-0 flex-1 text-xs break-all text-destructive">
+              {cleanError}
+              {saveFailed && (
+                <span className="mt-1 block text-muted-foreground">
+                  일부 항목은 이미 백업 폴더로 옮겼을 수 있어요. 위의 다시 찾기로 목록을 새로 맞추거나 복구 기록을
+                  확인하세요.
+                </span>
+              )}
+            </p>
+            {saveFailed && (
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  onClose()
+                  navigate("restore")
+                }}
+              >
+                <ArchiveRestore />
+                복구 기록 보기
+              </Button>
+            )}
+          </div>
         )}
         <div className="flex items-center gap-3 border-t px-5 py-3">
           {report.items.length === 0 ? (
@@ -577,7 +604,7 @@ function Results({
               <Button
                 ref={cleanButton}
                 variant="destructive"
-                disabled={selected.size === 0}
+                disabled={selected.size === 0 || saveFailed}
                 onClick={() => setStage({ step: "confirm" })}
               >
                 <Trash2 />

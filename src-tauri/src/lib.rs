@@ -844,12 +844,47 @@ async fn restore_backup_elevated(
     .map_err(|e| e.to_string())?
 }
 
+/// 앱을 켤 때 기간이 지난 백업을 지운 결과 (화면에 한 번 알린다)
+static STARTUP_PRUNE: std::sync::OnceLock<Option<settings::PruneResult>> =
+    std::sync::OnceLock::new();
+static STARTUP_PRUNE_SHOWN: AtomicBool = AtomicBool::new(false);
+
+/// 앱을 켤 때 지운 백업 결과. 끝날 때까지 기다렸다가(최대 2분) 한 번만 돌려준다. 지운 것이 없으면 `None`.
+#[tauri::command]
+async fn startup_prune_result() -> Option<settings::PruneResult> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let started = std::time::Instant::now();
+        let result = loop {
+            if let Some(r) = STARTUP_PRUNE.get() {
+                break r.clone();
+            }
+            if started.elapsed() > std::time::Duration::from_secs(120) {
+                return None;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(200));
+        }?;
+        if STARTUP_PRUNE_SHOWN.swap(true, Ordering::SeqCst) || result.is_empty() {
+            return None;
+        }
+        Some(result)
+    })
+    .await
+    .ok()
+    .flatten()
+}
+
+/// 일반 권한으로 지우지 못해 관리자 권한이 필요하다는 표시 (화면이 안내 단계를 보이고 다시 부른다)
+const NEEDS_ADMIN: &str = "needsAdmin";
+
 /// 백업을 완전히 지운다. 이후에는 복원할 수 없다 (사용자가 확인한 뒤에만 부른다).
+/// 권한이 모자라면 `elevate`일 때만 관리자 권한(UAC)으로 다시 지우고, 아니면 `NEEDS_ADMIN`을 돌려준다.
 #[tauri::command]
 async fn delete_backup(
     op_id: String,
+    elevate: Option<bool>,
     on_progress: Channel<ProgressSnapshot>,
 ) -> Result<(), String> {
+    let elevate = elevate.unwrap_or(false);
     let _lock = BackupLock::acquire(&op_id)?;
     let progress = Arc::new(Progress::new());
     let _ticker = ProgressTicker::start(progress.clone(), on_progress);
@@ -858,6 +893,9 @@ async fn delete_backup(
         match robin_recovery::progress::with(progress, || store.delete(&op_id)) {
             Ok(()) => Ok(()),
             // 관리자 권한으로 격리한 폴더는 원래 권한을 그대로 갖고 있어 일반 권한으로 못 지울 수 있다
+            Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied && !elevate => {
+                Err(NEEDS_ADMIN.into())
+            }
             Err(e) if e.kind() == std::io::ErrorKind::PermissionDenied => {
                 let exe = std::env::current_exe().map_err(|e| e.to_string())?;
                 let args = format!(
@@ -1481,7 +1519,7 @@ pub fn run() {
             }
             // 기간이 지난 백업을 정리한다 (처음 설정은 30일, 사용자가 "계속 보관"을 고르면 아무것도 하지 않는다)
             std::thread::spawn(|| {
-                let _ = settings::prune_expired();
+                let _ = STARTUP_PRUNE.set(settings::prune_expired().ok());
             });
             // 창 배경은 불투명하게 그린다 (예전에는 Windows 11 Mica로 배경화면이 비쳤지만,
             // 반투명한 헤더 뒤로 목록이 비쳐 겹쳐 보여서 2026-10-20에 뺐다)
@@ -1517,6 +1555,7 @@ pub fn run() {
             uninstall_may_be_shared,
             open_task_scheduler,
             open_project_page,
+            startup_prune_result,
             stop_waiting_uninstall,
             recently_removed,
             scan_leftovers,

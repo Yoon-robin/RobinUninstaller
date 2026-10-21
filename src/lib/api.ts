@@ -232,8 +232,11 @@ export const recoveryApi = {
   /** 관리자 권한으로 되돌린다. `itemIds`가 없으면 되돌릴 수 있는 항목 전부. */
   restoreElevated: (opId: string, itemIds?: string[]) =>
     invoke<Operation>("restore_backup_elevated", { opId, itemIds: itemIds ?? null }),
-  deleteBackup: (opId: string, onProgress?: (p: ScanProgress) => void) =>
-    invoke<void>("delete_backup", { opId, onProgress: progressChannel(onProgress) }),
+  /** 권한이 모자라면 `elevate`가 아닐 때 "needsAdmin" 오류로 끝난다 (화면이 안내한 뒤 elevate로 다시 부른다) */
+  deleteBackup: (opId: string, onProgress?: (p: ScanProgress) => void, elevate = false) =>
+    invoke<void>("delete_backup", { opId, elevate, onProgress: progressChannel(onProgress) }),
+  /** 앱을 켤 때 기간이 지난 백업을 지운 결과 (한 번만, 지운 것이 없으면 null) */
+  startupPruneResult: () => invoke<{ deleted: number; failed: number } | null>("startup_prune_result"),
 }
 
 /**

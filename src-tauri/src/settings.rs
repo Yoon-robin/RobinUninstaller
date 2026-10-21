@@ -134,12 +134,18 @@ pub async fn backup_usage() -> Result<BackupUsage, String> {
     .await
 }
 
-#[derive(Serialize)]
+#[derive(Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct PruneResult {
     deleted: usize,
     /// 권한 등으로 지우지 못한 백업 (복구 기록에서 하나씩 지울 수 있다)
     failed: usize,
+}
+
+impl PruneResult {
+    pub fn is_empty(&self) -> bool {
+        self.deleted == 0 && self.failed == 0
+    }
 }
 
 /// 보관 기간이 지난 백업을 지운다. 보관 기간을 고르지 않았으면 아무것도 지우지 않는다.

@@ -547,17 +547,23 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
   }, [op])
   const kept = shown ? countedItems(shown).filter((i) => isRestorable(i.status)).length : 0
   const conflicted = shown ? shown.items.filter((i) => i.status === "conflicted").length : 0
+  // 관리자 권한으로 정리한 백업은 일반 권한으로 못 지울 수 있다. 바로 UAC를 띄우지 않고 먼저 알린다.
+  const [needsAdmin, setNeedsAdmin] = useState(false)
+  useEffect(() => {
+    if (op) setNeedsAdmin(false)
+  }, [op])
 
   const confirm = async () => {
     if (!op) return
     setBusy(true)
     setProgress(null)
     try {
-      await recoveryApi.deleteBackup(op.id, setProgress)
+      await recoveryApi.deleteBackup(op.id, setProgress, needsAdmin)
       toast.success("백업을 삭제했어요")
       onClose()
     } catch (e) {
-      notifyError(`${op.appName} 백업을 지우지 못했어요`, e, { persist: true })
+      if (String(e) === "needsAdmin") setNeedsAdmin(true)
+      else notifyError(`${op.appName} 백업을 지우지 못했어요`, e, { persist: true })
     } finally {
       setBusy(false)
       for (const key of ["backups", "backup-usage", "old-backups"]) queryClient.invalidateQueries({ queryKey: [key] })
@@ -581,14 +587,23 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
             </span>
           )}
         </DialogDescription>
+        {needsAdmin && (
+          <p className="flex gap-2 rounded-lg border bg-muted/30 px-3 py-2.5 text-sm" role="status">
+            <ShieldAlert className="mt-0.5 size-4 shrink-0 text-warning" />
+            <span>
+              일부 파일은 관리자 권한으로 정리한 것이라 관리자 권한이 있어야 지울 수 있어요. 누르면 관리자 권한
+              요청(UAC)이 떠요.
+            </span>
+          </p>
+        )}
         {busy && <ScanProgressView work label="백업을 지우는 중이에요" progress={progress} />}
         <div className="mt-2 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={busy}>
             취소
           </Button>
           <Button variant="destructive" onClick={confirm} disabled={busy}>
-            {busy ? <Loader2 className="animate-spin" /> : <Trash2 />}
-            영구 삭제
+            {busy ? <Loader2 className="animate-spin" /> : needsAdmin ? <ShieldAlert /> : <Trash2 />}
+            {needsAdmin ? "관리자 권한으로 지우기" : "영구 삭제"}
           </Button>
         </div>
       </DialogContent>
