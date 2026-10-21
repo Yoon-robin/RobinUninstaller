@@ -248,9 +248,15 @@ export default function App() {
                         }}
                       >
                         {/* 목록 페이지는 숨기기만 해서 스크롤·검색 상태를 유지한다. */}
-                        <div hidden={page !== "programs"} className="min-h-full">
+                        <motion.div
+                          hidden={page !== "programs"}
+                          className="min-h-full"
+                          initial={false}
+                          animate={page === "programs" ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
+                          transition={{ duration: 0.25, ease: EASE_OUT_QUINT }}
+                        >
                           <ProgramsPage />
-                        </div>
+                        </motion.div>
                         {page === "leftovers" && <LeftoversPage />}
                         {page === "restore" && <RestorePage />}
                         {page === "storage" && <StoragePage />}

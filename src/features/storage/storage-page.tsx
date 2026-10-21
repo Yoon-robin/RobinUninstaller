@@ -75,10 +75,14 @@ export function StoragePage() {
     queryFn: () => {
       setPartial([])
       setProgress(null)
-      return storageApi.scan((item) => setPartial((p) => [...p, item].sort((a, b) => b.bytes - a.bytes)), setProgress)
+      return storageApi.scan((item) => setPartial((p) => [...p, item]), setProgress)
     },
   })
-  const data = scan.data ?? (partial.length > 0 ? partial : undefined)
+  // 찾는 동안은 찾은 순서대로 아래에 붙이고(누르려던 줄이 밀리지 않게), 다 찾으면 한 번 크기순으로 정렬한다
+  const data = useMemo(
+    () => (scan.data ? [...scan.data].sort((a, b) => b.bytes - a.bytes) : partial.length > 0 ? partial : undefined),
+    [scan.data, partial],
+  )
   const finding = scan.isLoading
   const disk = useQuery({ queryKey: DISK_KEY, queryFn: storageApi.diskUsage })
   // 사용자가 직접 바꾼 선택. 없으면 기본 선택(다시 만들어지는 항목)을 따른다.
@@ -360,7 +364,10 @@ function CategoryRow({
             )}
           </span>
           <ChevronRight
-            className={cn("size-4 shrink-0 text-muted-foreground transition-transform", open && "rotate-90")}
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-(--ease-out-quint)",
+              open && "rotate-90",
+            )}
           />
         </button>
         {blocked && (

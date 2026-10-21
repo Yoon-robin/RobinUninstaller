@@ -327,7 +327,9 @@ function CommandPreview({ command }: { command: string | null }) {
         className="flex items-center gap-1 text-muted-foreground hover:text-foreground"
         aria-expanded={open}
       >
-        <ChevronRight className={cn("size-3.5 transition-transform duration-200", open && "rotate-90")} />
+        <ChevronRight
+          className={cn("size-3.5 transition-transform duration-300 ease-(--ease-out-quint)", open && "rotate-90")}
+        />
         실행할 명령 보기
       </button>
       <AnimatePresence initial={false}>

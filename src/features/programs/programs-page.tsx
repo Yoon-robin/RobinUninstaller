@@ -78,6 +78,9 @@ const viewOptions = [
   { key: "grid" as const, icon: LayoutGrid, label: "카드 보기" },
 ]
 
+/** 요약 카드가 한 번 등장했는지 (탭을 오갈 때 다시 틀지 않게, 화면 밖에 둔다) */
+let statsShownOnce = false
+
 export function ProgramsPage() {
   const [query, setQuery] = useState("")
   const [sort, setSort] = useState<SortKey>("name")
@@ -150,20 +153,6 @@ export function ProgramsPage() {
   const pickedApps = useMemo(() => (picked ? all.filter((a) => picked.has(a.id)) : []), [all, picked])
   const pickedRunnable = pickedApps.filter((a) => !needsForce(a)).length
   const hiddenPicked = picked ? pickedApps.filter((a) => !visible.some((v) => v.id === a.id)).length : 0
-  // 고르기를 막 끝냈으면 카드 보기로 돌아올 때 등장 애니메이션을 다시 틀지 않는다
-  const [pickEnded, setPickEnded] = useState(false)
-  const wasPicking = useRef(false)
-  useEffect(() => {
-    if (picked) {
-      wasPicking.current = true
-      return
-    }
-    if (!wasPicking.current) return
-    wasPicking.current = false
-    setPickEnded(true)
-    const t = setTimeout(() => setPickEnded(false), 1200)
-    return () => clearTimeout(t)
-  }, [picked])
   // Esc: 고르기 끝내기 (창이나 메뉴가 열려 있으면 그쪽이 먼저 받는다)
   useEffect(() => {
     if (!picked) return
@@ -367,12 +356,21 @@ export function ProgramsPage() {
         </FadeUp>
       ) : (
         <>
-          <motion.div variants={staggerContainer} className="grid gap-4 sm:grid-cols-3">
+          <motion.div
+            variants={staggerContainer}
+            // 처음 한 번만 차례로 등장한다 (Store 탭에서 돌아올 때는 바로)
+            initial={statsShownOnce ? false : "hidden"}
+            animate="show"
+            onAnimationComplete={() => (statsShownOnce = true)}
+            className="grid gap-4 sm:grid-cols-3"
+          >
             <StatCard
               icon={Package}
               tone="chart-1"
               label="설치된 프로그램"
-              value={loading || !ready ? null : apps.isError ? "—" : <CountUp value={stats.total} />}
+              value={
+                loading || !ready ? null : apps.isError ? "—" : <CountUp id="programs-total" value={stats.total} />
+              }
               unit="개"
               hint={loading || apps.isError ? undefined : `EXE ${stats.total - stats.msi} · MSI ${stats.msi}`}
             />
@@ -381,7 +379,11 @@ export function ProgramsPage() {
               tone="chart-2"
               label="전체 예상 용량"
               value={
-                loading || !ready ? null : apps.isError ? "—" : <CountUp value={stats.totalKb} format={formatSize} />
+                loading || !ready ? null : apps.isError ? (
+                  "—"
+                ) : (
+                  <CountUp id="programs-size" value={stats.totalKb} format={formatSize} />
+                )
               }
               hint={
                 loading || apps.isError
@@ -398,7 +400,9 @@ export function ProgramsPage() {
               icon={known && stats.broken === 0 ? CircleCheck : TriangleAlert}
               tone={!known ? "muted" : stats.broken > 0 ? "chart-3" : "chart-5"}
               label="언인스톨러 없음"
-              value={loading || !ready ? null : apps.isError ? "—" : <CountUp value={stats.broken} />}
+              value={
+                loading || !ready ? null : apps.isError ? "—" : <CountUp id="programs-broken" value={stats.broken} />
+              }
               unit="개"
               hint={
                 !known || noneInstalled
@@ -627,8 +631,8 @@ export function ProgramsPage() {
                     key={view}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
-                    exit={{ opacity: 0, transition: { duration: 0.1 } }}
-                    transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
+                    exit={{ opacity: 0, transition: { duration: 0.08 } }}
+                    transition={{ duration: 0.14, ease: [0.22, 1, 0.36, 1] }}
                   >
                     {view === "list" || picked ? (
                       <div className="divide-y" ref={listRef} onKeyDown={moveRowFocus}>
@@ -654,7 +658,7 @@ export function ProgramsPage() {
                       <ProgramGrid
                         apps={visible}
                         intro={intro}
-                        animateOnMount={!pickEnded}
+                        animateOnMount={false}
                         query={query}
                         removingId={removingId}
                         {...handlers}

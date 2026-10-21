@@ -362,7 +362,7 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
         >
           <ChevronRight
             className={cn(
-              "-ml-1 size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+              "-ml-1 size-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-(--ease-out-quint)",
               open && "rotate-90",
             )}
           />

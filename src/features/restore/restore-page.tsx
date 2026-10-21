@@ -351,7 +351,7 @@ function OperationCard({
         >
           <ChevronRight
             className={cn(
-              "size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+              "size-4 shrink-0 text-muted-foreground transition-transform duration-300 ease-(--ease-out-quint)",
               open && "rotate-90",
             )}
           />
