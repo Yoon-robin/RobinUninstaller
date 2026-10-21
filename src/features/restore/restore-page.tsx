@@ -37,10 +37,12 @@ import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/error-state"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
+import { rovingKeyDown } from "@/features/programs/segmented"
 import { useBusy } from "@/lib/busy"
 
 const statusLabels: Record<ItemStatus, { label: string; tone: string }> = {
-  pending: { label: "대기", tone: "text-muted-foreground" },
+  // 곧 처리될 것처럼 읽히지 않게: 지난번 정리가 이 항목에서 멈췄다는 뜻이다
+  pending: { label: "중간에 멈춤", tone: "text-muted-foreground" },
   removed: { label: "보관 중", tone: "text-primary" },
   needsAdmin: { label: "관리자 권한 필요", tone: "text-warning" },
   alreadyGone: { label: "이미 없음", tone: "text-muted-foreground" },
@@ -61,6 +63,7 @@ const kindIcons: Record<LeftoverKind, typeof Folder> = {
 const formatDate = (seconds: number) => formatDateTime(seconds * 1000)
 
 export function RestorePage() {
+  const retentionDays = useQuery({ queryKey: ["settings"], queryFn: settingsApi.get }).data?.backupRetentionDays
   const backups = useQuery({ queryKey: ["backups"], queryFn: recoveryApi.list })
   // 기록이 깨진 백업은 목록에 없지만 파일은 남아 있다. "기록 없음"으로 보이지 않게 따로 알린다
   const unreadable = useQuery({ queryKey: ["backups", "unreadable"], queryFn: recoveryApi.unreadable })
@@ -134,7 +137,7 @@ export function RestorePage() {
           </FadeUp>
           {(backups.data ?? []).map((op) => (
             <FadeUp key={op.id}>
-              <OperationCard op={op} onDelete={() => setDeleting(op)} />
+              <OperationCard op={op} retentionDays={retentionDays} onDelete={() => setDeleting(op)} />
             </FadeUp>
           ))}
         </>
@@ -216,18 +219,25 @@ function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () =
   const count = preview.data?.count ?? 0
   return (
     <Dialog open={open} onOpenChange={(v) => !v && !busy && onClose()}>
-      <DialogContent className="sm:max-w-md" showCloseButton={!busy}>
+      <DialogContent className="top-[18%] translate-y-0 sm:max-w-md" showCloseButton={!busy}>
         <DialogTitle>오래된 백업 비우기</DialogTitle>
         <DialogDescription className="leading-relaxed">
           고른 기간보다 오래된 정리 기록과 백업을 지워 공간을 돌려받아요. 지운 백업으로는 다시 되돌릴 수 없어요.
           복원하다 충돌이 난 백업은 지우지 않아요.
         </DialogDescription>
-        <div role="radiogroup" aria-label="기간" className="flex flex-wrap gap-2">
-          {(settings.data?.retentionChoices ?? []).map((d) => (
+        <div
+          role="radiogroup"
+          aria-label="기간"
+          className="flex flex-wrap gap-2"
+          onKeyDown={(e) => rovingKeyDown(e, settings.data?.retentionChoices ?? [], days ?? -1, () => busy, setDays)}
+        >
+          {(settings.data?.retentionChoices ?? []).map((d, i) => (
             <Button
               key={d}
               role="radio"
               aria-checked={days === d}
+              // 고른 것(없으면 첫 칸)만 Tab으로 들어오고, 그 안에서는 방향키로 옮긴다
+              tabIndex={days === d || (days == null && i === 0) ? 0 : -1}
               variant={days === d ? "default" : "outline"}
               size="sm"
               onClick={() => setDays(d)}
@@ -261,7 +271,24 @@ function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () =
   )
 }
 
-function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }) {
+/** 백업이 언제 저절로 지워지는지. 보관 기간이 지난 백업은 앱을 켤 때 지운다 (충돌이 남은 백업은 지우지 않는다). */
+function expiryText(op: Operation, retentionDays: number | null | undefined): { text: string; soon: boolean } | null {
+  if (retentionDays == null) return null // "계속 보관"이거나 설정을 아직 못 읽음
+  if (op.items.some((i) => i.status === "conflicted")) return { text: "충돌이 있어 저절로 지우지 않아요", soon: false }
+  const left = Math.ceil((op.createdAt + retentionDays * 86_400 - Date.now() / 1000) / 86_400)
+  if (left <= 0) return { text: "다음에 앱을 켤 때 지워져요", soon: true }
+  return { text: `${left}일 뒤 지워져요`, soon: left <= 3 }
+}
+
+function OperationCard({
+  op,
+  retentionDays,
+  onDelete,
+}: {
+  op: Operation
+  retentionDays: number | null | undefined
+  onDelete: () => void
+}) {
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
@@ -270,6 +297,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
   const [progress, setProgress] = useState<ScanProgress | null>(null)
 
   const kept = countedItems(op).filter((i) => isRestorable(i.status)).length
+  const expiry = kept > 0 ? expiryText(op, retentionDays) : null
   const restored = op.items.filter((i) => i.status === "restored").length
   const conflicted = op.items.filter((i) => i.status === "conflicted").length
   const keptBytes = op.items.filter((i) => isRestorable(i.status)).reduce((s, i) => s + (i.sizeBytes ?? 0), 0)
@@ -328,11 +356,13 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
             )}
           />
           <div className="min-w-0">
-            <p className="truncate font-semibold">{op.appName}</p>
+            {/* 좁은 창에서 버튼에 밀려 이름이 잘리지 않게 줄을 바꾼다 */}
+            <p className="font-semibold break-words">{op.appName}</p>
             <p className="text-xs text-muted-foreground">
               {formatDate(op.createdAt)} · 보관 중 {kept}개{keptBytes > 0 && ` (${formatBytes(keptBytes)})`}
               {restored > 0 && ` · 복원 ${restored}개`}
               {conflicted > 0 && <span className="text-warning">{` · 충돌 ${conflicted}개`}</span>}
+              {expiry && <span className={cn(expiry.soon && "text-warning")}>{` · ${expiry.text}`}</span>}
             </p>
           </div>
         </button>
@@ -417,21 +447,23 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
                         </Button>
                       )}
                     </div>
-                    <span className={cn("shrink-0 font-medium", s.tone)}>{s.label}</span>
-                    {isRestorable(item.status) && (
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-7 shrink-0"
-                        disabled={busy != null}
-                        onClick={() =>
-                          run(item.id, [item.id], () => recoveryApi.restore(op.id, [item.id], setProgress))
-                        }
-                      >
-                        {busy === item.id ? <Loader2 className="animate-spin" /> : <RotateCcw />}
-                        되돌리기
-                      </Button>
-                    )}
+                    <span className={cn("w-28 shrink-0 text-right font-medium", s.tone)}>{s.label}</span>
+                    <span className="flex w-24 shrink-0 justify-end">
+                      {isRestorable(item.status) && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 shrink-0"
+                          disabled={busy != null}
+                          onClick={() =>
+                            run(item.id, [item.id], () => recoveryApi.restore(op.id, [item.id], setProgress))
+                          }
+                        >
+                          {busy === item.id ? <Loader2 className="animate-spin" /> : <RotateCcw />}
+                          되돌리기
+                        </Button>
+                      )}
+                    </span>
                   </li>
                 )
               })}
@@ -474,10 +506,13 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
 
   return (
     <Dialog open={op != null} onOpenChange={(open) => !open && !busy && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      {/* 진행 표시가 나타나도 창이 위로 튀지 않게 위쪽에 고정한다 */}
+      <DialogContent className="top-[18%] translate-y-0 sm:max-w-md" showCloseButton={!busy}>
         <DialogTitle>백업을 완전히 삭제할까요?</DialogTitle>
         <DialogDescription className="leading-relaxed">
-          {shown?.appName}의 정리 기록과 보관 중인 항목 {kept}개가 영구히 지워져요.{" "}
+          {kept > 0
+            ? `${shown?.appName}의 정리 기록과 보관 중인 항목 ${kept}개가 영구히 지워져요.`
+            : `${shown?.appName}의 정리 기록을 지워요. 모두 되돌려서 보관 중인 항목은 없어요.`}{" "}
           <b className="text-foreground">이후에는 되돌릴 수 없어요.</b>
           {conflicted > 0 && (
             <span className="mt-2 block rounded-lg bg-chart-3/10 px-3 py-2 text-warning">
