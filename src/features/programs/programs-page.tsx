@@ -377,8 +377,13 @@ export function ProgramsPage() {
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
                         {(Object.keys(sortLabels) as SortKey[]).map((key) => (
-                          <DropdownMenuItem key={key} onClick={() => setSort(key)}>
-                            <Check className={cn(sort !== key && "invisible")} />
+                          <DropdownMenuItem
+                            key={key}
+                            role="menuitemradio"
+                            aria-checked={sort === key}
+                            onClick={() => setSort(key)}
+                          >
+                            <Check aria-hidden className={cn(sort !== key && "invisible")} />
                             {sortLabels[key]}
                           </DropdownMenuItem>
                         ))}
@@ -394,7 +399,13 @@ export function ProgramsPage() {
                       {picked ? "고르기 끝내기" : "여러 개 제거"}
                     </Button>
                     {!picked && (
-                      <IconSegmented options={viewOptions} value={view} onChange={setView} layoutId="view-toggle" />
+                      <IconSegmented
+                        options={viewOptions}
+                        value={view}
+                        onChange={setView}
+                        layoutId="view-toggle"
+                        label="보기 방식"
+                      />
                     )}
                     <IconTooltip
                       label={sizes.isFetching ? "크기를 다 잰 뒤에 내보낼 수 있어요" : "목록 내보내기 (CSV)"}

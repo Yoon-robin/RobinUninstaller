@@ -221,7 +221,13 @@ export function BatchUninstallDialog({
                     (isRemoved(status) ? (
                       // 다 끝난 뒤에만: 도중에 누르면 창이 닫히고 남은 제거가 보이지 않게 이어진다
                       phase === "done" ? (
-                        <Button size="sm" variant="ghost" className="h-7" onClick={() => onFindLeftovers(app)}>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7"
+                          aria-label={`${app.displayName} 흔적 찾기`}
+                          onClick={() => onFindLeftovers(app)}
+                        >
                           <Sparkles />
                           흔적 찾기
                         </Button>

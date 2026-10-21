@@ -50,6 +50,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
       <SidebarMenuItem key={item.page}>
         <SidebarMenuButton
           isActive={page === item.page}
+          aria-current={page === item.page ? "page" : undefined}
           onClick={() => onNavigate(item.page)}
           tooltip={item.label}
           // 마우스를 올린 항목은 선택된 항목(진한 알약)보다 옅게
@@ -90,7 +91,8 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           </div>
         </div>
       </SidebarHeader>
-      <SidebarContent>
+      {/* 화면 읽기 프로그램이 앱 메뉴로 찾을 수 있게 */}
+      <SidebarContent role="navigation" aria-label="앱 메뉴">
         <SidebarGroup>
           <SidebarGroupLabel>관리</SidebarGroupLabel>
           <SidebarGroupContent>

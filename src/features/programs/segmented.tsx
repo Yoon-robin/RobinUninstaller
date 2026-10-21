@@ -101,16 +101,20 @@ export function IconSegmented<K extends string>({
   value,
   onChange,
   layoutId,
+  label,
 }: {
   options: { key: K; icon: LucideIcon; label: string }[]
   value: K
   onChange: (key: K) => void
   layoutId: string
+  /** 묶음 이름 (화면 읽기 프로그램용) */
+  label: string
 }) {
   return (
     <div
       className="flex h-9 items-center rounded-lg border bg-background/60 p-0.5"
       role="radiogroup"
+      aria-label={label}
       onKeyDown={(e) =>
         rovingKeyDown(
           e,

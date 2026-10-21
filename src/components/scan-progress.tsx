@@ -53,10 +53,13 @@ export function ScanProgressView({
   const current = p?.current ? (p.current.includes("\\") ? shortenPath(p.current) : p.current) : null
 
   return (
-    <div className={cn("flex flex-col gap-2.5", className)} role="status" aria-live="polite">
+    // 읽어 주는 것은 단계 이름뿐이다. 1초마다 바뀌는 시간·개수·경로까지 알리면 화면 읽기 프로그램이 쉬지 않고 읽는다.
+    <div className={cn("flex flex-col gap-2.5", className)}>
       <div className="flex items-center gap-2 text-sm">
         <Loader2 className="size-4 shrink-0 animate-spin text-primary" />
-        <span className="font-medium">{label}</span>
+        <span className="font-medium" role="status">
+          {label}
+        </span>
         <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
           {p && p.total > 0 && `${p.done.toLocaleString("ko-KR")} / ${p.total.toLocaleString("ko-KR")}${unit} · `}
           {elapsedText(elapsed)}

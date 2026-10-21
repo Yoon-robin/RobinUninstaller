@@ -29,6 +29,7 @@ import {
 } from "@/lib/api"
 import { ScanProgressView } from "@/components/scan-progress"
 import { formatBytes } from "@/lib/format"
+import { IconTooltip } from "@/components/icon-tooltip"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
 import { Button } from "@/components/ui/button"
@@ -368,16 +369,18 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
           {busy === "all" ? <Loader2 className="animate-spin" /> : <RotateCcw />}
           정리 되돌리기
         </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          className="size-8 text-muted-foreground hover:text-destructive"
-          aria-label="백업 삭제"
-          disabled={busy != null}
-          onClick={onDelete}
-        >
-          <Trash2 />
-        </Button>
+        <IconTooltip label="백업 삭제">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="size-8 text-muted-foreground hover:text-destructive"
+            aria-label="백업 삭제"
+            disabled={busy != null}
+            onClick={onDelete}
+          >
+            <Trash2 />
+          </Button>
+        </IconTooltip>
       </div>
       {busy != null && busy !== "admin" && (
         <ScanProgressView className="border-t px-5 py-4" label="되돌리는 중이에요" progress={progress} />

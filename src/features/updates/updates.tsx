@@ -250,7 +250,11 @@ function UpdateDialog({ update, open, onClose }: { update: Update | null; open: 
           </div>
         )}
         {stage.step === "downloading" && (
-          <div className="flex flex-col gap-2" role="status" aria-live="polite">
+          <div className="flex flex-col gap-2">
+            {/* 받은 크기는 계속 바뀌므로 읽어 주지 않는다 */}
+            <p className="sr-only" role="status">
+              업데이트를 받는 중이에요
+            </p>
             <div className="h-1.5 overflow-hidden rounded-full bg-muted">
               {percent == null ? (
                 <div className="scan-sweep h-full w-1/3 rounded-full bg-primary" />

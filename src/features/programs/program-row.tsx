@@ -3,6 +3,7 @@ import { Check, MoreHorizontal, TriangleAlert } from "lucide-react"
 import { motion } from "motion/react"
 
 import { needsForce, type InstalledApplication } from "@/lib/api"
+import { IconTooltip } from "@/components/icon-tooltip"
 import { formatInstallDate, formatSize } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { Highlight } from "@/components/highlight"
@@ -96,7 +97,9 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
                   <Highlight text={app.displayName} query={query} />
                 </p>
                 {needsForce(app) && (
-                  <TriangleAlert className="size-3.5 shrink-0 text-warning" aria-label="언인스톨러 없음" />
+                  <IconTooltip label="언인스톨러 없음">
+                    <TriangleAlert className="size-3.5 shrink-0 text-warning" aria-label="언인스톨러 없음" />
+                  </IconTooltip>
                 )}
               </div>
               <p className="truncate text-xs text-muted-foreground">{app.version ?? "버전 정보 없음"}</p>
@@ -152,7 +155,7 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
                   variant="ghost"
                   size="icon"
                   className="size-8 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
-                  aria-label="작업"
+                  aria-label={`${app.displayName} 작업`}
                 >
                   <MoreHorizontal />
                 </Button>

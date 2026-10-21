@@ -735,7 +735,15 @@ function CleanProgressView({ live, items }: { live: LiveProgress; items: Storage
         )}
       </div>
 
-      <div className="rounded-xl border bg-muted/30 px-3.5 py-3 text-sm" role="status" aria-live="polite">
+      {/* 읽어 주는 것은 지금 정리하는 항목 이름뿐이다 (파일 수·경로·시간은 계속 바뀌어 화면에만 보인다) */}
+      <p className="sr-only" role="status">
+        {live.stage === "admin"
+          ? "관리자 권한으로 정리하는 중"
+          : cur
+            ? `${nameOf(cur.id)} 정리 중, ${cur.total}개 중 ${cur.index + 1}번째`
+            : "다음 항목을 준비하는 중"}
+      </p>
+      <div className="rounded-xl border bg-muted/30 px-3.5 py-3 text-sm">
         {live.stage === "admin" ? (
           <>
             <p className="font-medium">관리자 권한으로 정리하는 중</p>

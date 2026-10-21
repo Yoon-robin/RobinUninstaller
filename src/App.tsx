@@ -238,7 +238,7 @@ export default function App() {
                   </SidebarInset>
                 </SidebarProvider>
               </motion.div>
-              <Toaster position="bottom-right" />
+              <Toaster position="bottom-right" containerAriaLabel="알림" />
               <StartupSplash onDone={onSplashDone} />
             </UpdatesProvider>
           </TooltipProvider>

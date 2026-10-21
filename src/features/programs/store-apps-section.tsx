@@ -170,6 +170,7 @@ export function StoreAppsSection({ initialQuery = "" }: { initialQuery?: string 
                   variant="ghost"
                   size="sm"
                   className="h-7 justify-self-end opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
+                  aria-label={`${app.displayName} 설정에서 제거`}
                   onClick={openSettings}
                 >
                   설정에서 제거

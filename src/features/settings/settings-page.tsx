@@ -291,7 +291,7 @@ export function SettingsPage() {
                       variant="ghost"
                       size="icon"
                       className="size-7 shrink-0 text-muted-foreground"
-                      aria-label="제외 목록에서 빼기"
+                      aria-label={`${e.location}${e.valueName ? ` › ${e.valueName}` : ""} 제외 목록에서 빼기`}
                       onClick={() => removeExclusion(i, e.location)}
                     >
                       <X />
