@@ -304,7 +304,12 @@ function Results({
   // 근거가 강한 항목(등록 정보가 직접 가리키는 위치 등)만 미리 선택한다. 미리 보기는 고르지 않는다.
   const initial = () => new Set(preview ? [] : strong.map((i) => i.id))
   const [selected, setSelected] = useState<Set<string>>(initial)
-  useEffect(() => setSelected(initial()), [report])
+  // "다음부터 제외"를 누른 항목. 이번 정리에서도 빼서, 제외한 것이 그대로 정리되지 않게 한다.
+  const [excluded, setExcluded] = useState<Set<string>>(() => new Set())
+  useEffect(() => {
+    setSelected(initial())
+    setExcluded(new Set())
+  }, [report])
 
   const selectedBytes = useMemo(
     () => report.items.filter((i) => selected.has(i.id)).reduce((sum, i) => sum + (i.sizeBytes ?? 0), 0),
@@ -354,6 +359,24 @@ function Results({
       />
     )
   }
+
+  const exclude = (id: string) =>
+    settingsApi
+      .addExclusion(id)
+      .then((added) => {
+        setExcluded((s) => new Set(s).add(id))
+        setSelected((s) => {
+          const next = new Set(s)
+          next.delete(id)
+          return next
+        })
+        // 설정 화면의 제외 목록이 바로 바뀌게
+        queryClient.invalidateQueries({ queryKey: ["settings"] })
+        toast.success(added ? "이번 정리와 다음 찾기에서 이 위치는 빼요" : "이미 제외 목록에 있어요", {
+          description: "되돌리려면 설정 › 잔여물 스캔에서 뺄 항목을 보세요",
+        })
+      })
+      .catch((e) => toast.error(String(e)))
 
   const toggle = (id: string) =>
     setSelected((s) => {
@@ -411,7 +434,9 @@ function Results({
               items={strong}
               offset={0}
               selected={selected}
+              excluded={excluded}
               onToggle={preview ? undefined : toggle}
+              onExclude={preview ? undefined : exclude}
             />
             <Group
               title="직접 확인이 필요한 항목"
@@ -423,7 +448,9 @@ function Results({
               items={review}
               offset={strong.length}
               selected={selected}
+              excluded={excluded}
               onToggle={preview ? undefined : toggle}
+              onExclude={preview ? undefined : exclude}
             />
           </div>
         </>
@@ -474,15 +501,20 @@ function Group({
   items,
   offset,
   selected,
+  excluded,
   onToggle,
+  onExclude,
 }: {
   title: string
   hint: string
   items: Leftover[]
   offset: number
   selected: Set<string>
+  excluded: Set<string>
   /** 없으면 고를 수 없다 (미리 보기) */
   onToggle?: (id: string) => void
+  /** 없으면 제외할 수 없다 (미리 보기: 지금 쓰는 설치 폴더를 빼 버릴 수 있어서) */
+  onExclude?: (id: string) => void
 }) {
   if (items.length === 0) return null
   return (
@@ -500,7 +532,9 @@ function Group({
             item={item}
             index={offset + i}
             checked={selected.has(item.id)}
+            excluded={excluded.has(item.id)}
             onToggle={onToggle && (() => onToggle(item.id))}
+            onExclude={onExclude && (() => onExclude(item.id))}
           />
         ))}
       </ul>
@@ -519,12 +553,16 @@ function LeftoverRow({
   item,
   index,
   checked,
+  excluded,
   onToggle,
+  onExclude,
 }: {
   item: Leftover
   index: number
   checked: boolean
+  excluded: boolean
   onToggle?: () => void
+  onExclude?: () => void
 }) {
   const Icon = kindIcons[item.kind]
   const isFs = item.kind === "folder" || item.kind === "file"
@@ -536,10 +574,16 @@ function LeftoverRow({
       style={index < 12 ? ({ "--i": index } as CSSProperties) : undefined}
     >
       {onToggle && (
-        <Checkbox checked={checked} onCheckedChange={onToggle} aria-label={`${fullPath} 선택`} className="mt-0.5" />
+        <Checkbox
+          checked={checked}
+          disabled={excluded}
+          onCheckedChange={onToggle}
+          aria-label={`${fullPath} 선택`}
+          className="mt-0.5"
+        />
       )}
       <Icon className="mt-0.5 size-4 shrink-0 text-muted-foreground" aria-label={kindLabels[item.kind]} />
-      <div className="min-w-0 flex-1">
+      <div className={cn("min-w-0 flex-1", excluded && "opacity-50")}>
         <p data-selectable className="font-mono text-xs leading-5 break-all" title={fullPath}>
           {item.location}
           {item.valueName && (
@@ -549,6 +593,11 @@ function LeftoverRow({
           )}
         </p>
         <div className="mt-1.5 flex flex-wrap gap-1">
+          {excluded && (
+            <span className="rounded-md border border-foreground/20 px-1.5 py-0.5 text-[11px] font-medium">
+              제외함 · 이번에 정리하지 않아요
+            </span>
+          )}
           {item.evidence.map((e, i) => {
             const d = describeEvidence(e)
             return (
@@ -587,26 +636,13 @@ function LeftoverRow({
               </Button>
             </IconTooltip>
           )}
-          <IconTooltip label="다음부터 제외 (설정에서 되돌릴 수 있어요)">
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label="다음부터 제외"
-              onClick={() =>
-                settingsApi
-                  .addExclusion(item.id)
-                  .then((added) =>
-                    toast.success(added ? "다음 스캔부터 이 위치는 빼요" : "이미 제외 목록에 있어요", {
-                      description: "설정 › 잔여물 스캔에서 뺄 항목에서 되돌릴 수 있어요",
-                    }),
-                  )
-                  .catch((e) => toast.error(String(e)))
-              }
-            >
-              <EyeOff />
-            </Button>
-          </IconTooltip>
+          {onExclude && !excluded && (
+            <IconTooltip label="다음부터 제외 (설정에서 되돌릴 수 있어요)">
+              <Button variant="ghost" size="icon" className="size-7" aria-label="다음부터 제외" onClick={onExclude}>
+                <EyeOff />
+              </Button>
+            </IconTooltip>
+          )}
           <IconTooltip label="경로 복사">
             <Button
               variant="ghost"
