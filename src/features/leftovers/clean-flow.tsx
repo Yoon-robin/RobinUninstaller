@@ -99,8 +99,10 @@ export function ConfirmClean({
 export function Cleaning({ label, progress }: { label: string; progress?: ScanProgress | null }) {
   if (progress !== undefined) {
     return (
-      <motion.div {...panel} className="flex flex-1 flex-col justify-center p-8">
+      // 확인·완료 화면처럼 가운데에 같은 폭으로 둔다
+      <motion.div {...panel} className="flex flex-1 flex-col items-center justify-center p-8">
         <ScanProgressView
+          className="w-full max-w-md"
           label={label}
           progress={progress}
           hint="같은 드라이브의 항목은 금방 옮겨지고, 다른 드라이브의 폴더는 복사해서 옮기느라 오래 걸릴 수 있어요."
@@ -175,7 +177,13 @@ export function CleanResult({
 
   return (
     <motion.div {...panel} className="flex min-h-0 flex-1 flex-col">
-      <div className="flex flex-col items-center gap-3 border-b px-6 pt-8 pb-6 text-center">
+      {/* 정리하지 못한 항목이 없으면 확인·진행 화면처럼 세로 가운데에, 있으면 위에 두고 아래에 목록을 보인다 */}
+      <div
+        className={cn(
+          "flex flex-col items-center gap-3 px-6 text-center",
+          problems.length > 0 ? "border-b pt-8 pb-6" : "flex-1 justify-center py-8",
+        )}
+      >
         <motion.div
           initial={{ scale: 0.8, opacity: 0 }}
           animate={{ scale: 1, opacity: 1 }}
