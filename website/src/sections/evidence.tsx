@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef, useState } from "react"
 import { CircleCheck, CircleDashed, Folder, KeyRound, ListTree, ShieldCheck, ShieldMinus } from "lucide-react"
-import { motion, useInView, useReducedMotion } from "motion/react"
+import { m, useInView, useReducedMotion } from "motion/react"
 
 import { cn } from "@/lib/utils"
 import { easeOutQuint, Reveal } from "@/components/motion"
@@ -127,7 +127,7 @@ function Check({ on, delay, animate }: { on: boolean; delay: number; animate: bo
         stroke="oklch(0.17 0.02 264)"
         strokeWidth={3.5}
       >
-        <motion.path
+        <m.path
           d="M20 6 9 17l-5-5"
           strokeLinecap="round"
           strokeLinejoin="round"
@@ -229,7 +229,7 @@ export function Evidence() {
                 {rows.map((r, i) => {
                   const lit = active === r.group
                   return (
-                    <motion.li
+                    <m.li
                       key={r.path + (r.value ?? "")}
                       initial={reduce ? false : { opacity: 0, x: -8 }}
                       animate={seen ? { opacity: lit ? 1 : 0.5, x: 0 } : undefined}
@@ -268,7 +268,7 @@ export function Evidence() {
                       {r.size && (
                         <span className="shrink-0 text-[12px] text-muted-foreground tabular-nums">{r.size}</span>
                       )}
-                    </motion.li>
+                    </m.li>
                   )
                 })}
               </ul>

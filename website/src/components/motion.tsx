@@ -1,5 +1,5 @@
 import type { MouseEvent, ReactNode } from "react"
-import { motion, useReducedMotion } from "motion/react"
+import { m, useReducedMotion } from "motion/react"
 
 import { cn } from "@/lib/utils"
 
@@ -29,18 +29,18 @@ export function Reveal({
   outerClassName?: string
 }) {
   const reduce = useReducedMotion()
-  const Comp = as === "li" ? motion.li : motion.div
+  const Comp = as === "li" ? m.li : m.div
   if (heading) {
     // 걷히는 판(clip-path)을 지켜보면 Chromium이 잘린 영역으로 화면 안인지 따져 좁은 화면에서 끝내 나타나지 않았다.
     // 그래서 잘리지 않은 바깥 판이 화면에 들어왔는지 보고, 안쪽 판만 걷히게 한다.
     return (
-      <motion.div
+      <m.div
         className={outerClassName}
         initial={reduce ? false : "hidden"}
         whileInView="shown"
         viewport={{ once: true, margin: "-70px" }}
       >
-        <motion.div
+        <m.div
           className={className}
           variants={{
             hidden: { opacity: 0, y: 28, clipPath: "inset(0% 0% 100% 0%)" },
@@ -49,8 +49,8 @@ export function Reveal({
           transition={{ duration: 0.9, delay, ease: easeOutQuint }}
         >
           {children}
-        </motion.div>
-      </motion.div>
+        </m.div>
+      </m.div>
     )
   }
   return (

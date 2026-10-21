@@ -1,6 +1,6 @@
 import { CircleCheck, CircleDashed, CircleX } from "lucide-react"
 
-import { motion, useReducedMotion } from "motion/react"
+import { m, useReducedMotion } from "motion/react"
 
 import { easeOutQuint, Reveal } from "@/components/motion"
 import { cn } from "@/lib/utils"
@@ -80,7 +80,7 @@ export function Restore() {
               {rows.map((r, i) => {
                 const { icon: Icon, tone } = levelStyle[r.level]
                 return (
-                  <motion.tr
+                  <m.tr
                     key={r.task}
                     initial={reduce ? false : { opacity: 0, y: 10 }}
                     whileInView={{ opacity: 1, y: 0 }}
@@ -101,7 +101,7 @@ export function Restore() {
                       </span>
                     </td>
                     <td className="col-span-2 text-body text-muted-foreground md:py-4 md:align-top">{r.note}</td>
-                  </motion.tr>
+                  </m.tr>
                 )
               })}
             </tbody>

@@ -1,4 +1,4 @@
-import { motion, useReducedMotion } from "motion/react"
+import { m, useReducedMotion } from "motion/react"
 
 import { LOGO, REPO_URL } from "@/lib/site"
 import { easeOutQuint, Reveal } from "@/components/motion"
@@ -13,7 +13,7 @@ export function Cta() {
   const reduce = useReducedMotion()
   return (
     <section className="relative overflow-hidden py-24 sm:py-32">
-      <motion.div
+      <m.div
         aria-hidden
         className="horizon pointer-events-none absolute inset-0"
         initial={reduce ? false : { opacity: 0, y: 80 }}

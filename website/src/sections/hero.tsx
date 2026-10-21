@@ -1,6 +1,6 @@
 import { useRef } from "react"
 import { ArrowDown, ArrowRight } from "lucide-react"
-import { motion, useReducedMotion, useScroll, useTransform } from "motion/react"
+import { m, useReducedMotion, useScroll, useTransform } from "motion/react"
 
 import { RELEASE, shot } from "@/lib/site"
 import { easeOutQuint } from "@/components/motion"
@@ -27,7 +27,7 @@ function Words({
   return (
     <span className={className}>
       {text.split(" ").map((w, i) => (
-        <motion.span
+        <m.span
           key={i}
           className="inline-block"
           initial={reduce ? false : { opacity: 0, y: "0.35em", filter: "blur(10px)" }}
@@ -36,7 +36,7 @@ function Words({
         >
           {w}
           {i < text.split(" ").length - 1 && " "}
-        </motion.span>
+        </m.span>
       ))}
     </span>
   )
@@ -60,11 +60,11 @@ export function Hero() {
 
   return (
     <section ref={stage} id="top" className="relative overflow-x-clip">
-      <motion.div aria-hidden style={{ y: glowY }} className="glow-top pointer-events-none absolute inset-0" />
+      <m.div aria-hidden style={{ y: glowY }} className="glow-top pointer-events-none absolute inset-0" />
       <div aria-hidden className="grid-lines pointer-events-none absolute inset-x-0 top-0 h-[44rem]" />
 
       <div className="frame relative flex flex-col items-center pt-32 text-center sm:pt-40">
-        <motion.a
+        <m.a
           {...rise(0, reduce)}
           href={RELEASE.pageUrl}
           target="_blank"
@@ -74,21 +74,21 @@ export function Hero() {
           <span className="rounded-full bg-primary px-2 py-0.5 font-semibold text-primary-foreground">새 버전</span>
           <span>v{RELEASE.version} 공개 · 릴리스 노트</span>
           <ArrowRight className="size-3.5 transition-transform group-hover:translate-x-0.5" />
-        </motion.a>
+        </m.a>
         <h1 className="display mt-7">
           <Words text="남은 흔적" start={0.08} reduce={reduce} className="text-stage" />
           <Words text="까지" start={0.24} reduce={reduce} />
           <br />
           <Words text="정리해요." start={0.32} reduce={reduce} />
         </h1>
-        <motion.p
+        <m.p
           {...rise(0.45, reduce)}
           className="mt-6 max-w-[44rem] text-lead leading-snug text-balance text-muted-foreground"
         >
           프로그램을 지우고 남은 파일과 레지스트리를 찾아 줘요. <br />
           근거를 보고 고른 것만, 백업한 다음 정리해요.
-        </motion.p>
-        <motion.div {...rise(0.55, reduce)} className="mt-9 flex flex-wrap items-center justify-center gap-3">
+        </m.p>
+        <m.div {...rise(0.55, reduce)} className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <DownloadButton />
           <a
             href="#walkthrough"
@@ -97,20 +97,20 @@ export function Hero() {
             정리하는 모습 보기
             <ArrowDown className="size-4 transition-transform group-hover:translate-y-0.5" />
           </a>
-        </motion.div>
-        <motion.div {...rise(0.62, reduce)}>
+        </m.div>
+        <m.div {...rise(0.62, reduce)}>
           <DownloadFacts className="mt-5 max-w-[46ch] text-balance text-muted-foreground" linkClassName="text-stage" />
-        </motion.div>
+        </m.div>
       </div>
 
       {/* 실제 앱 화면을 창 틀에 담아 보여 준다. 아래쪽은 다음 구역으로 이어지도록 잘라 둔다 */}
-      <motion.figure
+      <m.figure
         initial={reduce ? false : { opacity: 0, y: 48 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 1.1, delay: 0.5, ease: easeOutQuint }}
         className="frame relative mt-14 [perspective:1600px] sm:mt-20"
       >
-        <motion.div
+        <m.div
           style={{ rotateX: tilt, scale, transformOrigin: "50% 0%" }}
           className="window mx-auto max-w-[68rem] overflow-hidden rounded-[1.25rem] p-2 sm:rounded-[1.6rem] sm:p-3"
         >
@@ -125,11 +125,11 @@ export function Hero() {
               className="block w-full max-sm:mt-[-6.3%] max-sm:ml-[-33.6%] max-sm:w-[167.1%] max-sm:max-w-none"
             />
           </div>
-        </motion.div>
+        </m.div>
         <figcaption className="mx-auto mt-5 max-w-[68rem] text-center text-fine text-muted-foreground">
           실제 앱 화면이에요. 프로그램 이름·경로·크기는 설명을 위한 예시예요.
         </figcaption>
-      </motion.figure>
+      </m.figure>
     </section>
   )
 }

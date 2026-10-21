@@ -1,10 +1,10 @@
 // 웹사이트에 넣을 앱 화면을 만든다. 실제 PC 정보가 아니라 **가상의 프로그램**을 가짜 응답으로 넣어 캡처한다.
 //
 //   (저장소 루트에서) pnpm exec vite --port 1420 --strictPort    # 앱 개발 서버 (pnpm tauri dev 중이면 생략)
-//   node website/scripts/capture.mjs                              # → website/public/shots/*.png
+//   node website/scripts/capture.mjs                              # → website/public/shots/*.webp
 //
 // Windows에서는 Edge를 쓴다. 다른 브라우저는 CHROMIUM_PATH로 지정한다.
-import { mkdirSync } from "node:fs"
+import { mkdirSync, writeFileSync } from "node:fs"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
 
@@ -311,8 +311,26 @@ const startup = [
 
 // 이름·설명은 crates/storage/src/rules.rs의 실제 규칙과 같게 쓴다. 관리자 항목과 되돌릴 수 없는 항목은 미리 고르지 않는다.
 const storage = [
-  ["user-temp", "사용자 임시 파일", "프로그램이 설치·실행 중에 잠깐 쓰고 남긴 파일", "regenerable", false, true, 2_840_000_000, 18342],
-  ["chrome-cache", "Chrome 캐시", "Chrome이 웹페이지를 빨리 열려고 저장한 파일", "regenerable", false, true, 1_920_000_000, 40211],
+  [
+    "user-temp",
+    "사용자 임시 파일",
+    "프로그램이 설치·실행 중에 잠깐 쓰고 남긴 파일",
+    "regenerable",
+    false,
+    true,
+    2_840_000_000,
+    18342,
+  ],
+  [
+    "chrome-cache",
+    "Chrome 캐시",
+    "Chrome이 웹페이지를 빨리 열려고 저장한 파일",
+    "regenerable",
+    false,
+    true,
+    1_920_000_000,
+    40211,
+  ],
   [
     "shader-cache",
     "그래픽 셰이더 캐시",
@@ -323,8 +341,26 @@ const storage = [
     412_000_000,
     1290,
   ],
-  ["windows-temp", "Windows 임시 파일", "Windows와 서비스가 남긴 임시 파일", "regenerable", true, false, 1_310_000_000, 2210],
-  ["recycle-bin", "휴지통", "이미 지운 파일이 모여 있는 곳 (모든 드라이브)", "irreversible", false, false, 3_700_000_000, 512],
+  [
+    "windows-temp",
+    "Windows 임시 파일",
+    "Windows와 서비스가 남긴 임시 파일",
+    "regenerable",
+    true,
+    false,
+    1_310_000_000,
+    2210,
+  ],
+  [
+    "recycle-bin",
+    "휴지통",
+    "이미 지운 파일이 모여 있는 곳 (모든 드라이브)",
+    "irreversible",
+    false,
+    false,
+    3_700_000_000,
+    512,
+  ],
 ].map(([id, name, description, risk, admin, defaultSelected, bytes, files]) => ({
   id,
   name,
@@ -356,9 +392,26 @@ const overrides = {
 }
 
 const browser = await launch()
+// PNG보다 3~4배 가벼운 WebP로 저장한다. 브라우저의 canvas 인코더를 쓰므로 따로 설치할 것이 없다.
+// 글자가 많은 화면이라 품질은 높게 둔다.
+const encoder = await browser.newPage()
 const shot = async (name, page) => {
-  await page.screenshot({ path: join(out, `${name}.png`) })
-  console.log("saved", `website/public/shots/${name}.png`)
+  const png = await page.screenshot()
+  const webp = await encoder.evaluate(
+    async (src) => {
+      const img = new Image()
+      img.src = src
+      await img.decode()
+      const canvas = document.createElement("canvas")
+      canvas.width = img.naturalWidth
+      canvas.height = img.naturalHeight
+      canvas.getContext("2d").drawImage(img, 0, 0)
+      return canvas.toDataURL("image/webp", 0.9).split(",")[1]
+    },
+    `data:image/png;base64,${png.toString("base64")}`,
+  )
+  writeFileSync(join(out, `${name}.webp`), Buffer.from(webp, "base64"))
+  console.log("saved", `website/public/shots/${name}.webp`)
 }
 const nav = async (page, name) => {
   await page.getByRole("button", { name, exact: true }).first().click()
@@ -366,14 +419,14 @@ const nav = async (page, name) => {
 }
 
 // 사이트가 어두운 바탕이라 앱도 어두운 테마로 찍는다 (CAPTURE_SCHEME=light로 바꿀 수 있다)
-const page = await openApp(browser, { overrides, width: 1280, height: 800, scheme: process.env.CAPTURE_SCHEME ?? "dark" })
+const page = await openApp(browser, {
+  overrides,
+  width: 1280,
+  height: 800,
+  scheme: process.env.CAPTURE_SCHEME ?? "dark",
+})
 await page.waitForTimeout(2500)
 await shot("programs", page)
-
-await page.getByRole("radio", { name: "카드 보기" }).click()
-await page.waitForTimeout(1400)
-await shot("programs-grid", page)
-await page.getByRole("radio", { name: "목록 보기" }).click()
 
 await nav(page, "잔여물 정리")
 await page
