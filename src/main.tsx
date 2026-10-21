@@ -4,6 +4,8 @@ import { invoke } from "@tauri-apps/api/core";
 import App from "./App";
 import { SetupApp, type SetupMode } from "./features/setup/setup-app";
 import { beginStartupUpdateCheck } from "./features/updates/updates";
+import { toast } from "sonner";
+import { AppErrorBoundary } from "./components/app-error-boundary";
 import "./index.css";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -13,7 +15,9 @@ invoke<"app" | SetupMode>("app_mode")
   .then((mode) => {
     if (mode === "app") beginStartupUpdateCheck();
     ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
-      <React.StrictMode>{mode === "app" ? <App /> : <SetupApp mode={mode} />}</React.StrictMode>,
+      <React.StrictMode>
+        <AppErrorBoundary>{mode === "app" ? <App /> : <SetupApp mode={mode} />}</AppErrorBoundary>
+      </React.StrictMode>,
     );
     hideBoot();
   });
@@ -44,3 +48,11 @@ if (import.meta.env.PROD) {
     if (!e.defaultPrevented && !target.closest("input, textarea, [data-selectable]")) e.preventDefault();
   });
 }
+
+// 어디서도 처리하지 않은 실패는 조용히 사라지지 않게 알린다 (Tauri가 창을 닫을 때 내는 이벤트 정리 오류는 뺀다).
+window.addEventListener("unhandledrejection", (e) => {
+  const message = String(e.reason instanceof Error ? e.reason.message : e.reason);
+  if (message.includes("unregisterListener")) return;
+  console.error("처리하지 않은 오류", e.reason);
+  toast.error("처리하지 못한 오류가 있어요", { description: message });
+});
