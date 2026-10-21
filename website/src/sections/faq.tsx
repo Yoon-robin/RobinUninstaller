@@ -1,13 +1,22 @@
+import type { ReactNode } from "react"
+
 import { REPO_URL } from "@/lib/site"
 import { Reveal } from "@/components/motion"
 
-type Faq = { q: string; a: string }
+type Faq = { q: string; a: ReactNode }
 
 /** 받기 전에 가장 많이 궁금한 것 (안전·되돌리기·받기·인터넷) */
 const core: Faq[] = [
   {
     q: "어디서 받고, 어떻게 확인하나요?",
-    a: "GitHub 공식 릴리스에서만 받으세요(이 사이트의 다운로드 단추도 그 파일로 연결돼요). 아직 Microsoft 게시자 서명이 없어 처음 실행할 때 Windows가 경고 창을 띄울 수 있어요. 실행하기 전에 릴리스 페이지의 SHA-256과 받은 파일의 값(PowerShell의 Get-FileHash)이 같은지 확인하고, 출처를 확인할 수 없는 파일은 실행하지 마세요.",
+    a: (
+      <>
+        GitHub 공식 릴리스에서 받으세요. 이 사이트의 다운로드 단추도 그 파일로 연결돼요. 아직 Microsoft 게시자 서명이
+        없어서 처음 실행할 때 Windows 경고 창이 뜰 수 있어요. 실행하기 전에 받은 파일의 값(PowerShell{" "}
+        <span className="whitespace-nowrap">Get-FileHash</span>)이 릴리스 페이지의 SHA-256과 같은지 보고, 다르면
+        실행하지 마세요.
+      </>
+    ),
   },
   {
     q: "지운 건 다 되돌릴 수 있나요?",
@@ -88,7 +97,7 @@ export function Faq() {
           <List items={core} />
         </Reveal>
         <Reveal>
-          <h3 className="mb-8 text-lead font-semibold text-muted-foreground">그 밖의 질문</h3>
+          <h3 className="mb-8 text-lead font-semibold">그 밖의 질문</h3>
           <List items={more} />
         </Reveal>
       </div>

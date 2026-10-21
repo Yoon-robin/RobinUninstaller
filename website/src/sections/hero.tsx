@@ -83,9 +83,10 @@ export function Hero() {
         </h1>
         <motion.p
           {...rise(0.45, reduce)}
-          className="mt-6 max-w-[31ch] text-lead leading-snug text-balance text-muted-foreground"
+          className="mt-6 max-w-[44rem] text-lead leading-snug text-balance text-muted-foreground"
         >
-          프로그램을 지우고 남은 파일과 레지스트리를 찾아 줘요. 근거를 보고 고른 것만, 백업한 다음 정리해요.
+          프로그램을 지우고 남은 파일과 레지스트리를 찾아 줘요. <br />
+          근거를 보고 고른 것만, 백업한 다음 정리해요.
         </motion.p>
         <motion.div {...rise(0.55, reduce)} className="mt-9 flex flex-wrap items-center justify-center gap-3">
           <DownloadButton />

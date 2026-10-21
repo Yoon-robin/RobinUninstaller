@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react"
+import { Fragment, useEffect, useRef, useState } from "react"
 import { CircleCheck, CircleDashed, Folder, KeyRound, ListTree, ShieldCheck, ShieldMinus } from "lucide-react"
 import { motion, useInView, useReducedMotion } from "motion/react"
 
@@ -191,8 +191,21 @@ export function Evidence() {
                       <Check on={r.group === "sure" && seen} delay={0.25 + 0.18 * i} animate={!reduce} />
                       <r.icon className="mt-px size-4 shrink-0 text-muted-foreground" aria-hidden />
                       <div className="min-w-0 flex-1">
-                        <p className="text-[12px] leading-5 break-all">
-                          <code>{r.path}</code>
+                        <p className="text-[12px] leading-5 [overflow-wrap:anywhere]">
+                          <code>
+                            {/* 좁은 화면에서 낱말 중간이 아니라 폴더 구분자 뒤에서 줄이 바뀌게 */}
+                            {r.path.split("\\").map((part, j) => (
+                              <Fragment key={j}>
+                                {j > 0 && (
+                                  <>
+                                    {"\\"}
+                                    <wbr />
+                                  </>
+                                )}
+                                {part}
+                              </Fragment>
+                            ))}
+                          </code>
                           {r.value && (
                             <span className="ml-1.5 rounded bg-white/[0.08] px-1.5 py-0.5 font-sans text-[11px]">
                               값: {r.value}
