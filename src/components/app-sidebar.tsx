@@ -99,27 +99,45 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="gap-2 p-3 group-data-[collapsible=icon]:hidden">
+      <SidebarFooter className="gap-2 p-3 group-data-[collapsible=icon]:p-2">
+        {/* 접힌 사이드바: 카드는 숨기고, 새 버전이 있으면 점이 붙은 아이콘으로 알린다 */}
         {available && (
-          <button
-            type="button"
-            onClick={openUpdate}
-            className="flex items-start gap-2.5 rounded-xl bg-primary/10 p-3 text-left border transition-colors hover:bg-primary/15"
-          >
-            <ArrowDownCircle className="mt-0.5 size-4 shrink-0 text-primary" />
-            <span className="text-xs leading-relaxed">
-              <span className="block font-medium">새 버전 {available}이 나왔어요</span>
-              <span className="block text-muted-foreground">눌러서 설치할 수 있어요. 설정과 백업은 그대로예요.</span>
-            </span>
-          </button>
+          <SidebarMenu className="hidden group-data-[collapsible=icon]:flex">
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={openUpdate}
+                tooltip={`새 버전 ${available}이 나왔어요`}
+                className="relative h-9 rounded-[0.625rem]"
+              >
+                <ArrowDownCircle className="text-primary" />
+                <span>새 버전 설치</span>
+                <span aria-hidden className="absolute top-1.5 right-1.5 size-2 rounded-full bg-primary" />
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         )}
-        <div className="flex items-start gap-2.5 rounded-xl bg-sidebar-accent/60 p-3 border">
-          <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
-          <div className="text-xs leading-relaxed">
-            <p className="font-medium">안전하게 정리해요</p>
-            <p className="text-muted-foreground">
-              남은 흔적은 백업한 뒤 정리해요. 백업을 보관하는 동안 복구 기록에서 되돌릴 수 있어요.
-            </p>
+        <div className="flex flex-col gap-2 group-data-[collapsible=icon]:hidden">
+          {available && (
+            <button
+              type="button"
+              onClick={openUpdate}
+              className="flex items-start gap-2.5 rounded-xl bg-primary/10 p-3 text-left border transition-colors hover:bg-primary/15"
+            >
+              <ArrowDownCircle className="mt-0.5 size-4 shrink-0 text-primary" />
+              <span className="text-xs leading-relaxed">
+                <span className="block font-medium">새 버전 {available}이 나왔어요</span>
+                <span className="block text-muted-foreground">눌러서 설치할 수 있어요. 설정과 백업은 그대로예요.</span>
+              </span>
+            </button>
+          )}
+          <div className="flex items-start gap-2.5 rounded-xl bg-sidebar-accent/60 p-3 border">
+            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+            <div className="text-xs leading-relaxed">
+              <p className="font-medium">안전하게 정리해요</p>
+              <p className="text-muted-foreground">
+                남은 흔적은 백업한 뒤 정리해요. 백업을 보관하는 동안 복구 기록에서 되돌릴 수 있어요.
+              </p>
+            </div>
           </div>
         </div>
       </SidebarFooter>
