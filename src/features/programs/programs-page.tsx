@@ -335,7 +335,7 @@ export function ProgramsPage() {
               value={loading ? null : apps.isError ? "—" : <CountUp value={stats.totalKb} format={formatSize} />}
               hint={
                 sizes.isFetching
-                  ? `기록이 없는 프로그램의 크기를 재는 중…${sizeProgressText(sizeProgress)}`
+                  ? `크기를 재는 중${sizeProgressText(sizeProgress)}`
                   : stats.measured > 0
                     ? `기록한 크기 + 직접 잰 ${stats.measured}개`
                     : "설치 프로그램이 기록한 크기 기준"
@@ -365,7 +365,7 @@ export function ProgramsPage() {
 
           <FadeUp>
             {/* overflow-clip: 모서리는 자르되 스크롤 컨테이너가 되지 않아 안쪽 sticky가 동작한다 */}
-            <section className="overflow-clip rounded-2xl border bg-card shadow-sm">
+            <section className="@container overflow-clip rounded-2xl border bg-card shadow-sm">
               <div className="sticky top-0 z-10 rounded-t-2xl border-b bg-card">
                 <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
                   <div className="mr-auto flex items-baseline gap-2">

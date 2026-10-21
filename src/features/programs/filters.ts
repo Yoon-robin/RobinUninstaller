@@ -21,7 +21,10 @@ export function matchesFilter(app: InstalledApplication, filter: QuickFilter, no
     case "recent": {
       const key = installDateSortKey(app.installDate)
       if (!key) return false
-      const days = (now.getTime() - new Date(key).getTime()) / 86_400_000
+      // 설치일은 현지 날짜다. new Date("YYYY-MM-DD")는 UTC 자정으로 읽어 한국 시간 0~9시에 오늘 설치한 것을 뺐다.
+      const [y, m, d] = key.split("-").map(Number)
+      const today = new Date(now.getFullYear(), now.getMonth(), now.getDate())
+      const days = Math.round((today.getTime() - new Date(y, m - 1, d).getTime()) / 86_400_000)
       return days >= 0 && days <= RECENT_DAYS
     }
     case "large":
@@ -53,6 +56,7 @@ export function compareApps(a: InstalledApplication, b: InstalledApplication, ke
     case "date":
       return installDateSortKey(b.installDate).localeCompare(installDateSortKey(a.installDate))
     default:
-      return a.displayName.localeCompare(b.displayName, "ko")
+      // "이름 5"가 "이름 45"보다 앞에 오게 숫자는 수로 비교한다
+      return a.displayName.localeCompare(b.displayName, "ko", { numeric: true })
   }
 }

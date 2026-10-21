@@ -60,6 +60,8 @@ export type UninstallOutcome =
 export const api = {
   listInstalledApps: () => invoke<InstalledApplication[]>("list_installed_apps"),
   getAppIcon: (id: string) => invoke<string | null>("get_app_icon", { id }),
+  /** 제거할 때 실제로 실행할 명령 (Rust의 실행 계획과 같다) */
+  uninstallCommandPreview: (id: string) => invoke<string>("uninstall_command_preview", { id }),
   openInstallLocation: (id: string) => invoke<void>("open_install_location", { id }),
   uninstallApp: (id: string, onEvent: (event: UninstallEvent) => void) => {
     const channel = new Channel<UninstallEvent>()
@@ -77,10 +79,6 @@ export const api = {
 }
 
 /** 실제로 실행될 명령 (화면 표시용). crates/execution 의 plan_for 와 같은 규칙. */
-export function uninstallCommandPreview(app: InstalledApplication): string | null {
-  if (app.technology === "msi" && app.productCode) return `msiexec.exe /x ${app.productCode}`
-  return app.uninstallCommand
-}
 
 /** 기본 언인스톨러를 실행할 수 있는지. 언인스톨러 파일이 없으면 강제 제거 대상이다. */
 export function canUninstall(app: InstalledApplication) {

@@ -12,10 +12,13 @@ import { DropdownMenu, DropdownMenuTrigger } from "@/components/ui/dropdown-menu
 import { AppContextMenu, AppDropdownContent, type AppActionHandlers } from "./app-actions"
 import { AppIcon } from "./app-icon"
 
-/** 목록 열. 좁은 창에서는 설치일·형식을 숨겨 이름 칸이 찌그러지지 않게 한다 (숨긴 칸에는 `WIDE_ONLY`). */
+/**
+ * 목록 열. 목록 영역(`@container`)이 좁으면 설치일·형식을 숨겨 이름 칸이 찌그러지지 않게 한다 (숨긴 칸에는 `WIDE_ONLY`).
+ * 창 너비로 나누면 사이드바를 펼친 1024~1100px 창에서 이름 칸이 75px까지 줄었다.
+ */
 export const LIST_GRID =
-  "grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)_6rem_2rem] items-center gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,9rem)_6.5rem_5.75rem_5.5rem_2rem]"
-export const WIDE_ONLY = "hidden lg:flex"
+  "grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)_6rem_2rem] items-center gap-4 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,9rem)_6.5rem_5.75rem_5.5rem_2rem]"
+export const WIDE_ONLY = "hidden @3xl:flex"
 
 /** 제거된 항목이 목록에서 접히며 사라지는 모션. 검색·필터로 빠질 때는 쓰지 않는다. */
 export const removedExit = {

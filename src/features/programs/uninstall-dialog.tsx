@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react"
-import { useQueryClient } from "@tanstack/react-query"
+import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Check,
   ChevronRight,
@@ -15,14 +15,7 @@ import {
 import { toast } from "sonner"
 import { AnimatePresence, motion } from "motion/react"
 
-import {
-  api,
-  storeApi,
-  uninstallCommandPreview,
-  type InstalledApplication,
-  type UninstallEvent,
-  type UninstallOutcome,
-} from "@/lib/api"
+import { api, storeApi, type InstalledApplication, type UninstallEvent, type UninstallOutcome } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { useLastDefined } from "@/hooks/use-last-defined"
 import { DrawnCheck } from "@/components/drawn-check"
@@ -175,7 +168,7 @@ function ConfirmBody({
           끝나면 설치 정보를 다시 읽어 제거됐는지 확인해요.
         </li>
       </ul>
-      <CommandPreview command={uninstallCommandPreview(app)} />
+      <PlannedCommand id={app.id} />
       <div className="mt-2 flex justify-end gap-2">
         <Button variant="outline" onClick={onCancel} data-autofocus>
           취소
@@ -276,6 +269,16 @@ function RunningBody({ event }: { event: UninstallEvent | null }) {
       </AnimatePresence>
     </div>
   )
+}
+
+/** 실제로 실행할 명령을 Rust에서 받아 보여 준다. 실행할 수 없는 명령이면 접힌 칸을 두지 않는다. */
+function PlannedCommand({ id }: { id: string }) {
+  const planned = useQuery({
+    queryKey: ["uninstall-command", id],
+    queryFn: () => api.uninstallCommandPreview(id),
+    retry: false,
+  })
+  return <CommandPreview command={planned.data ?? null} />
 }
 
 function CommandPreview({ command }: { command: string | null }) {

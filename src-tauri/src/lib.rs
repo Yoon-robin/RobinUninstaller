@@ -192,15 +192,7 @@ async fn export_app_list(
     let sizes = cache.sizes.lock().map(|m| m.clone()).unwrap_or_default();
     let csv = robin_discovery::export::programs_csv(&apps, &sizes, &store);
 
-    let today = std::time::SystemTime::now()
-        .duration_since(std::time::UNIX_EPOCH)
-        .ok()
-        .and_then(|d| {
-            robin_discovery::package_info::ticks_to_date(
-                d.as_secs() as i64 * 10_000_000 + 116_444_736_000_000_000,
-            )
-        })
-        .unwrap_or_default();
+    let today = robin_discovery::local_today();
     tauri::async_runtime::spawn_blocking(move || {
         let Some(picked) = app
             .dialog()
@@ -301,6 +293,28 @@ static STOP_WAITING: AtomicBool = AtomicBool::new(false);
 #[tauri::command]
 fn stop_waiting_uninstall() {
     STOP_WAITING.store(true, Ordering::SeqCst);
+}
+
+/// 제거 확인 창에 보여 줄 "실제로 실행할 명령". 화면이 따로 흉내 내지 않고 실행할 때와 같은 계획을 쓴다
+/// (EXE로 분류된 `MsiExec.exe /I{GUID}`도 실제처럼 `/x`, `%ProgramFiles%` 같은 변수도 펼친 모양).
+#[tauri::command]
+fn uninstall_command_preview(id: String, cache: State<'_, AppCache>) -> Result<String, String> {
+    let app = cache
+        .get(&id)
+        .ok_or("알 수 없는 프로그램이에요. 목록을 새로고침해 주세요")?;
+    let plan = robin_execution::plan_for(&app, |name| std::env::var(name).ok())
+        .map_err(|e| e.to_string())?;
+    let (file, args) = plan.file_and_args();
+    let file = if file.contains(' ') {
+        format!("\"{file}\"")
+    } else {
+        file
+    };
+    Ok(if args.is_empty() {
+        file
+    } else {
+        format!("{file} {args}")
+    })
 }
 
 /// 기본 언인스톨러를 실행하고 끝날 때까지 기다린다. 진행 상황은 `on_event`로 보낸다.
@@ -1393,6 +1407,7 @@ pub fn run() {
             open_apps_settings,
             open_install_location,
             uninstall_app,
+            uninstall_command_preview,
             stop_waiting_uninstall,
             recently_removed,
             scan_leftovers,

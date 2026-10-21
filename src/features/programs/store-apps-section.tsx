@@ -16,8 +16,8 @@ import { ErrorState } from "@/components/error-state"
 
 /** 목록 열. 좁은 창에서는 설치일·출처를 숨겨 이름 칸이 사라지지 않게 한다 (숨긴 칸에는 `STORE_WIDE_ONLY`). */
 const STORE_GRID =
-  "grid grid-cols-[minmax(0,1fr)_minmax(0,10rem)_7rem] items-center gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,10rem)_6.5rem_5.75rem_7rem]"
-const STORE_WIDE_ONLY = "hidden lg:block"
+  "grid grid-cols-[minmax(0,1fr)_minmax(0,10rem)_7rem] items-center gap-4 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,10rem)_6.5rem_5.75rem_7rem]"
+const STORE_WIDE_ONLY = "hidden @3xl:block"
 
 const sourceLabels: Record<PackageSource, { label: string; className: string }> = {
   store: { label: "Store", className: "border-primary/30 text-primary" },
@@ -42,7 +42,7 @@ export function StoreAppsSection({ initialQuery = "" }: { initialQuery?: string 
   const visible = useMemo(() => (apps.data ?? []).filter((a) => matchesStoreApp(a, query)), [apps.data, query])
 
   return (
-    <section className="overflow-clip rounded-2xl border bg-card shadow-sm">
+    <section className="@container overflow-clip rounded-2xl border bg-card shadow-sm">
       <div className="sticky top-0 z-10 rounded-t-2xl border-b bg-card">
         <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
           <div className="mr-auto flex items-baseline gap-2">

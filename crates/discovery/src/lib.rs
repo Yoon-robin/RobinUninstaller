@@ -19,6 +19,38 @@ mod packages;
 #[cfg(windows)]
 mod registry;
 
+/// WinRT·FILETIME 시각(1601-01-01부터 100ns, UTC)을 이 PC 시간대의 `YYYY-MM-DD`로 바꾼다.
+/// UTC 날짜를 그대로 쓰면 한국 시간 0~9시에 한 일이 전날로 보인다.
+pub fn local_date_from_ticks(ticks: i64) -> Option<String> {
+    #[cfg(windows)]
+    {
+        use windows::Win32::Foundation::FILETIME;
+        use windows::Win32::Storage::FileSystem::FileTimeToLocalFileTime;
+        let utc = FILETIME {
+            dwLowDateTime: ticks as u32,
+            dwHighDateTime: (ticks >> 32) as u32,
+        };
+        let mut local = FILETIME::default();
+        // SAFETY: 두 포인터 모두 이 함수 안의 지역 변수를 가리킨다.
+        if unsafe { FileTimeToLocalFileTime(&utc, &mut local) }.is_ok() {
+            let local = (i64::from(local.dwHighDateTime) << 32) | i64::from(local.dwLowDateTime);
+            return package_info::ticks_to_date(local);
+        }
+    }
+    package_info::ticks_to_date(ticks)
+}
+
+/// 지금 이 PC 시간대의 `YYYY-MM-DD`
+pub fn local_today() -> String {
+    std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .ok()
+        .and_then(|d| {
+            local_date_from_ticks(d.as_secs() as i64 * 10_000_000 + 116_444_736_000_000_000)
+        })
+        .unwrap_or_default()
+}
+
 /// 설치된 프로그램 목록을 이름순으로 반환한다.
 pub fn list_installed() -> Vec<InstalledApplication> {
     #[cfg(windows)]

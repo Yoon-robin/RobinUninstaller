@@ -12,8 +12,7 @@ use windows::Win32::System::Com::{COINIT_MULTITHREADED, CoInitializeEx, CoUninit
 use windows::core::HSTRING;
 
 use crate::package_info::{
-    file_uri_to_path, is_infrastructure_package, pick_logo, publisher_from_dn, ticks_to_date,
-    usable_display_name,
+    file_uri_to_path, is_infrastructure_package, pick_logo, publisher_from_dn, usable_display_name,
 };
 
 /// 이 스레드에서 WinRT를 쓰는 동안만 초기화해 둔다.
@@ -93,7 +92,7 @@ fn to_store_app(p: &Package) -> Option<StoreApp> {
     let install_date = p
         .InstalledDate()
         .ok()
-        .and_then(|d| ticks_to_date(d.UniversalTime));
+        .and_then(|d| crate::local_date_from_ticks(d.UniversalTime));
     let install_location = p
         .InstalledPath()
         .ok()
