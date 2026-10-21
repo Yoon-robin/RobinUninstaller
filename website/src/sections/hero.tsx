@@ -59,7 +59,7 @@ export function Hero() {
   const glowY = useTransform(scrollYProgress, [0, 1], [0, reduce ? 0 : -120])
 
   return (
-    <section ref={stage} id="top" className="relative overflow-hidden">
+    <section ref={stage} id="top" className="relative overflow-x-clip">
       <motion.div aria-hidden style={{ y: glowY }} className="glow-top pointer-events-none absolute inset-0" />
       <div aria-hidden className="grid-lines pointer-events-none absolute inset-x-0 top-0 h-[44rem]" />
 

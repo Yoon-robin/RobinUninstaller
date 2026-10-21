@@ -90,7 +90,7 @@ export function Restore() {
                   >
                     <th
                       scope="row"
-                      className="text-lead leading-snug font-semibold tracking-tight md:w-[26%] md:py-4 md:pr-6 md:align-top"
+                      className="text-lead leading-snug font-semibold tracking-tight md:w-[32%] md:py-4 md:pr-6 md:align-top lg:w-[26%]"
                     >
                       {r.task}
                     </th>

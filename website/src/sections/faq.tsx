@@ -84,7 +84,7 @@ export function Faq() {
               href={`${REPO_URL}/issues`}
               target="_blank"
               rel="noreferrer"
-              className="mt-8 inline-block text-body font-medium text-stage underline-offset-4 hover:underline"
+              className="mt-8 hidden text-body font-medium text-stage underline-offset-4 hover:underline lg:inline-block"
             >
               다른 질문은 GitHub에 남겨 주세요
             </a>
@@ -100,6 +100,15 @@ export function Faq() {
           <h3 className="mb-8 text-lead font-semibold">그 밖의 질문</h3>
           <List items={more} />
         </Reveal>
+        {/* 좁은 화면에서는 질문을 다 본 뒤에 나온다 */}
+        <a
+          href={`${REPO_URL}/issues`}
+          target="_blank"
+          rel="noreferrer"
+          className="text-body font-medium text-stage underline-offset-4 hover:underline lg:hidden"
+        >
+          다른 질문은 GitHub에 남겨 주세요
+        </a>
       </div>
     </section>
   )

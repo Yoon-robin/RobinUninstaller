@@ -33,15 +33,18 @@ export function DownloadFacts({ className, linkClassName }: { className?: string
         v{RELEASE.version} · {RELEASE.sizeMb} MB · Windows 10/11 (x64)
       </span>
       <span className="block">
-        미리보기 · 게시자 서명 전 ·{" "}
-        <a
-          href={RELEASE.pageUrl}
-          target="_blank"
-          rel="noreferrer"
-          className={cn("font-medium underline underline-offset-4", linkClassName)}
-        >
-          릴리스 노트와 SHA-256
-        </a>
+        미리보기 · 게시자 서명 전 {/* 좁은 화면에서 "·"만 줄 앞에 떨어지지 않게 링크와 묶는다 */}
+        <span className="whitespace-nowrap">
+          ·{" "}
+          <a
+            href={RELEASE.pageUrl}
+            target="_blank"
+            rel="noreferrer"
+            className={cn("font-medium underline underline-offset-4", linkClassName)}
+          >
+            릴리스 노트와 SHA-256
+          </a>
+        </span>
       </span>
     </p>
   )

@@ -75,11 +75,11 @@ export function Walkthrough() {
             aria-label="RobinX 시연: 남은 흔적 찾기, 찾은 항목 확인, 백업하고 정리, 정리 결과 화면"
             className="window aspect-[16/10] w-full rounded-[1.5rem] object-contain p-2 sm:p-3"
           />
-          <ol className="mt-6 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 text-body font-medium">
+          <ol className="mt-6 flex flex-col items-center justify-center gap-x-3 gap-y-2 text-body font-medium sm:flex-row sm:flex-wrap">
             {steps.map((s, i) => (
               <li key={s} className="flex items-center gap-3">
                 {i > 0 && (
-                  <span aria-hidden className="text-muted-foreground">
+                  <span aria-hidden className="hidden text-muted-foreground sm:inline">
                     →
                   </span>
                 )}
