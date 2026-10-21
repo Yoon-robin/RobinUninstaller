@@ -79,7 +79,7 @@ const GridCard = forwardRef<HTMLDivElement, CardProps>(function GridCard(
           )}
         >
           {needsForce(app) && (
-            <TriangleAlert className="absolute top-3 right-3 size-4 text-chart-3" aria-label="언인스톨러 없음" />
+            <TriangleAlert className="absolute top-3 right-3 size-4 text-warning" aria-label="언인스톨러 없음" />
           )}
           <AppIcon
             app={app}
@@ -102,11 +102,11 @@ const GridCard = forwardRef<HTMLDivElement, CardProps>(function GridCard(
               {app.sizeMeasured && "*"}
             </span>
             <span className="flex gap-1">
-              <span className="rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
+              <span className="rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
                 {app.technology.toUpperCase()}
               </span>
               {app.scope === "user" && (
-                <span className="rounded-md border border-primary/30 px-1.5 py-0.5 text-[10px] text-primary">
+                <span className="rounded-md border border-primary/30 px-1.5 py-0.5 text-[11px] text-primary">
                   사용자
                 </span>
               )}

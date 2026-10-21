@@ -253,7 +253,7 @@ export function SettingsPage() {
           </div>
           {(usage.data?.expired ?? 0) > 0 && (
             <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-chart-3/40 bg-chart-3/8 px-4 py-3 text-sm">
-              <TriangleAlert className="size-4 shrink-0 text-chart-3" />
+              <TriangleAlert className="size-4 shrink-0 text-warning" />
               <span className="mr-auto">보관 기간이 지난 백업이 {usage.data?.expired}개 있어요.</span>
               <Button size="sm" variant="outline" onClick={() => setConfirmPrune(true)} disabled={busy}>
                 <Trash2 />

@@ -222,7 +222,7 @@ function ForceGate({
   if (check.blocked) {
     return (
       <motion.div {...motionProps} className={panel}>
-        <div className="flex size-14 items-center justify-center rounded-full bg-chart-3/15 text-chart-3">
+        <div className="flex size-14 items-center justify-center rounded-full bg-chart-3/15 text-warning">
           <ShieldX className="size-7" />
         </div>
         <div className="max-w-md">
@@ -243,7 +243,7 @@ function ForceGate({
     <motion.div {...motionProps} className="flex min-h-0 flex-1 flex-col">
       {/* 목록이 길어도 아래 버튼은 늘 보이게, 위쪽만 스크롤한다 */}
       <div className="flex min-h-0 flex-1 flex-col items-center gap-4 overflow-y-auto p-8 text-center">
-        <div className="mt-auto flex size-14 shrink-0 items-center justify-center rounded-full bg-chart-3/15 text-chart-3">
+        <div className="mt-auto flex size-14 shrink-0 items-center justify-center rounded-full bg-chart-3/15 text-warning">
           <TriangleAlert className="size-7" />
         </div>
         <div className="max-w-md">
@@ -516,7 +516,7 @@ function SummaryChip({ tone, label, value }: { tone: "primary" | "warn"; label: 
     <span
       className={cn(
         "flex items-center gap-1.5 rounded-full px-2.5 py-1 font-medium",
-        tone === "primary" ? "bg-primary/12 text-primary" : "bg-chart-3/12 text-chart-3",
+        tone === "primary" ? "bg-primary/12 text-primary" : "bg-chart-3/12 text-warning",
       )}
     >
       {label}
@@ -635,7 +635,7 @@ function LeftoverRow({
                 key={i}
                 className={cn(
                   "rounded-md border px-1.5 py-0.5 text-[11px]",
-                  d.warn ? "border-chart-3/40 bg-chart-3/10 text-chart-3" : "text-muted-foreground",
+                  d.warn ? "border-chart-3/40 bg-chart-3/10 text-warning" : "text-muted-foreground",
                 )}
               >
                 {d.label}
@@ -644,7 +644,7 @@ function LeftoverRow({
           })}
         </div>
         {item.note && (
-          <p className="mt-1.5 flex items-start gap-1 text-xs text-chart-3">
+          <p className="mt-1.5 flex items-start gap-1 text-xs text-warning">
             <TriangleAlert className="mt-0.5 size-3 shrink-0" />
             {item.note}
           </p>

@@ -88,7 +88,7 @@ export function MissingCleanupDialog({
         className="flex max-h-[min(640px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
       >
         <div className="flex items-center gap-3 border-b px-5 py-4 pr-12">
-          <div className="flex size-10 items-center justify-center rounded-xl bg-chart-3/12 text-chart-3">
+          <div className="flex size-10 items-center justify-center rounded-xl bg-chart-3/12 text-warning">
             <FileWarning className="size-5" />
           </div>
           <div className="min-w-0">

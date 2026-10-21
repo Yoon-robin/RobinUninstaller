@@ -37,11 +37,11 @@ function outcomeLabel(outcome: UninstallOutcome): { text: string; tone: string }
     case "removedRebootRequired":
       return { text: "제거됨 · 재부팅 필요", tone: "text-primary" }
     case "stillInstalled":
-      return { text: "아직 설치돼 있어요 (취소했거나 실패)", tone: "text-chart-3" }
+      return { text: "아직 설치돼 있어요 (취소했거나 실패)", tone: "text-warning" }
     case "elevationDenied":
-      return { text: "관리자 권한 요청이 거절됐어요", tone: "text-chart-3" }
+      return { text: "관리자 권한 요청이 거절됐어요", tone: "text-warning" }
     case "cannotRun":
-      return { text: `제거 명령을 쓸 수 없어요: ${outcome.reason}`, tone: "text-chart-3" }
+      return { text: `제거 명령을 쓸 수 없어요: ${outcome.reason}`, tone: "text-warning" }
     case "failed":
       return { text: `실패: ${outcome.message}`, tone: "text-destructive" }
   }
@@ -171,7 +171,7 @@ export function BatchUninstallDialog({
           <ul className="flex flex-col gap-2 border-b bg-muted/20 px-5 py-3 text-xs text-muted-foreground">
             {needsAdmin && (
               <li className="flex gap-2">
-                <ShieldAlert className="size-4 shrink-0 text-chart-3" />
+                <ShieldAlert className="size-4 shrink-0 text-warning" />
                 모든 사용자용 프로그램이 있어 관리자 권한 요청(UAC)이 여러 번 뜰 수 있어요.
               </li>
             )}
@@ -181,7 +181,7 @@ export function BatchUninstallDialog({
             </li>
             {forced.length > 0 && (
               <li className="flex gap-2">
-                <TriangleAlert className="size-4 shrink-0 text-chart-3" />
+                <TriangleAlert className="size-4 shrink-0 text-warning" />
                 언인스톨러가 없는 {forced.length}개({forced.map((a) => a.displayName).join(", ")})는 강제 제거라 여기서
                 빼요. 하나씩 제거해 주세요.
               </li>
@@ -229,7 +229,7 @@ export function BatchUninstallDialog({
                         <Check className="size-4 text-primary" />
                       )
                     ) : (
-                      <CircleAlert className="size-4 text-chart-3" />
+                      <CircleAlert className="size-4 text-warning" />
                     ))}
                 </span>
               </li>

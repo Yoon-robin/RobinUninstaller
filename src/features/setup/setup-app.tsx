@@ -178,7 +178,7 @@ function Note({ tone = "muted", children }: { tone?: "muted" | "warn" | "danger"
       className={cn(
         "flex items-start gap-2.5 rounded-xl px-3.5 py-3 text-sm",
         tone === "muted" && "bg-muted/50 text-muted-foreground",
-        tone === "warn" && "bg-chart-3/12 text-chart-3",
+        tone === "warn" && "bg-chart-3/12 text-warning",
         tone === "danger" && "bg-destructive/12 text-destructive",
       )}
     >

@@ -40,13 +40,13 @@ import { useBusy } from "@/lib/busy"
 const statusLabels: Record<ItemStatus, { label: string; tone: string }> = {
   pending: { label: "대기", tone: "text-muted-foreground" },
   removed: { label: "보관 중", tone: "text-primary" },
-  needsAdmin: { label: "관리자 권한 필요", tone: "text-chart-3" },
+  needsAdmin: { label: "관리자 권한 필요", tone: "text-warning" },
   alreadyGone: { label: "이미 없음", tone: "text-muted-foreground" },
   blocked: { label: "보호됨", tone: "text-muted-foreground" },
   failed: { label: "실패", tone: "text-destructive" },
-  restored: { label: "복원됨", tone: "text-chart-5" },
-  partial: { label: "일부만 정리됨", tone: "text-chart-3" },
-  conflicted: { label: "충돌 있음 · 백업에만 남음", tone: "text-chart-3" },
+  restored: { label: "복원됨", tone: "text-success" },
+  partial: { label: "일부만 정리됨", tone: "text-warning" },
+  conflicted: { label: "충돌 있음 · 백업에만 남음", tone: "text-warning" },
 }
 
 const kindIcons: Record<LeftoverKind, typeof Folder> = {
@@ -86,7 +86,7 @@ export function RestorePage() {
       {(unreadable.data?.length ?? 0) > 0 && (
         <FadeUp>
           <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-chart-3/40 bg-chart-3/8 px-4 py-3 text-sm">
-            <TriangleAlert className="size-4 shrink-0 text-chart-3" />
+            <TriangleAlert className="size-4 shrink-0 text-warning" />
             <p className="min-w-0 flex-1">
               기록을 읽지 못한 백업이 {unreadable.data?.length}개 있어요. 기록 파일이 손상됐거나 권한이 없어 목록에
               보이지 않지만, 백업 파일은 지우지 않고 그대로 두었어요.
@@ -338,7 +338,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
             <p className="text-xs text-muted-foreground">
               {formatDate(op.createdAt)} · 보관 중 {kept}개{keptBytes > 0 && ` (${formatBytes(keptBytes)})`}
               {restored > 0 && ` · 복원 ${restored}개`}
-              {conflicted > 0 && <span className="text-chart-3">{` · 충돌 ${conflicted}개`}</span>}
+              {conflicted > 0 && <span className="text-warning">{` · 충돌 ${conflicted}개`}</span>}
             </p>
           </div>
         </button>
@@ -405,7 +405,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
                         {item.valueName && ` › ${item.valueName}`}
                       </p>
                       {item.error && (
-                        <p className={cn("mt-1", item.status === "conflicted" ? "text-chart-3" : "text-destructive")}>
+                        <p className={cn("mt-1", item.status === "conflicted" ? "text-warning" : "text-destructive")}>
                           {item.error}
                         </p>
                       )}
@@ -484,7 +484,7 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
           {shown?.appName}의 정리 기록과 보관 중인 항목 {kept}개가 영구히 지워져요.{" "}
           <b className="text-foreground">이후에는 되돌릴 수 없어요.</b>
           {conflicted > 0 && (
-            <span className="mt-2 block rounded-lg bg-chart-3/10 px-3 py-2 text-chart-3">
+            <span className="mt-2 block rounded-lg bg-chart-3/10 px-3 py-2 text-warning">
               복원할 때 충돌이 난 항목 {conflicted}개는 일부 파일이 이 백업에만 남아 있어요. 삭제하면 그 파일도
               사라져요. 항목을 펼쳐 경로를 먼저 확인하세요.
             </span>

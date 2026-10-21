@@ -94,7 +94,7 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
                   <Highlight text={app.displayName} query={query} />
                 </p>
                 {needsForce(app) && (
-                  <TriangleAlert className="size-3.5 shrink-0 text-chart-3" aria-label="언인스톨러 없음" />
+                  <TriangleAlert className="size-3.5 shrink-0 text-warning" aria-label="언인스톨러 없음" />
                 )}
               </div>
               <p className="truncate text-xs text-muted-foreground">{app.version ?? "버전 정보 없음"}</p>
@@ -128,14 +128,14 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
           </span>
 
           <div className={cn(WIDE_ONLY, "gap-1")}>
-            <span className="rounded-md border px-1.5 py-0.5 font-mono text-[10px] font-medium text-muted-foreground">
+            <span className="rounded-md border px-1.5 py-0.5 font-mono text-[11px] font-medium text-muted-foreground">
               {app.technology.toUpperCase()}
             </span>
             {app.scope === "machine32" && (
-              <span className="rounded-md border px-1.5 py-0.5 font-mono text-[10px] text-muted-foreground">x86</span>
+              <span className="rounded-md border px-1.5 py-0.5 font-mono text-[11px] text-muted-foreground">x86</span>
             )}
             {app.scope === "user" && (
-              <span className="rounded-md border border-primary/30 px-1.5 py-0.5 text-[10px] text-primary">사용자</span>
+              <span className="rounded-md border border-primary/30 px-1.5 py-0.5 text-[11px] text-primary">사용자</span>
             )}
           </div>
 

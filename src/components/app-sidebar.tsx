@@ -66,7 +66,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           <span>{item.label}</span>
         </SidebarMenuButton>
         {item.soon && (
-          <SidebarMenuBadge className="rounded-full bg-sidebar-foreground/5 px-1.5 text-[10px] font-normal text-muted-foreground">
+          <SidebarMenuBadge className="rounded-full bg-sidebar-foreground/5 px-1.5 text-[11px] font-normal text-muted-foreground">
             준비 중
           </SidebarMenuBadge>
         )}

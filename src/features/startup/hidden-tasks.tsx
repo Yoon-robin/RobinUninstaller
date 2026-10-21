@@ -33,7 +33,7 @@ export function HiddenTasksCard() {
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => void hidden.refetch()} disabled={hidden.isFetching}>
-          {hidden.isFetching ? <Loader2 className="animate-spin" /> : <ShieldAlert className="text-chart-3" />}
+          {hidden.isFetching ? <Loader2 className="animate-spin" /> : <ShieldAlert className="text-warning" />}
           {tasks ? "다시 읽기" : "관리자 권한으로 읽기"}
         </Button>
       </div>
@@ -64,7 +64,7 @@ export function HiddenTasksCard() {
                     <p className="truncate text-xs text-muted-foreground">
                       {t.approvedName}
                       {t.author && ` · 만든 이 ${t.author}`}
-                      {t.targetMissing && <span className="text-chart-3"> · 실행 파일이 없어요</span>}
+                      {t.targetMissing && <span className="text-warning"> · 실행 파일이 없어요</span>}
                     </p>
                   </div>
                   <span className="shrink-0 text-xs text-muted-foreground">{t.enabled ? "켜짐" : "꺼짐"}</span>

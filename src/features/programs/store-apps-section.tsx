@@ -22,7 +22,7 @@ const STORE_WIDE_ONLY = "hidden lg:block"
 const sourceLabels: Record<PackageSource, { label: string; className: string }> = {
   store: { label: "Store", className: "border-primary/30 text-primary" },
   sideloaded: { label: "직접 배포", className: "text-muted-foreground" },
-  developer: { label: "개발자 모드", className: "border-chart-3/40 text-chart-3" },
+  developer: { label: "개발자 모드", className: "border-chart-3/40 text-warning" },
 }
 
 export function matchesStoreApp(app: StoreApp, query: string) {
@@ -162,7 +162,7 @@ export function StoreAppsSection({ initialQuery = "" }: { initialQuery?: string 
                   {formatInstallDate(app.installDate)}
                 </span>
                 <span className={STORE_WIDE_ONLY}>
-                  <span className={cn("rounded-md border px-1.5 py-0.5 text-[10px] font-medium", source.className)}>
+                  <span className={cn("rounded-md border px-1.5 py-0.5 text-[11px] font-medium", source.className)}>
                     {source.label}
                   </span>
                 </span>

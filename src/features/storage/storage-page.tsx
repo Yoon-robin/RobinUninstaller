@@ -291,11 +291,11 @@ function DriveCard({
 
 function RiskBadge({ category: c }: { category: StorageCategory }) {
   return c.risk === "regenerable" ? (
-    <span className="rounded-full bg-primary/12 px-1.5 py-px text-[10px] font-medium text-primary">
+    <span className="rounded-full bg-primary/12 px-1.5 py-px text-[11px] font-medium text-primary">
       다시 만들어져요
     </span>
   ) : (
-    <span className="rounded-full bg-destructive/12 px-1.5 py-px text-[10px] font-medium text-destructive">
+    <span className="rounded-full bg-destructive/12 px-1.5 py-px text-[11px] font-medium text-destructive">
       되돌릴 수 없어요
     </span>
   )
@@ -340,7 +340,7 @@ function CategoryRow({
               <RiskBadge category={c} />
               {c.admin && (
                 <IconTooltip label="관리자 권한이 필요해요 (UAC 창이 떠요)" side="top">
-                  <ShieldAlert className="size-3.5 text-chart-3" />
+                  <ShieldAlert className="size-3.5 text-warning" />
                 </IconTooltip>
               )}
             </p>
@@ -351,7 +351,7 @@ function CategoryRow({
           <span className="shrink-0 text-right text-sm font-semibold tabular-nums">
             {c.bytes > 0 ? formatBytes(c.bytes) : "—"}
             {c.inaccessible > 0 && c.admin && (
-              <span className="block text-[10px] font-normal text-muted-foreground">일부만 셌어요</span>
+              <span className="block text-[11px] font-normal text-muted-foreground">일부만 셌어요</span>
             )}
           </span>
           <ChevronRight
@@ -638,7 +638,7 @@ function CleanDialog({
             )}
             {needsAdmin && (
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                <ShieldAlert className="size-3.5 text-chart-3" />
+                <ShieldAlert className="size-3.5 text-warning" />
                 관리자 권한이 필요한 항목이 있어 UAC 창이 떠요. "아니요"를 누르면 그 항목만 빼고 정리해요.
               </p>
             )}
@@ -783,11 +783,11 @@ function CleanProgressView({ live, items }: { live: LiveProgress; items: Storage
           {live.done.map((r) => (
             <li key={r.id} className="flex items-center gap-2 px-3 py-2">
               {r.needsAdmin ? (
-                <ShieldAlert className="size-3.5 shrink-0 text-chart-3" />
+                <ShieldAlert className="size-3.5 shrink-0 text-warning" />
               ) : r.skipped ? (
                 <CircleSlash className="size-3.5 shrink-0 text-muted-foreground" />
               ) : (
-                <Check className="size-3.5 shrink-0 text-chart-5" />
+                <Check className="size-3.5 shrink-0 text-success" />
               )}
               <span className="min-w-0 flex-1 truncate">{nameOf(r.id)}</span>
               <span className="shrink-0 text-muted-foreground tabular-nums">
@@ -827,7 +827,7 @@ function CleanResultView({
       <DialogTitle className="flex items-center gap-2">
         {freed > 0 ? (
           <>
-            <DrawnCheck className="size-5 text-chart-5" />
+            <DrawnCheck className="size-5 text-success" />
             {formatBytes(freed)}를 지웠어요
           </>
         ) : (
@@ -839,7 +839,7 @@ function CleanResultView({
           {measured.gained > 0 ? (
             <>
               {drive} 드라이브 남은 공간이 실제로{" "}
-              <span className="font-semibold text-chart-5 tabular-nums">{formatBytes(measured.gained)}</span> 늘었어요.
+              <span className="font-semibold text-success tabular-nums">{formatBytes(measured.gained)}</span> 늘었어요.
             </>
           ) : (
             `${drive} 드라이브 남은 공간은 거의 그대로예요.`
@@ -862,7 +862,7 @@ function CleanResultView({
               <div className="flex items-center gap-2">
                 <span className="min-w-0 flex-1 truncate font-medium">{name}</span>
                 <span
-                  className={cn("shrink-0 tabular-nums", r.freedBytes > 0 ? "text-chart-5" : "text-muted-foreground")}
+                  className={cn("shrink-0 tabular-nums", r.freedBytes > 0 ? "text-success" : "text-muted-foreground")}
                 >
                   {r.freedBytes > 0 ? formatBytes(r.freedBytes) : "—"}
                 </span>
@@ -884,7 +884,7 @@ function CleanResultView({
         })}
       </ul>
       {adminError && (
-        <p className="rounded-lg bg-chart-3/10 px-3 py-2 text-xs text-chart-3">
+        <p className="rounded-lg bg-chart-3/10 px-3 py-2 text-xs text-warning">
           관리자 권한 항목은 정리하지 못했어요: {adminError}
         </p>
       )}

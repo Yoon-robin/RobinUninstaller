@@ -81,7 +81,7 @@ function Section({
     <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
       <div className="border-b px-5 py-3.5">
         <h2 className="flex items-center gap-2 font-semibold">
-          {warn && <TriangleAlert className="size-4 text-chart-3" />}
+          {warn && <TriangleAlert className="size-4 text-warning" />}
           {title}
           <span className="text-sm font-normal text-muted-foreground tabular-nums">{apps.length}</span>
         </h2>

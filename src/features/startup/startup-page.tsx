@@ -207,7 +207,7 @@ export function StartupPage() {
               </div>
               {all.some((e) => e.targetMissing && e.source !== "task") && (
                 <Button variant="outline" className="h-9 rounded-lg" onClick={() => setCleanupOpen(true)}>
-                  <FileWarning className="text-chart-3" />
+                  <FileWarning className="text-warning" />
                   파일 없는 항목 정리
                 </Button>
               )}
@@ -381,7 +381,7 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
                 <Highlight text={entry.name} query={query} />
               </span>
               {entry.targetMissing && (
-                <span className="shrink-0 rounded-full bg-chart-3/12 px-1.5 py-px text-[10px] font-medium text-chart-3">
+                <span className="shrink-0 rounded-full bg-chart-3/12 px-1.5 py-px text-[11px] font-medium text-warning">
                   파일 없음
                 </span>
               )}
@@ -398,7 +398,7 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
             {source.scope}
             {machine && (
               <IconTooltip label="바꾸려면 관리자 권한이 필요해요" side="top">
-                <ShieldAlert className="size-3.5 shrink-0 text-chart-3" />
+                <ShieldAlert className="size-3.5 shrink-0 text-warning" />
               </IconTooltip>
             )}
           </p>
@@ -461,7 +461,7 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
                   <dt className="text-muted-foreground">실행 파일</dt>
                   <dd data-selectable className="font-mono break-all">
                     {entry.targetPath}
-                    {entry.targetMissing && <span className="ml-2 font-sans text-chart-3">(파일이 없어요)</span>}
+                    {entry.targetMissing && <span className="ml-2 font-sans text-warning">(파일이 없어요)</span>}
                   </dd>
                 </>
               )}

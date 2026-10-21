@@ -163,7 +163,7 @@ function ConfirmBody({
       <ul className="flex flex-col gap-2 rounded-xl border bg-muted/30 p-3.5 text-xs text-muted-foreground">
         {needsAdmin && (
           <li className="flex gap-2">
-            <ShieldAlert className="size-4 shrink-0 text-chart-3" />
+            <ShieldAlert className="size-4 shrink-0 text-warning" />
             모든 사용자용 프로그램이라 관리자 권한 요청(UAC)이 뜰 수 있어요.
           </li>
         )}
@@ -395,7 +395,7 @@ function describe(outcome: UninstallOutcome) {
     case "removedRebootRequired":
       return {
         icon: RotateCcw,
-        toneClass: "bg-chart-3/15 text-chart-3",
+        toneClass: "bg-chart-3/15 text-warning",
         title: "제거했어요 · 재시작 필요",
         body: "일부 파일은 PC를 다시 시작해야 완전히 지워져요.",
         retry: false,
@@ -403,7 +403,7 @@ function describe(outcome: UninstallOutcome) {
     case "stillInstalled":
       return {
         icon: CircleAlert,
-        toneClass: "bg-chart-3/15 text-chart-3",
+        toneClass: "bg-chart-3/15 text-warning",
         title: "아직 설치돼 있어요",
         body:
           outcome.exitCode === 1602
@@ -416,7 +416,7 @@ function describe(outcome: UninstallOutcome) {
     case "elevationDenied":
       return {
         icon: ShieldAlert,
-        toneClass: "bg-chart-3/15 text-chart-3",
+        toneClass: "bg-chart-3/15 text-warning",
         title: "관리자 권한이 거절됐어요",
         body: "이 프로그램을 지우려면 관리자 권한 요청을 허용해야 해요.",
         retry: true,
@@ -424,7 +424,7 @@ function describe(outcome: UninstallOutcome) {
     case "cannotRun":
       return {
         icon: CircleAlert,
-        toneClass: "bg-chart-3/15 text-chart-3",
+        toneClass: "bg-chart-3/15 text-warning",
         title: "이 프로그램의 제거 명령은 쓸 수 없어요",
         body: `${outcome.reason}. Windows 설정에서 제거하거나, RobinX가 백업한 뒤 등록 정보와 파일을 정리하는 강제 제거를 쓸 수 있어요.`,
         retry: false,

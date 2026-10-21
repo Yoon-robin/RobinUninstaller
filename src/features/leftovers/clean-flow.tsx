@@ -68,7 +68,7 @@ export function ConfirmClean({
       </div>
       <ul className="flex w-full max-w-md flex-col gap-2 text-left text-xs">
         {reviewCount > 0 && (
-          <li className="flex gap-2 rounded-lg border border-chart-3/40 bg-chart-3/10 p-3 text-chart-3">
+          <li className="flex gap-2 rounded-lg border border-chart-3/40 bg-chart-3/10 p-3 text-warning">
             <TriangleAlert className="size-4 shrink-0" />
             직접 확인이 필요한 항목 {reviewCount}개를 골랐어요. 다른 프로그램이 쓰는 것이 아닌지 한 번 더 확인해 주세요.
           </li>
@@ -192,7 +192,7 @@ export function CleanResult({
           transition={{ type: "spring", duration: 0.45, bounce: 0.35 }}
           className={cn(
             "flex size-14 items-center justify-center rounded-full",
-            needsAdmin || problems.length ? "bg-chart-3/15 text-chart-3" : "bg-primary/15 text-primary",
+            needsAdmin || problems.length ? "bg-chart-3/15 text-warning" : "bg-primary/15 text-primary",
           )}
         >
           {needsAdmin || problems.length ? <TriangleAlert className="size-7" /> : <DrawnCheck className="size-7" />}
@@ -214,7 +214,7 @@ export function CleanResult({
         </div>
         {needsAdmin > 0 && (
           <div className="mt-1 flex items-center gap-3 rounded-xl border bg-muted/30 px-4 py-3 text-left text-sm">
-            <ShieldAlert className="size-5 shrink-0 text-chart-3" />
+            <ShieldAlert className="size-5 shrink-0 text-warning" />
             <span>
               {needsAdmin}개는 관리자 권한이 있어야 지울 수 있어요.
               {error && <span className="block text-xs text-destructive">{error}</span>}

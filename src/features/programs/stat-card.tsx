@@ -7,8 +7,8 @@ import { FadeUp } from "@/components/motion"
 const toneClasses = {
   "chart-1": "bg-chart-1/12 text-chart-1",
   "chart-2": "bg-chart-2/12 text-chart-2",
-  "chart-3": "bg-chart-3/12 text-chart-3",
-  "chart-5": "bg-chart-5/12 text-chart-5",
+  "chart-3": "bg-chart-3/12 text-warning",
+  "chart-5": "bg-chart-5/12 text-success",
 } as const
 
 export function StatCard({

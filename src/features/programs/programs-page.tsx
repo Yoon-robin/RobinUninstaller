@@ -363,7 +363,7 @@ export function ProgramsPage() {
                           <X className="size-3.5" />
                         </button>
                       ) : (
-                        <kbd className="pointer-events-none absolute top-1/2 right-2 hidden -translate-y-1/2 rounded border bg-muted/60 px-1.5 font-sans text-[10px] text-muted-foreground lg:block">
+                        <kbd className="pointer-events-none absolute top-1/2 right-2 hidden -translate-y-1/2 rounded border bg-muted/60 px-1.5 font-sans text-[11px] text-muted-foreground lg:block">
                           Ctrl F
                         </kbd>
                       )}
