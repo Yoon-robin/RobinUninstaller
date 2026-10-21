@@ -5,6 +5,7 @@ import { toast } from "sonner"
 import { navigate, storageApi, type FolderAnalysis, type ScanProgress } from "@/lib/api"
 import { formatBytes, formatCount } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { shortenPath } from "@/components/scan-progress"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { ScanProgressView } from "@/components/scan-progress"
 import { Button } from "@/components/ui/button"
@@ -37,6 +38,9 @@ async function load(id?: string, label?: string) {
     setAnalysis({ loading: null })
   }
 }
+
+/** 한 번에 보여 주는 하위 항목 수 */
+const SHOWN = 30
 
 /** 큰 폴더 찾기. 크기를 보여 주고 탐색기로 열어 주기만 한다 (사용자 파일은 지우지 않는다). */
 export function FolderAnalysisCard() {
@@ -87,8 +91,9 @@ export function FolderAnalysisCard() {
               <ArrowUp />
             </Button>
           </IconTooltip>
-          <p data-selectable className="min-w-0 flex-1 truncate font-mono text-xs">
-            {result.path}
+          {/* 좁은 창에서 뒤가 잘리면 지금 폴더 이름이 안 보이므로, 앞쪽을 줄이고 끝 폴더를 남긴다 */}
+          <p data-selectable className="min-w-0 flex-1 truncate font-mono text-xs" title={result.path}>
+            {shortenPath(result.path)}
           </p>
           <IconTooltip label="이 폴더 다시 세기">
             <Button
@@ -105,70 +110,81 @@ export function FolderAnalysisCard() {
         </div>
       )}
 
-      {loading ? (
+      {loading && (
         <ScanProgressView
-          className="px-5 py-6"
+          className={cn("px-5", result ? "border-b py-3" : "py-6")}
           label={`${loading} 크기를 세는 중이에요`}
           progress={progress}
-          hint="파일이 많으면 1~2분 걸릴 수 있어요. 언제든 멈출 수 있어요."
+          hint={result ? undefined : "파일이 많으면 1~2분 걸릴 수 있어요. 언제든 멈출 수 있어요."}
         />
-      ) : !result ? (
+      )}
+      {loading && !result ? null : !result ? (
         <p className="px-5 py-10 text-center text-sm text-muted-foreground">
           "분석 시작"을 누르면 C 드라이브부터 폴더별 크기를 세요.
         </p>
       ) : result.items.length === 0 ? (
         <p className="px-5 py-10 text-center text-sm text-muted-foreground">비어 있거나 열 수 없는 폴더예요.</p>
       ) : (
-        <ul className="divide-y">
-          {result.items.slice(0, 30).map((item) => {
-            const pct = max > 0 ? (item.bytes / max) * 100 : 0
-            const Icon = item.isDir ? Folder : File
-            return (
-              <li key={item.id} className="group flex items-center gap-3 px-5 py-2">
-                <button
-                  type="button"
-                  disabled={!item.isDir}
-                  onClick={() => load(item.id, item.name)}
-                  className={cn("flex min-w-0 flex-1 items-center gap-3 text-left", item.isDir && "cursor-pointer")}
-                >
-                  <Icon className="size-4 shrink-0 text-muted-foreground" />
-                  <div className="min-w-0 flex-1">
-                    <p className={cn("truncate text-sm", item.isDir && "group-hover:underline")}>{item.name}</p>
-                    <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-chart-2" style={{ width: `${pct}%` }} />
+        <>
+          <ul
+            className={cn("divide-y transition-opacity", loading && "pointer-events-none opacity-50")}
+            aria-busy={loading != null}
+          >
+            {result.items.slice(0, SHOWN).map((item) => {
+              const pct = max > 0 ? (item.bytes / max) * 100 : 0
+              const Icon = item.isDir ? Folder : File
+              return (
+                <li key={item.id} className="group flex items-center gap-3 px-5 py-2">
+                  <button
+                    type="button"
+                    disabled={!item.isDir}
+                    onClick={() => load(item.id, item.name)}
+                    className={cn("flex min-w-0 flex-1 items-center gap-3 text-left", item.isDir && "cursor-pointer")}
+                  >
+                    <Icon className="size-4 shrink-0 text-muted-foreground" />
+                    <div className="min-w-0 flex-1">
+                      <p className={cn("truncate text-sm", item.isDir && "group-hover:underline")}>{item.name}</p>
+                      <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
+                        <div className="h-full rounded-full bg-chart-2" style={{ width: `${pct}%` }} />
+                      </div>
                     </div>
-                  </div>
-                  <span
-                    className="w-20 shrink-0 text-right text-sm font-medium tabular-nums"
-                    title={
-                      item.approximate
-                        ? "Windows 폴더는 같은 파일이 여러 곳에 연결(하드 링크)돼 있어 실제 차지하는 공간보다 크게 보일 수 있어요"
-                        : undefined
-                    }
-                  >
-                    {item.approximate && "약 "}
-                    {formatBytes(item.bytes)}
-                  </span>
-                  <span className="hidden w-24 shrink-0 text-right text-xs text-muted-foreground tabular-nums sm:block">
-                    {item.isDir ? `파일 ${formatCount(item.files)}개` : ""}
-                    {item.inaccessible > 0 && <span className="block">일부 열 수 없음</span>}
-                  </span>
-                </button>
-                <IconTooltip label="탐색기에서 열기">
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="size-7 text-muted-foreground"
-                    onClick={() => storageApi.revealFolderItem(item.id).catch((e) => toast.error(String(e)))}
-                    aria-label={`${item.name} 탐색기에서 열기`}
-                  >
-                    <FolderOpen />
-                  </Button>
-                </IconTooltip>
-              </li>
-            )
-          })}
-        </ul>
+                    <span
+                      className="w-20 shrink-0 text-right text-sm font-medium tabular-nums"
+                      title={
+                        item.approximate
+                          ? "Windows 폴더는 같은 파일이 여러 곳에 연결(하드 링크)돼 있어 실제 차지하는 공간보다 크게 보일 수 있어요"
+                          : undefined
+                      }
+                    >
+                      {item.approximate && "약 "}
+                      {formatBytes(item.bytes)}
+                    </span>
+                    <span className="hidden w-24 shrink-0 text-right text-xs text-muted-foreground tabular-nums sm:block">
+                      {item.isDir ? `파일 ${formatCount(item.files)}개` : ""}
+                      {item.inaccessible > 0 && <span className="block">일부 열 수 없음</span>}
+                    </span>
+                  </button>
+                  <IconTooltip label="탐색기에서 열기">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-7 text-muted-foreground"
+                      onClick={() => storageApi.revealFolderItem(item.id).catch((e) => toast.error(String(e)))}
+                      aria-label={`${item.name} 탐색기에서 열기`}
+                    >
+                      <FolderOpen />
+                    </Button>
+                  </IconTooltip>
+                </li>
+              )
+            })}
+          </ul>
+          {result.items.length > SHOWN && (
+            <p className="border-t px-5 py-2 text-xs text-muted-foreground">
+              큰 것부터 {SHOWN}개만 보여요 (모두 {result.items.length}개)
+            </p>
+          )}
+        </>
       )}
     </section>
   )

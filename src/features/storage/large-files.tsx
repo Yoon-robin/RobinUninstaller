@@ -5,7 +5,7 @@ import { toast } from "sonner"
 import { storageApi, type LargeFiles, type ScanProgress } from "@/lib/api"
 import { formatBytes, formatDay } from "@/lib/format"
 import { IconTooltip } from "@/components/icon-tooltip"
-import { ScanProgressView } from "@/components/scan-progress"
+import { ScanProgressView, shortenPath } from "@/components/scan-progress"
 import { Button } from "@/components/ui/button"
 
 /**
@@ -39,7 +39,9 @@ async function find() {
 
 /** 확장자로 대강의 종류 (설명용) */
 function kindOf(name: string): { label: string; icon: typeof File } {
-  const ext = name.toLowerCase().split(".").pop() ?? ""
+  // 점이 없거나 맨 앞에만 있으면(.gitconfig 같은) 확장자가 없는 파일이다
+  const dot = name.lastIndexOf(".")
+  const ext = dot > 0 ? name.slice(dot + 1).toLowerCase() : ""
   if (["mp4", "mkv", "avi", "mov", "wmv", "webm", "m4v"].includes(ext)) return { label: "동영상", icon: FileVideo }
   if (["iso", "img", "vhd", "vhdx", "vmdk", "wim"].includes(ext)) return { label: "디스크 이미지", icon: Disc3 }
   if (["zip", "7z", "rar", "tar", "gz", "xz"].includes(ext)) return { label: "압축 파일", icon: FileArchive }
@@ -108,7 +110,7 @@ export function LargeFilesCard() {
       ) : (
         <>
           <p className="border-b bg-muted/30 px-5 py-2 text-xs text-muted-foreground">
-            {result.items.length}개 · 모두 {formatBytes(total)}
+            큰 것부터 {result.items.length}개 · 모두 {formatBytes(total)}
           </p>
           <ul className="divide-y">
             {result.items.map((f) => {
@@ -122,7 +124,7 @@ export function LargeFilesCard() {
                       {f.name}
                     </p>
                     <p data-selectable className="truncate text-xs text-muted-foreground" title={f.path}>
-                      {folderOf(f.path)}
+                      {shortenPath(folderOf(f.path))}
                     </p>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
                       <div className="h-full rounded-full bg-chart-2" style={{ width: `${pct}%` }} />
