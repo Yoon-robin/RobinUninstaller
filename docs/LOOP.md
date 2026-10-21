@@ -225,7 +225,7 @@ Rust가 보내는 오류 문장을 바꾸는 항목은 I19(문장으로 상태�
 - [x] **I11. 사이트: 무게와 404.** (2026-10-21, 72dce2f) 앱 화면 그림 6장을 WebP나 AVIF와 `srcset`으로, 쓰지 않는 `public/shots/programs-grid.png`를 지우고, motion은 `LazyMotion`+`domAnimation`으로 줄일 수 있는지 본다. 없는 주소는 GitHub 기본 404(영어, 밝은 화면)로 가니 어두운 `404.html`을 둔다.
   끝난 기준: 빌드 결과 크기 전후를 바퀴 기록에 적는다.
 - [x] **I42. 사이트: 그림 선명도와 글꼴 바뀜.** (2026-10-21, 27c7cc9) 앱 화면 그림과 영상이 1280 폭(DPR 1)으로 찍혀 고해상도 화면에서 1.15~1.7배 늘어나 흐리다(`website/scripts/capture.mjs`, `scripts/ui-mock/mock.mjs`에 `deviceScaleFactor` 없음). 2배로 찍어 I11의 WebP·`srcset`과 함께 낸다. 느린 연결에서 글꼴이 늦게 바뀌며 첫 화면 제목·소개 문단이 줄어들고 버튼과 앱 창이 위로 튄다(390 폭 CLS 0.075). 핵심 글꼴 조각을 미리 받거나 글꼴이 준비된 뒤 첫 화면 움직임을 시작한다.
-- [~] **I43. 사이트: 자잘한 것.** 움직임 줄이기에서도 기능 타일 그림이 hover로 올라간다(`features.tsx`의 `group-hover/spot:-translate-y-1`, 히어로 단추 화살표도). 1920·2560 폭에서 푸터 위 선이 가운데 1280px만 그려진다. 되돌리기 머리 문단·개발 현황 "알아 둘 것"·FAQ 일부 답의 마지막 줄에 한 낱말만 남는다(`text-pretty`). 같은 `.window` 판의 모서리 반경이 네 가지. 근거 예시 안 글자가 `text-[12px]`·`text-[11px]` 고정(README의 글자 단계와 다름). `og:site_name`·`og:locale`·`apple-touch-icon`·manifest가 없다. 첫 화면 "새 버전" 판이 공개 뒤 몇 주가 지나도 그대로다(공개 14일 안에만 등). 개발 현황의 공개일이 방문자 시간대로 계산돼 하루 어긋날 수 있다(`timeZone: "Asia/Seoul"`). 릴리스를 올려도 사이트를 따로 배포하지 않으면 받기 단추가 이전 버전을 가리키니, `scripts/release.sh --publish` 끝에서 사이트 배포를 부르거나 릴리스 절차에 적는다.
+- [x] **I43. 사이트: 자잘한 것.** (2026-10-21, 73a4363) 움직임 줄이기에서도 기능 타일 그림이 hover로 올라간다(`features.tsx`의 `group-hover/spot:-translate-y-1`, 히어로 단추 화살표도). 1920·2560 폭에서 푸터 위 선이 가운데 1280px만 그려진다. 되돌리기 머리 문단·개발 현황 "알아 둘 것"·FAQ 일부 답의 마지막 줄에 한 낱말만 남는다(`text-pretty`). 같은 `.window` 판의 모서리 반경이 네 가지. 근거 예시 안 글자가 `text-[12px]`·`text-[11px]` 고정(README의 글자 단계와 다름). `og:site_name`·`og:locale`·`apple-touch-icon`·manifest가 없다. 첫 화면 "새 버전" 판이 공개 뒤 몇 주가 지나도 그대로다(공개 14일 안에만 등). 개발 현황의 공개일이 방문자 시간대로 계산돼 하루 어긋날 수 있다(`timeZone: "Asia/Seoul"`). 릴리스를 올려도 사이트를 따로 배포하지 않으면 받기 단추가 이전 버전을 가리키니, `scripts/release.sh --publish` 끝에서 사이트 배포를 부르거나 릴리스 절차에 적는다.
 
 **앱 전체 틀과 색**
 
@@ -352,6 +352,7 @@ Rust가 보내는 오류 문장을 바꾸는 항목은 I19(문장으로 상태�
 ## 바퀴 기록
 
 새 줄을 위에 추가한다. 형식: `날짜 · 항목 · 커밋 · 한 줄 결과`
+- 2026-10-21 · I43 · 73a4363 · 움직임 줄이기에서 hover 이동 끔(기능 타일·첫 화면 화살표), 푸터 위 선을 화면 끝까지, 세 문단에 text-pretty, .window 모서리를 20/24px 하나로, 근거 예시 글자를 text-fine으로(글자 다섯 단계), og:site_name·og:locale·apple-touch-icon(180, 어두운 바탕)·manifest, '새 버전' 판은 공개 14일 안에만(지나면 '최신'), 공개일은 Asia/Seoul로, release.sh --publish 끝에서 사이트 배포. 390·1440·1920 확인, 배포함
 - 2026-10-21 · I42 · 27c7cc9 · 앱 화면 그림을 2배로 찍어 @2x.webp(약 120KB)와 줄인 1배를 만들고 srcset 1x/2x로 고름(배율 1·2에서 확인). 영상은 Playwright 녹화가 deviceScaleFactor를 무시해 큰 창+CSS zoom 2로 찍음: 넓은 화면 1배 240KB/2배 600KB를 devicePixelRatio로 고르고, 휴대폰용은 2배(1568×1440, 470KB)만. 글꼴 바뀜은 느린 연결 4가지(지연 40~560ms, 200KB/s~1.5MB/s)에서 CLS 0.003~0.009라 고치지 않음. 느린 연결의 LCP는 JS 490KB 탓(2~5초). 배포함
 - 2026-10-21 · I11 · 72dce2f · 앱 화면 그림 5장을 WebP(canvas 인코더, 품질 0.9)로 찍어 약 절반(PNG 560KB→280KB), 안 쓰던 programs-grid 지움. LazyMotion+domAnimation(strict)으로 JS gzip 167→153KB. 어두운 한국어 404.html(라이브에서 확인). srcset·2배 그림은 I42에서. 남은 JS 490KB가 무엇인지는 아직 안 봄
 - 2026-10-21 · I10 · ad0af66 · 390 폭에서는 대화창만 잘라 찍은 영상(784×720, 160KB)과 포스터를 고르고(matchMedia), 늘 보이는 재생·일시정지 단추를 둠. MP4는 안 둠: Playwright ffmpeg에 H.264가 없고 VP9는 Safari 17.4부터 재생, 그 전엔 포스터. 390·1440 확인, 배포함
