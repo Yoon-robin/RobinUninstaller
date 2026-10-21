@@ -11,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { AppIcon } from "@/features/programs/app-icon"
 import { LeftoversDialog, type LeftoverTarget } from "./leftovers-dialog"
 
-/** 잔여물 정리: 제거한 프로그램(보관 기간 동안 남는다)과, 언인스톨러가 없어 흔적만 남은 프로그램. */
+/** 남은 흔적 정리: 제거한 프로그램(보관 기간 동안 남는다)과, 언인스톨러가 없어 흔적만 남은 프로그램. */
 export function LeftoversPage() {
   const [target, setTarget] = useState<LeftoverTarget | null>(null)
   // 이번에 정리를 마친 앱 (목록에 "정리함" 표시)
@@ -23,7 +23,7 @@ export function LeftoversPage() {
   return (
     <Stagger className="relative mx-auto flex max-w-4xl min-w-0 flex-col gap-6 px-7 pt-7 pb-10">
       <FadeUp>
-        <h1 className="text-2xl font-bold tracking-tight">잔여물 정리</h1>
+        <h1 className="text-2xl font-bold tracking-tight">남은 흔적 정리</h1>
         <p className="mt-1 text-sm text-muted-foreground">언인스톨러가 남기고 간 파일과 레지스트리를 찾아 정리해요.</p>
       </FadeUp>
 

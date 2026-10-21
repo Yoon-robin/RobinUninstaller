@@ -75,7 +75,7 @@ export function FolderAnalysisCard() {
         <div className="mr-auto min-w-0">
           <h2 className="font-semibold">큰 폴더 찾기</h2>
           <p className="text-xs text-muted-foreground">
-            무엇이 공간을 차지하는지 보여 드려요. 여기서는 지우지 않아요. 필요 없는 프로그램은 프로그램 화면에서
+            무엇이 공간을 차지하는지 보여 줘요. 여기서는 지우지 않아요. 필요 없는 프로그램은 프로그램 화면에서
             제거하세요.
           </p>
         </div>

@@ -436,7 +436,7 @@ const page = await openApp(browser, {
 await page.waitForTimeout(2500)
 await shot("programs", page)
 
-await nav(page, "잔여물 정리")
+await nav(page, "남은 흔적 정리")
 await page
   .getByRole("button", { name: /남은 흔적 찾기/ })
   .first()

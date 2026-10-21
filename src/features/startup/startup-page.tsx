@@ -41,7 +41,7 @@ const sourceLabels: Record<StartupSource, { kind: string; scope: string }> = {
   runMachine32: { kind: "레지스트리", scope: "모든 사용자 · 32비트" },
   folderUser: { kind: "시작 폴더", scope: "현재 사용자" },
   folderCommon: { kind: "시작 폴더", scope: "모든 사용자" },
-  task: { kind: "예약 작업", scope: "로그인·부팅 때 실행" },
+  task: { kind: "예약 작업", scope: "로그인하거나 PC를 켤 때 실행" },
 }
 
 type Filter = "all" | "on" | "off" | "missing" | "task"
@@ -116,8 +116,8 @@ export function StartupPage() {
       <FadeUp>
         <h1 className="text-2xl font-bold tracking-tight">시작프로그램</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Windows에 로그인하거나 켤 때 함께 실행되는 프로그램과 예약 작업이에요. 꺼도 프로그램이나 등록 정보는 지우지
-          않아서 언제든 다시 켤 수 있어요.
+          Windows에 로그인하거나 PC를 켤 때 함께 실행되는 프로그램과 예약 작업이에요. 꺼도 프로그램이나 등록 정보는
+          지우지 않아서 언제든 다시 켤 수 있어요.
         </p>
       </FadeUp>
 

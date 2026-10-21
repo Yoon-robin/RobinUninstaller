@@ -12,7 +12,7 @@ mkdirSync(out, { recursive: true })
 const pages = [
   ["programs", "프로그램"],
   ["store-apps", "프로그램", (p) => p.getByRole("tab", { name: /Store 앱/ }).click()],
-  ["leftovers", "잔여물 정리"],
+  ["leftovers", "남은 흔적 정리"],
   ["storage", "저장공간"],
   ["startup", "시작프로그램"],
   ["restore", "복구 기록"],

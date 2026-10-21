@@ -36,7 +36,7 @@ type Item = { page: Page; label: string; icon: typeof Package; soon?: boolean }
 
 const mainItems: Item[] = [
   { page: "programs", label: "프로그램", icon: Package },
-  { page: "leftovers", label: "잔여물 정리", icon: Sparkles },
+  { page: "leftovers", label: "남은 흔적 정리", icon: Sparkles },
   { page: "storage", label: "저장공간", icon: HardDrive },
   { page: "startup", label: "시작프로그램", icon: Rocket },
 ]
@@ -48,7 +48,7 @@ const toolItems: Item[] = [
 
 export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page: Page) => void }) {
   const { version, available, openUpdate } = useUpdates()
-  // 제거했지만 아직 남은 흔적을 찾아보지 않은 프로그램 수 (잔여물 정리 옆에 표시)
+  // 제거했지만 아직 남은 흔적을 찾아보지 않은 프로그램 수 (남은 흔적 정리 옆에 표시)
   const removed = useQuery({ queryKey: ["recently-removed"], queryFn: scanApi.recentlyRemoved })
   const unscanned = (removed.data ?? []).filter((r) => !r.scanned).length
   const collapsed = useSidebar().state === "collapsed"

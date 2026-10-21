@@ -198,7 +198,7 @@ function ConfirmBody({
         {needsAdmin && (
           <li className="flex gap-2">
             <ShieldAlert className="size-4 shrink-0 text-warning" />
-            모든 사용자용 프로그램이라 관리자 권한 요청(UAC)이 뜰 수 있어요.
+            모든 사용자용 프로그램이라 관리자 권한 확인 창(UAC)이 뜰 수 있어요.
           </li>
         )}
         {isSelf(app) && (
@@ -419,7 +419,7 @@ function ResultBody({
       {outcome.kind === "cannotRun" && outcome.command && <CommandPreview command={outcome.command} />}
       {removed && (
         <p className="max-w-md text-xs text-muted-foreground">
-          나중에 찾아도 돼요. 잔여물 정리 화면의 "제거한 프로그램"에 남아 있어요.
+          나중에 찾아도 돼요. 남은 흔적 정리 화면의 "제거한 프로그램"에 남아 있어요.
         </p>
       )}
       <div className="mt-2 flex gap-2">
@@ -487,7 +487,7 @@ function describe(outcome: UninstallOutcome) {
       return {
         icon: RotateCcw,
         toneClass: "bg-chart-3/15 text-warning",
-        title: "제거했어요 · 재시작 필요",
+        title: "제거했어요 · 다시 시작 필요",
         body: "일부 파일은 PC를 다시 시작해야 완전히 지워져요.",
         retry: false,
       }

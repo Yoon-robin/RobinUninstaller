@@ -87,7 +87,7 @@ export function canUninstall(app: InstalledApplication) {
   return app.uninstaller === "available" || app.uninstaller === "unknown"
 }
 
-/** 기본 언인스톨러를 쓸 수 없어 강제 제거로 가야 하는 프로그램. 필터·경고 표시·잔여물 화면이 함께 쓴다. */
+/** 기본 언인스톨러를 쓸 수 없어 강제 제거로 가야 하는 프로그램. 필터·경고 표시·남은 흔적 화면이 함께 쓴다. */
 /** 목록의 이 항목이 RobinX 자신인지 (설치 프로그램이 등록하는 이름·게시자, crates/setup PRODUCT·PUBLISHER) */
 export function isSelf(app: InstalledApplication) {
   return app.displayName === "RobinX" && app.publisher === "yoonrobin"
@@ -460,7 +460,7 @@ export interface BackupUsage {
 export const settingsApi = {
   get: () => invoke<Settings>("get_settings"),
   setRetention: (days: number | null) => invoke<void>("set_backup_retention", { days }),
-  /** 마지막 스캔 결과의 항목을 다음 스캔부터 뺀다. 이미 빠져 있으면 false */
+  /** 마지막 스캔 결과의 항목을 다음 찾기부터 뺀다. 이미 빠져 있으면 false */
   addExclusion: (itemId: string) => invoke<boolean>("add_exclusion", { itemId }),
   removeExclusion: (index: number, location: string, valueName: string | null) =>
     invoke<void>("remove_exclusion", { index, location, valueName }),

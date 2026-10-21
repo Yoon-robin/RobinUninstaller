@@ -36,7 +36,7 @@ function outcomeLabel(outcome: UninstallOutcome): { text: string; tone: string }
     case "removed":
       return { text: "제거됨", tone: "text-primary" }
     case "removedRebootRequired":
-      return { text: "제거됨 · 재부팅 필요", tone: "text-primary" }
+      return { text: "제거됨 · 다시 시작 필요", tone: "text-primary" }
     case "stillInstalled":
       return { text: "아직 설치돼 있어요 (취소했거나 실패)", tone: "text-warning" }
     case "elevationDenied":
@@ -125,7 +125,7 @@ export function BatchUninstallDialog({
             kind: "running",
             stage:
               event.kind === "launching"
-                ? "언인스톨러 실행 중 (UAC 창이 뜨면 허용해 주세요)"
+                ? '언인스톨러 실행 중 · 관리자 권한 확인 창(UAC)이 뜨면 "예"를 눌러 주세요'
                 : event.kind === "running"
                   ? "제거 진행 중 · 언인스톨러 창의 안내를 따라 주세요"
                   : "제거됐는지 확인하는 중",
@@ -174,7 +174,7 @@ export function BatchUninstallDialog({
                 ? "각 프로그램의 기본 언인스톨러를 하나씩 차례로 실행해요"
                 : phase === "running"
                   ? `${Math.min(finished + 1, runnable.length)} / ${runnable.length}번째 · 언인스톨러 창이 열리면 안내에 따라 진행해 주세요`
-                  : `${removed.length}개를 제거했어요. 남은 흔적은 지금 찾거나, 나중에 잔여물 정리 화면에서 찾을 수 있어요`}
+                  : `${removed.length}개를 제거했어요. 남은 흔적은 지금 찾거나, 나중에 남은 흔적 정리 화면에서 찾을 수 있어요`}
             </DialogDescription>
           </div>
         </div>
@@ -184,7 +184,7 @@ export function BatchUninstallDialog({
             {needsAdmin && (
               <li className="flex gap-2">
                 <ShieldAlert className="size-4 shrink-0 text-warning" />
-                모든 사용자용 프로그램이 있어 관리자 권한 요청(UAC)이 여러 번 뜰 수 있어요.
+                모든 사용자용 프로그램이 있어 관리자 권한 확인 창(UAC)이 여러 번 뜰 수 있어요.
               </li>
             )}
             <li className="flex gap-2">

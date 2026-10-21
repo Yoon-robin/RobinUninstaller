@@ -384,7 +384,7 @@ function CategoryRow({
               {c.name}
               <RiskBadge category={c} />
               {c.admin && (
-                <IconTooltip label="관리자 권한이 필요해요 (UAC 창이 떠요)" side="top">
+                <IconTooltip label="관리자 권한이 필요해요 · 누르면 확인 창(UAC)이 떠요" side="top">
                   <ShieldAlert className="size-3.5 text-warning" />
                 </IconTooltip>
               )}
@@ -476,7 +476,7 @@ function InfoSection({ items }: { items: StorageCategory[] }) {
       <div className="border-b px-5 py-4">
         <h2 className="font-semibold">직접 정리할 수 있는 큰 항목</h2>
         <p className="text-xs text-muted-foreground">
-          지우면 되돌릴 수 없거나 Windows 설정에서 해야 해서, 여기서는 크기와 방법만 알려 드려요.
+          지우면 되돌릴 수 없거나 Windows 설정에서 해야 해서, 여기서는 크기와 방법만 알려 줘요.
         </p>
       </div>
       <ul className="divide-y">
@@ -721,7 +721,8 @@ function CleanDialog({
             {needsAdmin && (
               <p className="flex items-center gap-1.5 text-xs text-muted-foreground">
                 <ShieldAlert className="size-3.5 text-warning" />
-                관리자 권한이 필요한 항목이 있어 UAC 창이 떠요. "아니요"를 누르면 그 항목만 빼고 정리해요.
+                관리자 권한이 필요한 항목이 있어 관리자 권한 확인 창(UAC)이 떠요. "아니요"를 누르면 그 항목만 빼고
+                정리해요.
               </p>
             )}
             <div className="mt-2 flex justify-end gap-2">
@@ -824,7 +825,7 @@ function CleanProgressView({ live, items }: { live: LiveProgress; items: Storage
           <>
             <p className="font-medium">관리자 권한으로 정리하는 중</p>
             <p className="mt-1 text-xs text-muted-foreground">
-              UAC 창에서 허용하면 따로 실행된 RobinX가 정리해요. 끝나면 결과가 여기에 나와요.
+              관리자 권한 확인 창(UAC)에서 "예"를 누르면 따로 실행된 RobinX가 정리해요. 끝나면 결과가 여기에 나와요.
             </p>
           </>
         ) : cur ? (

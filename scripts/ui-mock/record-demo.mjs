@@ -101,7 +101,7 @@ const context = await browser.newContext({
   colorScheme: SCHEME,
   recordVideo: { dir: tmp, size: { width: W * SCALE, height: H * SCALE } },
 })
-// 녹화는 페이지를 만들 때 시작한다. 잔여물 화면이 뜬 시점부터 남기려고 시간을 잰다.
+// 녹화는 페이지를 만들 때 시작한다. 남은 흔적 화면이 뜬 시점부터 남기려고 시간을 잰다.
 await context.addInitScript(
   `document.addEventListener("DOMContentLoaded", () => { document.documentElement.style.zoom = "${SCALE}" })`,
 )
@@ -109,7 +109,7 @@ const started = Date.now()
 const page = await openAppInContext(context, { overrides: handlers, scheme: SCHEME })
 const pause = (ms) => page.waitForTimeout(ms)
 
-await page.getByRole("button", { name: "잔여물 정리", exact: true }).first().click()
+await page.getByRole("button", { name: "남은 흔적 정리", exact: true }).first().click()
 await pause(1400)
 const trimAt = Math.max(0, (Date.now() - started) / 1000 - 0.3)
 await page.getByRole("button", { name: "남은 흔적 찾기" }).first().click()

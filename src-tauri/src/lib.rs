@@ -533,7 +533,7 @@ fn reveal_leftover(item_id: String, cache: State<'_, AppCache>) -> Result<(), St
         .lock()
         .ok()
         .and_then(|scan| scan.find(&item_id))
-        .ok_or("스캔 결과에 없는 항목이에요")?;
+        .ok_or("찾은 결과에 없는 항목이에요. 다시 찾은 뒤 시도해 주세요")?;
     if !matches!(item.kind, LeftoverKind::Folder | LeftoverKind::File) {
         return Err("파일이나 폴더만 열 수 있어요".into());
     }
@@ -596,7 +596,7 @@ async fn clean_leftovers(
         let scan = cache.last_scan.lock().map_err(|e| e.to_string())?;
         let Some(scanned) = scan.by_app.get(&app_id) else {
             return Err(
-                "이 프로그램의 스캔 결과가 없어요. 남은 흔적을 다시 찾은 뒤 시도해 주세요".into(),
+                "이 프로그램을 찾은 결과가 없어요. 남은 흔적을 다시 찾은 뒤 시도해 주세요".into(),
             );
         };
         scanned

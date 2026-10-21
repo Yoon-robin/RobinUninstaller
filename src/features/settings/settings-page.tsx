@@ -194,9 +194,9 @@ export function SettingsPage() {
     setRemoving(index)
     try {
       await settingsApi.removeExclusion(index, location, valueName)
-      toast.success("제외 목록에서 뺐어요. 다음 스캔부터 다시 찾아요")
+      toast.success("제외를 풀었어요. 다음 찾기부터 다시 찾아요")
     } catch (e) {
-      notifyError("제외 목록에서 빼지 못했어요", e)
+      notifyError("제외를 풀지 못했어요", e)
     } finally {
       await queryClient.invalidateQueries({ queryKey: ["settings"] })
       setRemoving(null)
@@ -225,7 +225,7 @@ export function SettingsPage() {
       <FadeUp>
         <h1 className="text-2xl font-bold tracking-tight">설정</h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          화면, 업데이트, 백업 보관, 잔여물 스캔에서 뺄 항목을 정해요.
+          화면, 업데이트, 백업 보관, 남은 흔적 찾기에서 뺄 항목을 정해요.
         </p>
       </FadeUp>
 
@@ -261,7 +261,7 @@ export function SettingsPage() {
         <Section
           icon={ArchiveRestore}
           title="백업 보관"
-          description="잔여물을 정리할 때 지운 파일과 레지스트리는 모두 백업돼요. 백업을 지우면 되돌릴 수 없어요."
+          description="남은 흔적을 정리할 때 지운 파일과 레지스트리는 모두 백업돼요. 백업을 지우면 되돌릴 수 없어요."
         >
           <div className="flex flex-wrap items-center gap-x-6 gap-y-2 text-sm">
             <span className="text-muted-foreground">
@@ -329,8 +329,8 @@ export function SettingsPage() {
       <FadeUp>
         <Section
           icon={EyeOff}
-          title="잔여물 스캔에서 뺄 항목"
-          description='잔여물 결과에서 "다음부터 제외"를 누른 위치예요. 폴더·키를 빼면 그 아래도 모두 빠져요.'
+          title="남은 흔적 찾기에서 뺄 항목"
+          description='남은 흔적 결과에서 "다음부터 제외"를 누른 위치예요. 폴더·키를 빼면 그 아래도 모두 빠져요.'
         >
           {settings.isLoading ? (
             <Skeleton className="h-16 w-full rounded-xl" />
@@ -342,7 +342,7 @@ export function SettingsPage() {
             />
           ) : (settings.data?.exclusions ?? []).length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
-              뺀 항목이 없어요. 잔여물 결과의 항목에 마우스를 올리면 "다음부터 제외" 버튼이 보여요.
+              뺀 항목이 없어요. 남은 흔적 결과의 항목에 마우스를 올리면 "다음부터 제외" 버튼이 보여요.
             </p>
           ) : (
             <ul className="divide-y rounded-xl border">
@@ -355,12 +355,12 @@ export function SettingsPage() {
                       {e.location}
                       {e.valueName && ` › ${e.valueName}`}
                     </p>
-                    <IconTooltip label="제외 목록에서 빼기">
+                    <IconTooltip label="제외 풀기">
                       <Button
                         variant="ghost"
                         size="icon"
                         className="size-7 shrink-0 text-muted-foreground"
-                        aria-label={`${e.location}${e.valueName ? ` › ${e.valueName}` : ""} 제외 목록에서 빼기`}
+                        aria-label={`${e.location}${e.valueName ? ` › ${e.valueName}` : ""} 제외 풀기`}
                         disabled={removing != null}
                         onClick={() => removeExclusion(i, e.location, e.valueName ?? null)}
                       >
@@ -476,7 +476,7 @@ function UpdatesSection() {
     <Section
       icon={Download}
       title="업데이트"
-      description="앱을 켤 때 새 버전이 있으면 업데이트 창으로, 쓰는 동안 나오면 사이드바에 알려 드려요. 설치는 직접 누를 때만 하고, 서명을 확인한 파일만 설치해요."
+      description="앱을 켤 때 새 버전이 있으면 업데이트 창으로, 쓰는 동안 나오면 사이드바에 알려 줘요. 설치는 직접 누를 때만 하고, 서명을 확인한 파일만 설치해요."
     >
       <div className="flex flex-wrap items-center gap-x-6 gap-y-3">
         <div className="min-w-0 flex-1 text-sm">

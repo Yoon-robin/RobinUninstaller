@@ -61,7 +61,7 @@ export function LeftoversDialog({
 }: {
   target: LeftoverTarget | null
   onClose: () => void
-  /** 정리를 마쳤을 때 (잔여물 정리 페이지가 그 앱에 "정리함" 표시를 단다) */
+  /** 정리를 마쳤을 때 (남은 흔적 정리 페이지가 그 앱에 "정리함" 표시를 단다) */
   onCleaned?: (appId: string) => void
 }) {
   // 닫히는 동안에도 내용이 남아 있게 마지막 대상을 그린다. 찾기는 열려 있을 때만 한다.
@@ -455,7 +455,7 @@ function Results({
         // 설정 화면의 제외 목록이 바로 바뀌게
         queryClient.invalidateQueries({ queryKey: ["settings"] })
         toast.success(added ? "이번 정리와 다음 찾기에서 이 위치는 빼요" : "이미 제외 목록에 있어요", {
-          description: "되돌리려면 설정 › 잔여물 스캔에서 뺄 항목을 보세요",
+          description: "되돌리려면 설정 › 남은 흔적 찾기에서 뺄 항목을 보세요",
         })
       })
       .catch(failed("제외 목록에 넣지 못했어요"))
@@ -519,7 +519,7 @@ function Results({
                   </IconTooltip>
                 )}
                 {(report.excludedByUser ?? 0) > 0 && (
-                  <IconTooltip label="설정 › 잔여물 스캔에서 직접 뺀 위치예요. 거기서 되돌릴 수 있어요">
+                  <IconTooltip label="설정 › 남은 흔적 찾기에서 직접 뺀 위치예요. 거기서 되돌릴 수 있어요">
                     <span className="flex cursor-default items-center gap-1 text-muted-foreground">
                       <EyeOff className="size-3.5" />
                       직접 뺀 위치 {report.excludedByUser}개

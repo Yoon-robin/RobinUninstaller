@@ -53,7 +53,7 @@ const statusLabels: Record<ItemStatus, { label: string; tone: string }> = {
   alreadyGone: { label: "이미 없음", tone: "text-muted-foreground" },
   blocked: { label: "보호됨", tone: "text-muted-foreground" },
   failed: { label: "실패", tone: "text-destructive" },
-  restored: { label: "복원됨", tone: "text-success" },
+  restored: { label: "되돌림", tone: "text-success" },
   partial: { label: "일부만 정리됨", tone: "text-warning" },
   conflicted: { label: "충돌 있음 · 백업에만 남음", tone: "text-warning" },
 }
@@ -147,10 +147,10 @@ export function RestorePage() {
               <ArchiveRestore className="size-6 text-muted-foreground" />
             </div>
             <p className="font-medium">아직 정리한 기록이 없어요</p>
-            <p className="text-sm text-muted-foreground">잔여물을 정리하면 되돌릴 수 있도록 여기에 기록돼요.</p>
+            <p className="text-sm text-muted-foreground">남은 흔적을 정리하면 되돌릴 수 있도록 여기에 기록돼요.</p>
             <Button variant="outline" size="sm" className="mt-1" onClick={() => navigate("leftovers")}>
               <Sparkles />
-              잔여물 정리로 가기
+              남은 흔적 정리로 가기
             </Button>
           </div>
         </FadeUp>
@@ -255,7 +255,7 @@ function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () =
         <DialogTitle>오래된 백업 비우기</DialogTitle>
         <DialogDescription className="leading-relaxed">
           고른 기간보다 오래된 정리 기록과 백업을 지워 공간을 돌려받아요. 지운 백업으로는 다시 되돌릴 수 없어요.
-          복원하다 충돌이 난 백업은 지우지 않아요.
+          되돌리다 충돌이 난 백업은 지우지 않아요.
         </DialogDescription>
         <div
           role="radiogroup"
@@ -430,7 +430,7 @@ function OperationCard({
             <p className="font-semibold break-words">{op.appName}</p>
             <p className="text-xs text-muted-foreground">
               {formatDate(op.createdAt)} · 보관 중 {kept}개{keptBytes > 0 && ` (${formatBytes(keptBytes)})`}
-              {restored > 0 && ` · 복원 ${restored}개`}
+              {restored > 0 && ` · 되돌림 ${restored}개`}
               {conflicted > 0 && <span className="text-warning">{` · 충돌 ${conflicted}개`}</span>}
               {expiry && <span className={cn(expiry.soon && "text-warning")}>{` · ${expiry.text}`}</span>}
             </p>
@@ -444,7 +444,7 @@ function OperationCard({
             onClick={() => run("admin", adminRestoreIds, () => recoveryApi.restoreElevated(op.id, adminRestoreIds))}
           >
             {busy === "admin" ? <Loader2 className="animate-spin" /> : <ShieldAlert />}
-            관리자 권한으로 복원
+            관리자 권한으로 되돌리기
           </Button>
         )}
         <Button
@@ -594,7 +594,7 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
           <b className="text-foreground">이후에는 되돌릴 수 없어요.</b>
           {conflicted > 0 && (
             <span className="mt-2 block rounded-lg bg-chart-3/10 px-3 py-2 text-warning">
-              복원할 때 충돌이 난 항목 {conflicted}개는 일부 파일이 이 백업에만 남아 있어요. 삭제하면 그 파일도
+              되돌릴 때 충돌이 난 항목 {conflicted}개는 일부 파일이 이 백업에만 남아 있어요. 삭제하면 그 파일도
               사라져요. 항목을 펼쳐 경로를 먼저 확인하세요.
             </span>
           )}
@@ -603,8 +603,8 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
           <p className="flex gap-2 rounded-lg border bg-muted/30 px-3 py-2.5 text-sm" role="status">
             <ShieldAlert className="mt-0.5 size-4 shrink-0 text-warning" />
             <span>
-              일부 파일은 관리자 권한으로 정리한 것이라 관리자 권한이 있어야 지울 수 있어요. 누르면 관리자 권한
-              요청(UAC)이 떠요.
+              일부 파일은 관리자 권한으로 정리한 것이라 관리자 권한이 있어야 지울 수 있어요. 누르면 관리자 권한 확인
+              창(UAC)이 떠요.
             </span>
           </p>
         )}

@@ -80,8 +80,7 @@ export function LargeFilesCard() {
         <div className="mr-auto min-w-0">
           <h2 className="font-semibold">큰 파일 찾기</h2>
           <p className="text-xs text-muted-foreground">
-            200 MB가 넘는 파일을 큰 것부터 보여 드려요. 여기서는 지우지 않아요. 필요 없는 파일은 탐색기에서 직접
-            지우세요.
+            200 MB가 넘는 파일을 큰 것부터 보여 줘요. 여기서는 지우지 않아요. 필요 없는 파일은 탐색기에서 직접 지우세요.
           </p>
         </div>
         {loading ? (

@@ -70,7 +70,7 @@ export function StoreAppsSection({
       <div className="top-0 z-10 rounded-t-2xl border-b bg-card [@media(min-height:721px)]:sticky">
         <div className="flex flex-wrap items-center gap-3 px-5 pt-4 pb-3">
           <div className="mr-auto flex items-baseline gap-2">
-            <h2 className="font-semibold">Microsoft Store 앱</h2>
+            <h2 className="font-semibold">Store 앱</h2>
             <span className="text-sm text-muted-foreground tabular-nums">
               {apps.isLoading ? "불러오는 중…" : `${visible.length}개`}
             </span>

@@ -69,7 +69,7 @@ export function BigProgramsCard() {
               <h2 className="font-semibold">용량이 큰 프로그램</h2>
               <p className="text-xs text-muted-foreground">
                 안 쓰는 큰 프로그램을 지우면 캐시 정리보다 공간이 훨씬 많이 생길 수 있어요. 지우고 나면 남은 흔적도 찾아
-                드려요.
+                줘요.
               </p>
             </div>
             <Button variant="outline" size="sm" onClick={() => navigate("programs")}>

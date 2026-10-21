@@ -41,7 +41,7 @@ export function HiddenTasksCard() {
 
       {hidden.isFetching && (
         <p className="border-t px-5 py-3 text-xs text-muted-foreground" role="status">
-          UAC 창에서 "예"를 누르면 따로 실행된 RobinX가 작업 목록을 읽어 와요.
+          관리자 권한 확인 창(UAC)에서 "예"를 누르면 따로 실행된 RobinX가 작업 목록을 읽어 와요.
         </p>
       )}
       {hidden.isError && !hidden.isFetching && (
@@ -54,7 +54,8 @@ export function HiddenTasksCard() {
         <div className="border-t">
           {tasks.length === 0 ? (
             <p className="px-5 py-6 text-center text-sm text-muted-foreground">
-              관리자 권한으로만 보이는 예약 작업이 없어요. 로그인·부팅 때 실행되는 작업은 위 목록에 모두 있어요.
+              관리자 권한으로만 보이는 예약 작업이 없어요. 로그인하거나 PC를 켤 때 실행되는 작업은 위 목록에 모두
+              있어요.
             </p>
           ) : (
             <>
