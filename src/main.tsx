@@ -1,12 +1,15 @@
-import React from "react";
+import React, { Suspense, lazy } from "react";
 import ReactDOM from "react-dom/client";
 import { invoke } from "@tauri-apps/api/core";
 import App from "./App";
-import { SetupApp, type SetupMode } from "./features/setup/setup-app";
+import type { SetupMode } from "./features/setup/setup-app";
 import { beginStartupUpdateCheck } from "./features/updates/updates";
 import { toast } from "sonner";
 import { AppErrorBoundary } from "./components/app-error-boundary";
 import "./index.css";
+
+// 설치·제거 화면은 setup.exe로 실행했을 때만 쓰므로 그때 읽는다
+const SetupApp = lazy(() => import("./features/setup/setup-app").then((m) => ({ default: m.SetupApp })));
 import { installAutoTitle } from "./lib/auto-title";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
@@ -17,7 +20,15 @@ invoke<"app" | SetupMode>("app_mode")
     if (mode === "app") beginStartupUpdateCheck();
     ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
       <React.StrictMode>
-        <AppErrorBoundary>{mode === "app" ? <App /> : <SetupApp mode={mode} />}</AppErrorBoundary>
+        <AppErrorBoundary>
+          {mode === "app" ? (
+            <App />
+          ) : (
+            <Suspense fallback={null}>
+              <SetupApp mode={mode} />
+            </Suspense>
+          )}
+        </AppErrorBoundary>
       </React.StrictMode>,
     );
     hideBoot();
