@@ -188,11 +188,7 @@ fn run(mode: &str, rest: &[String]) -> Option<i32> {
         if robin_recovery::restore(&store, &mut op, &guard, ids.as_deref(), |_| {}).is_err() {
             return Some(EXIT_SAVE_FAILED);
         }
-        let failed = op.items.iter().any(|i| {
-            i.error
-                .as_deref()
-                .is_some_and(|e| e.starts_with("복원 실패"))
-        });
+        let failed = op.items.iter().any(|i| i.restore_failed);
         Some(if failed { EXIT_SOME_FAILED } else { 0 })
     }
 }

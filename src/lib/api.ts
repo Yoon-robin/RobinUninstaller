@@ -170,6 +170,10 @@ export interface OperationItem {
   sizeBytes: number | null
   status: ItemStatus
   error: string | null
+  /** 마지막 실패가 권한 때문 (관리자 권한으로 다시 시도할 수 있음). 오류 문장으로 판단하지 않는다. */
+  needsAdmin?: boolean
+  /** 마지막 되돌리기가 실패함 */
+  restoreFailed?: boolean
 }
 
 export interface Operation {

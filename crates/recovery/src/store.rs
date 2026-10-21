@@ -280,9 +280,11 @@ mod tests {
             size_bytes: None,
             status: crate::model::ItemStatus::Pending,
             backup: Some(crate::model::Backup::Quarantine {
-                path: r"files \Old".into(),
+                path: r"files\0\Old".into(),
             }),
             error: None,
+            needs_admin: false,
+            restore_failed: false,
         });
         assert!(expired_ids(&[stuck], 30, now).is_empty());
     }

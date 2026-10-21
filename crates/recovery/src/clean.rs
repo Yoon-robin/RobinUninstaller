@@ -10,7 +10,8 @@ use std::path::{Path, PathBuf};
 
 use robin_scanner::LeftoverKind;
 use robin_scanner::protect::{
-    KnownFolders, is_service_key, is_within, protected_key_reason, protected_path_reason,
+    KnownFolders, is_service_key, is_within, malformed_key_reason, protected_key_reason,
+    protected_path_reason,
 };
 
 use crate::files::{self, Direction, FsError};
@@ -123,9 +124,7 @@ impl Guard {
                 }
                 // 값은 키 안의 값 하나만 지우므로 키 자체(Run 등)가 보호 대상이어도 괜찮다
                 if is_value {
-                    protected_key_reason(sub, false)
-                        .filter(|r| r.contains("형태"))
-                        .map(str::to_string)
+                    malformed_key_reason(sub).map(str::to_string)
                 } else {
                     protected_key_reason(sub, false).map(str::to_string)
                 }
@@ -202,9 +201,11 @@ pub fn clean_only(
         if !op.items[i].backup_path_is_valid(i) {
             op.items[i].status = ItemStatus::Blocked;
             op.items[i].error = Some("작업 기록이 올바르지 않아요".into());
+            op.items[i].needs_admin = false;
         } else if let Some(reason) = guard.blocked_reason(&op.items[i]) {
             op.items[i].status = ItemStatus::Blocked;
             op.items[i].error = Some(reason);
+            op.items[i].needs_admin = false;
         } else {
             let result = match op.items[i].kind {
                 LeftoverKind::Folder | LeftoverKind::File => clean_fs(store, op, &op_dir, i),
@@ -215,10 +216,12 @@ pub fn clean_only(
                 Ok(()) => {
                     item.status = ItemStatus::Removed;
                     item.error = None;
+                    item.needs_admin = false;
                 }
-                Err((status, msg)) => {
-                    item.status = status;
-                    item.error = msg;
+                Err(err) => {
+                    item.status = err.status;
+                    item.error = err.message;
+                    item.needs_admin = err.needs_admin;
                 }
             }
         }
@@ -240,10 +243,32 @@ pub fn clean_only(
     Ok(())
 }
 
-type ItemError = (ItemStatus, Option<String>);
+/// 항목 하나를 처리하지 못한 까닭. `needs_admin`은 상태가 바뀌어도(예: 일부만 정리됨) 권한 문제였다는 것을 남긴다.
+struct ItemError {
+    status: ItemStatus,
+    message: Option<String>,
+    needs_admin: bool,
+}
+
+impl ItemError {
+    fn new(status: ItemStatus, message: Option<String>) -> Self {
+        ItemError {
+            status,
+            message,
+            needs_admin: status == ItemStatus::NeedsAdmin,
+        }
+    }
+}
 
 fn fs_error(e: FsError) -> ItemError {
-    match e {
+    let partial_needs_admin = matches!(
+        e,
+        FsError::Partial {
+            needs_admin: true,
+            ..
+        }
+    );
+    let (status, message) = match e {
         FsError::NotFound => (ItemStatus::AlreadyGone, None),
         FsError::AccessDenied => (
             ItemStatus::NeedsAdmin,
@@ -261,13 +286,16 @@ fn fs_error(e: FsError) -> ItemError {
             ItemStatus::Failed,
             Some("격리 위치에 같은 이름이 있어요".into()),
         ),
-        FsError::Partial(m) => (ItemStatus::Partial, Some(m)),
+        FsError::Partial { message, .. } => (ItemStatus::Partial, Some(message)),
         FsError::Other(m) => (ItemStatus::Failed, Some(m)),
-    }
+    };
+    let mut err = ItemError::new(status, message);
+    err.needs_admin |= partial_needs_admin;
+    err
 }
 
 fn reg_error(e: RegError) -> ItemError {
-    match e {
+    let (status, message) = match e {
         RegError::NotFound => (ItemStatus::AlreadyGone, None),
         RegError::AccessDenied(detail) => (
             ItemStatus::NeedsAdmin,
@@ -282,7 +310,8 @@ fn reg_error(e: RegError) -> ItemError {
             Some("하위 항목이 너무 많아 안전하게 백업할 수 없어요".into()),
         ),
         RegError::Conflict(m) | RegError::Other(m) => (ItemStatus::Failed, Some(m)),
-    }
+    };
+    ItemError::new(status, message)
 }
 
 /// 지우기 전에 백업 위치를 기록에 먼저 남긴다. 저장하지 못하면 지우지 않는다.
@@ -295,7 +324,7 @@ fn record_backup(
     op.items[i].backup = Some(backup);
     store.save(op).map_err(|e| {
         op.items[i].backup = None;
-        (
+        ItemError::new(
             ItemStatus::Failed,
             Some(format!("작업 기록을 저장하지 못해 지우지 않았어요: {e}")),
         )
@@ -311,25 +340,28 @@ fn clean_fs(store: &Store, op: &mut Operation, op_dir: &Path, i: usize) -> Resul
     {
         let backup = op_dir.join(path);
         if !backup.exists() {
-            return Err((
+            return Err(ItemError::new(
                 ItemStatus::Failed,
                 Some("격리 폴더의 백업이 없어져 다시 정리하지 않았어요".into()),
             ));
         }
         return match files::remove_rest(&src, &backup) {
             Ok(()) | Err(FsError::NotFound) => Ok(()),
-            Err(e) => Err(match fs_error(e) {
-                // 백업은 이미 있으므로 "일부만 정리됨"으로 남긴다
-                (ItemStatus::NeedsAdmin, m) => (ItemStatus::Partial, m),
-                other => other,
-            }),
+            Err(e) => {
+                let mut err = fs_error(e);
+                // 백업은 이미 있으므로 "일부만 정리됨"으로 남긴다 (권한 문제였다는 것은 needs_admin에 남는다)
+                if err.status == ItemStatus::NeedsAdmin {
+                    err.status = ItemStatus::Partial;
+                }
+                Err(err)
+            }
         };
     }
     // 백업 위치가 기록돼 있는데 백업이 이미 있으면, 지난번에 중간에 멈춘 것이다. 내용이 온전한지 알 수 없으니 손대지 않는다.
     if let Some(Backup::Quarantine { path }) = &op.items[i].backup
         && op_dir.join(path).exists()
     {
-        return Err((
+        return Err(ItemError::new(
             ItemStatus::Failed,
             Some("지난번 정리가 중간에 멈췄어요. 복구 기록에서 확인해 주세요".into()),
         ));
@@ -345,13 +377,13 @@ fn clean_fs(store: &Store, op: &mut Operation, op_dir: &Path, i: usize) -> Resul
     match files::move_item(&src, &op_dir.join(&rel), Direction::Clean) {
         Ok(()) => Ok(()),
         // 복사본이 있으므로 백업 기록은 남긴다
-        Err(e @ FsError::Partial(_)) => Err(fs_error(e)),
+        Err(e @ FsError::Partial { .. }) => Err(fs_error(e)),
         // 경로가 너무 긴 경우 등: 옮기지 못했는데 "이미 없음"으로 보이면 안 된다
         Err(FsError::NotFound) if std::fs::symlink_metadata(&src).is_ok() => {
             if !op_dir.join(&rel).exists() {
                 op.items[i].backup = None;
             }
-            Err((
+            Err(ItemError::new(
                 ItemStatus::Failed,
                 Some("옮기지 못했어요 (경로가 너무 길거나 찾을 수 없어요)".into()),
             ))
@@ -381,12 +413,12 @@ fn clean_registry(
         let existing = std::fs::read(&path)
             .ok()
             .and_then(|b| serde_json::from_slice::<RegistryBackup>(&b).ok())
-            .ok_or((
+            .ok_or(ItemError::new(
                 ItemStatus::Failed,
                 Some("이전 백업을 읽지 못해 지우지 않았어요".into()),
             ))?;
         if existing.target() != (item.location.as_str(), item.value_name.as_deref()) {
-            return Err((
+            return Err(ItemError::new(
                 ItemStatus::Blocked,
                 Some("작업 기록과 백업 내용이 맞지 않아요".into()),
             ));
@@ -409,7 +441,7 @@ fn clean_registry(
             f.sync_all()
         });
         if let Err(e) = write {
-            return Err((
+            return Err(ItemError::new(
                 ItemStatus::Failed,
                 Some(format!("백업을 저장하지 못해 지우지 않았어요: {e}")),
             ));
@@ -421,12 +453,12 @@ fn clean_registry(
     match registry::delete(&backup) {
         Ok(()) | Err(RegError::NotFound) => Ok(()),
         Err(e) => {
-            let (mut status, msg) = reg_error(e);
+            let mut err = reg_error(e);
             // 일부 하위 키만 지워졌으면 "일부만 정리됨" (백업은 온전하다)
             if op.items[i].kind == LeftoverKind::RegistryKey && !registry::matches_backup(&backup) {
-                status = ItemStatus::Partial;
+                err.status = ItemStatus::Partial;
             }
-            Err((status, msg))
+            Err(err)
         }
     }
 }
@@ -472,9 +504,9 @@ pub fn restore(
         crate::progress::report(|p| p.set_current(&item.location));
         let partial = item.status == ItemStatus::Partial;
         let result = if !item.backup_path_is_valid(i) {
-            Err("작업 기록이 올바르지 않아요".to_string())
+            Err(RestoreError::new("작업 기록이 올바르지 않아요"))
         } else if let Some(reason) = guard.blocked_reason(item) {
-            Err(reason)
+            Err(RestoreError::new(reason))
         } else {
             restore_item(item, &op_dir, partial)
         };
@@ -483,16 +515,24 @@ pub fn restore(
             Ok(kept) if kept.is_empty() => {
                 item.status = ItemStatus::Restored;
                 item.error = None;
+                item.needs_admin = false;
+                item.restore_failed = false;
             }
             Ok(kept) => {
                 item.status = ItemStatus::Conflicted;
+                item.needs_admin = false;
+                item.restore_failed = false;
                 item.error = Some(format!(
                     "되돌렸지만 원래 자리에 내용이 다른 파일 {}개가 있어 덮어쓰지 않았어요. 백업에만 남아 있어요: {}",
                     kept.len(),
                     kept.join(", ")
                 ));
             }
-            Err(m) => item.error = Some(format!("복원 실패: {m}")),
+            Err(e) => {
+                item.error = Some(format!("되돌리지 못했어요: {}", e.message));
+                item.needs_admin = e.needs_admin;
+                item.restore_failed = true;
+            }
         }
         let snapshot = item.clone();
         save_or_stop(store, op)?;
@@ -522,49 +562,89 @@ fn moved_but_not_recorded(item: &OperationItem, op_dir: &Path) -> bool {
     }
 }
 
+/// 되돌리지 못한 까닭
+struct RestoreError {
+    message: String,
+    needs_admin: bool,
+}
+
+impl RestoreError {
+    fn new(message: impl Into<String>) -> Self {
+        RestoreError {
+            message: message.into(),
+            needs_admin: false,
+        }
+    }
+
+    fn fs(e: FsError) -> Self {
+        RestoreError {
+            needs_admin: matches!(
+                e,
+                FsError::AccessDenied
+                    | FsError::Partial {
+                        needs_admin: true,
+                        ..
+                    }
+            ),
+            message: match e {
+                FsError::Conflict => "원래 자리에 같은 이름이 이미 있어요".to_string(),
+                other => other.message(),
+            },
+        }
+    }
+
+    fn reg(e: RegError) -> Self {
+        match e {
+            RegError::Conflict(m) | RegError::Other(m) => RestoreError::new(m),
+            RegError::AccessDenied(_) => RestoreError {
+                message: "관리자 권한이 필요해요".into(),
+                needs_admin: true,
+            },
+            RegError::NotFound => RestoreError::new("백업에서 찾을 수 없어요"),
+            RegError::TooLarge => RestoreError::new("하위 항목이 너무 많아요"),
+        }
+    }
+}
+
 /// 항목 하나를 되돌린다. 덮어쓰지 않고 남긴 것의 목록을 돌려준다.
-fn restore_item(item: &OperationItem, op_dir: &Path, partial: bool) -> Result<Vec<String>, String> {
-    let reg_message = |e: RegError| match e {
-        RegError::Conflict(m) | RegError::Other(m) => m,
-        RegError::AccessDenied(_) => "관리자 권한이 필요해요".into(),
-        other => format!("{other:?}"),
-    };
+fn restore_item(
+    item: &OperationItem,
+    op_dir: &Path,
+    partial: bool,
+) -> Result<Vec<String>, RestoreError> {
     match &item.backup {
         Some(Backup::Quarantine { path }) => {
             let backup = op_dir.join(path);
             let original = Path::new(&item.location);
             if partial {
-                files::merge_back(&backup, original).map_err(|e| format!("{e:?}"))
+                files::merge_back(&backup, original).map_err(RestoreError::fs)
             } else {
                 files::move_item(&backup, original, Direction::Restore)
                     .map(|()| Vec::new())
-                    .map_err(|e| match e {
-                        FsError::Conflict => "원래 자리에 같은 이름이 이미 있어요".to_string(),
-                        FsError::AccessDenied => "관리자 권한이 필요해요".to_string(),
-                        other => format!("{other:?}"),
-                    })
+                    .map_err(RestoreError::fs)
             }
         }
         Some(Backup::Registry { path }) => {
             let backup = std::fs::read(op_dir.join(path))
-                .map_err(|e| e.to_string())
+                .map_err(|e| RestoreError::new(format!("백업을 읽지 못했어요: {e}")))
                 .and_then(|bytes| {
-                    serde_json::from_slice::<RegistryBackup>(&bytes).map_err(|e| e.to_string())
+                    serde_json::from_slice::<RegistryBackup>(&bytes)
+                        .map_err(|_| RestoreError::new("백업 내용을 읽지 못했어요"))
                 })?;
             // 백업 파일이 기록과 다른 곳을 가리키면 (기록이나 백업이 바뀜) 되돌리지 않는다
             if backup.target() != (item.location.as_str(), item.value_name.as_deref()) {
-                return Err("작업 기록과 백업 내용이 맞지 않아요".into());
+                return Err(RestoreError::new("작업 기록과 백업 내용이 맞지 않아요"));
             }
             match registry::restore(&backup) {
                 Ok(()) => Ok(Vec::new()),
                 // 일부만 지워진 항목: 남아 있는 키에 없는 것만 채운다. 그 밖의 충돌(다시 설치 등)은 덮어쓰지 않고 알린다.
                 Err(RegError::Conflict(_)) if partial => {
-                    registry::restore_merge(&backup).map_err(reg_message)
+                    registry::restore_merge(&backup).map_err(RestoreError::reg)
                 }
-                Err(e) => Err(reg_message(e)),
+                Err(e) => Err(RestoreError::reg(e)),
             }
         }
-        None => Err("백업 정보가 없어요".into()),
+        None => Err(RestoreError::new("백업 정보가 없어요")),
     }
 }
 

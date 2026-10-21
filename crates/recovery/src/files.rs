@@ -26,8 +26,26 @@ pub enum FsError {
     InUse,
     Conflict,
     /// 다른 드라이브로 복사는 끝났지만 원본 일부를 지우지 못함. 복사본은 온전하다.
-    Partial(String),
+    /// `needs_admin`: 지우지 못한 까닭이 권한이라 관리자 권한으로 다시 시도할 수 있음.
+    Partial {
+        message: String,
+        needs_admin: bool,
+    },
     Other(String),
+}
+
+impl FsError {
+    /// 화면에 보여 줄 문장 (디버그 출력 대신)
+    pub fn message(&self) -> String {
+        match self {
+            FsError::NotFound => "찾을 수 없어요".into(),
+            FsError::ReparsePoint => "다른 위치를 가리키는 링크(정션)라 건드리지 않았어요".into(),
+            FsError::AccessDenied => "관리자 권한이 필요해요".into(),
+            FsError::InUse => "다른 프로그램이 사용 중이에요".into(),
+            FsError::Conflict => "같은 이름이 이미 있어요".into(),
+            FsError::Partial { message, .. } | FsError::Other(message) => message.clone(),
+        }
+    }
 }
 
 impl From<std::io::Error> for FsError {
@@ -125,10 +143,12 @@ pub fn move_item(src: &Path, dest: &Path, direction: Direction) -> Result<(), Fs
                 return Ok(());
             }
             // 복사본과 같은 것만 지운다. 복사하는 동안 새로 생겼거나 바뀐 파일은 백업에 없으므로 남긴다.
-            remove_copied(src, dest).map_err(|e| {
-                FsError::Partial(format!(
-                    "다른 드라이브로 복사는 끝났지만 원래 자리의 일부를 지우지 못했어요 ({e:?})"
-                ))
+            remove_copied(src, dest).map_err(|e| FsError::Partial {
+                message: format!(
+                    "다른 드라이브로 복사는 끝났지만 원래 자리의 일부를 지우지 못했어요: {}",
+                    e.message()
+                ),
+                needs_admin: matches!(e, FsError::AccessDenied),
             })
         }
         Err(e) => Err(e.into()),

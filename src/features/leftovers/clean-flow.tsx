@@ -142,8 +142,7 @@ export function CleanResult({
   const removed = countStatus(current, "removed") + countStatus(current, "alreadyGone")
   // 관리자 권한이 없어 일부만 정리된 항목도 관리자 권한으로 마저 정리할 수 있다
   const needsAdmin =
-    countStatus(current, "needsAdmin") +
-    current.items.filter((i) => i.status === "partial" && i.error?.includes("관리자")).length
+    countStatus(current, "needsAdmin") + current.items.filter((i) => i.status === "partial" && i.needsAdmin).length
   const problems = current.items.filter(
     (i) => i.status === "failed" || i.status === "blocked" || i.status === "partial",
   )

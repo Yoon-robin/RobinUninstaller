@@ -299,14 +299,23 @@ pub fn is_service_key(key: &str) -> bool {
         && parts.next().is_some()
 }
 
+/// 빈 칸·`.`·`..`가 든 레지스트리 경로처럼 모양을 믿을 수 없으면 이유.
+pub fn malformed_key_reason(key: &str) -> Option<&'static str> {
+    let k = key.trim_matches('\\');
+    if k.contains("\\\\") || k.split('\\').any(|s| s.is_empty() || s == "." || s == "..") {
+        return Some("확인할 수 없는 형태의 레지스트리 경로");
+    }
+    None
+}
+
 /// 레지스트리 키(하이브 이름 제외, 예: `Software\Vendor\Product`)가 보호 대상이면 이유.
 /// `by_name_only`: 이름만 보고 찾은 후보면 Microsoft·Classes 영역 전체를 막는다.
 /// Uninstall·Run처럼 정확한 근거(경로·ID)로 찾은 항목은 false로 넘겨 그 아래 개별 키·값을 허용한다.
 pub fn protected_key_reason(key: &str, by_name_only: bool) -> Option<&'static str> {
-    let k = key.trim_matches('\\').to_lowercase();
-    if k.contains("\\\\") || k.split('\\').any(|s| s.is_empty() || s == "." || s == "..") {
-        return Some("확인할 수 없는 형태의 레지스트리 경로");
+    if let Some(reason) = malformed_key_reason(key) {
+        return Some(reason);
     }
+    let k = key.trim_matches('\\').to_lowercase();
     if PROTECTED_KEYS.contains(&k.as_str()) {
         return Some("Windows 기본 레지스트리 키");
     }

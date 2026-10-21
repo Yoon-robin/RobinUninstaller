@@ -55,6 +55,13 @@ pub struct OperationItem {
     pub status: ItemStatus,
     pub backup: Option<Backup>,
     pub error: Option<String>,
+    /// 마지막 실패(정리·되돌리기)가 권한 때문이라 관리자 권한으로 다시 시도할 수 있는지.
+    /// 화면은 `error` 문장이 아니라 이 값으로 판단한다 (문장을 고쳐도 기능이 깨지지 않게).
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub needs_admin: bool,
+    /// 마지막 되돌리기가 실패했는지
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub restore_failed: bool,
 }
 
 impl OperationItem {
@@ -68,6 +75,8 @@ impl OperationItem {
             status: ItemStatus::Pending,
             backup: None,
             error: None,
+            needs_admin: false,
+            restore_failed: false,
         }
     }
 }

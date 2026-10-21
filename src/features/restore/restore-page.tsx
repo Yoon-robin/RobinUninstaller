@@ -282,7 +282,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
   const keptBytes = op.items.filter((i) => isRestorable(i.status)).reduce((s, i) => s + (i.sizeBytes ?? 0), 0)
   // 관리자 권한이 없어 되돌리지 못한 항목만 관리자 권한으로 다시 시도한다
   const adminRestoreIds = op.items
-    .filter((i) => isRestorable(i.status) && i.error?.startsWith("복원 실패") && i.error.includes("관리자"))
+    .filter((i) => isRestorable(i.status) && i.restoreFailed && i.needsAdmin)
     .map((i) => i.id)
 
   /** `ids`: 이번에 되돌리려는 항목. 결과는 이 항목들만 센다 (예전에 실패한 항목이 섞이지 않게). */
@@ -292,7 +292,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
     try {
       const updated = await action()
       const mine = updated.items.filter((i) => ids.includes(i.id))
-      const failed = mine.filter((i) => isRestorable(i.status) && i.error?.startsWith("복원 실패")).length
+      const failed = mine.filter((i) => isRestorable(i.status) && i.restoreFailed).length
       // 같은 이름이 이미 있어 덮어쓰지 않은 항목은 백업에만 남는다
       const clashed = mine.filter((i) => i.status === "conflicted").length
       if (failed > 0) toast.error(`${failed}개는 되돌리지 못했어요. 항목을 펼쳐 이유를 확인하세요`)
