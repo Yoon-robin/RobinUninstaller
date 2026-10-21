@@ -173,7 +173,7 @@ export function BatchUninstallDialog({
                 ? "각 프로그램의 기본 언인스톨러를 하나씩 차례로 실행해요"
                 : phase === "running"
                   ? `${Math.min(finished + 1, runnable.length)} / ${runnable.length}번째 · 언인스톨러 창이 열리면 안내에 따라 진행해 주세요`
-                  : `${removed.length}개를 제거했어요. 남은 흔적도 찾아볼 수 있어요`}
+                  : `${removed.length}개를 제거했어요. 남은 흔적은 지금 찾거나, 나중에 잔여물 정리 화면에서 찾을 수 있어요`}
             </DialogDescription>
           </div>
         </div>

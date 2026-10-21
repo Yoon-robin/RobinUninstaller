@@ -2,7 +2,7 @@
 //!
 //! UI(Tauri)와 엔진 크레이트가 함께 쓰는 타입만 둔다. 시스템을 건드리는 코드는 여기에 넣지 않는다.
 
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 
 pub mod progress;
 
@@ -24,7 +24,7 @@ pub fn is_own_data(location: &str) -> bool {
 }
 
 /// 프로그램이 등록된 레지스트리 위치.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum InstallScope {
     /// HKLM, 64비트 뷰
@@ -36,7 +36,7 @@ pub enum InstallScope {
 }
 
 /// 설치 방식.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum InstallTechnology {
     Exe,
@@ -44,7 +44,7 @@ pub enum InstallTechnology {
 }
 
 /// 기본 언인스톨러를 실행할 수 있는 상태인지.
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub enum UninstallerStatus {
     /// 언인스톨러 파일이 있음 (MSI는 Windows Installer에 제품이 등록돼 있음)
@@ -58,7 +58,7 @@ pub enum UninstallerStatus {
 }
 
 /// 설치된 프로그램 하나.
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct InstalledApplication {
     /// 범위 + 레지스트리 키 이름으로 만든 고유 ID. 표시 이름은 겹칠 수 있어서 쓰지 않는다.

@@ -2,7 +2,8 @@ import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ArchiveRestore, ArrowRight, Check, Sparkles, Trash2, TriangleAlert, type LucideIcon } from "lucide-react"
 
-import { api, needsForce, scanApi, type InstalledApplication } from "@/lib/api"
+import { api, needsForce, scanApi, type InstalledApplication, type RemovedApp } from "@/lib/api"
+import { formatDay } from "@/lib/format"
 import { FadeUp, Stagger } from "@/components/motion"
 import { ErrorState } from "@/components/error-state"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -10,7 +11,7 @@ import { Button } from "@/components/ui/button"
 import { AppIcon } from "@/features/programs/app-icon"
 import { LeftoversDialog, type LeftoverTarget } from "./leftovers-dialog"
 
-/** 잔여물 정리: 이번 실행에서 제거한 프로그램과, 언인스톨러가 없어 흔적만 남은 프로그램. */
+/** 잔여물 정리: 제거한 프로그램(보관 기간 동안 남는다)과, 언인스톨러가 없어 흔적만 남은 프로그램. */
 export function LeftoversPage() {
   const [target, setTarget] = useState<LeftoverTarget | null>(null)
   // 이번에 정리를 마친 앱 (목록에 "정리함" 표시)
@@ -31,12 +32,14 @@ export function LeftoversPage() {
 
       <FadeUp>
         <Section
-          title="방금 제거한 프로그램"
+          title="제거한 프로그램"
+          hint="백업 보관 기간 동안 여기에 남아 있어요. PC를 다시 시작한 뒤에 찾아도 돼요"
           empty={
             <div className="flex flex-col items-center gap-3 px-6 py-10 text-center">
               <Flow />
               <p className="text-sm text-muted-foreground">
-                프로그램을 제거하면 여기에 나타나요. 제거가 끝난 화면에서 바로 찾을 수도 있어요.
+                프로그램을 제거하면 여기에 나타나요. 제거가 끝난 화면에서 바로 찾거나, 다시 시작한 뒤 여기서 찾을 수
+                있어요.
               </p>
             </div>
           }
@@ -91,7 +94,7 @@ function Section({
 }: {
   title: string
   hint?: string
-  apps: InstalledApplication[]
+  apps: (InstalledApplication | RemovedApp)[]
   loading?: boolean
   error?: unknown
   onRetry?: () => void
@@ -143,7 +146,13 @@ function Section({
                     </span>
                   )}
                 </p>
-                <p className="truncate text-xs text-muted-foreground">{app.publisher ?? "게시자 정보 없음"}</p>
+                <p className="truncate text-xs text-muted-foreground">
+                  {app.publisher ?? "게시자 정보 없음"}
+                  {"removedAt" in app && ` · ${formatDay(app.removedAt * 1000)} 제거`}
+                  {"scanned" in app && !app.scanned && !cleaned.has(app.id) && (
+                    <span className="font-medium text-primary"> · 아직 찾지 않음</span>
+                  )}
+                </p>
               </div>
               <Button
                 size="sm"

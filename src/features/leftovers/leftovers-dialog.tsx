@@ -79,9 +79,15 @@ export function LeftoversDialog({
   const [locked, setLocked] = useState<"none" | "stage" | "busy">("none")
   useBusy(locked === "busy")
   useEffect(() => setLocked("none"), [targetProp])
+  const queryClient = useQueryClient()
   const scan = useQuery({
     queryKey: ["leftovers", target?.id],
-    queryFn: () => scanApi.scanLeftovers(target!.id),
+    queryFn: async () => {
+      const report = await scanApi.scanLeftovers(target!.id)
+      // 찾아본 프로그램은 사이드바의 "안 찾음" 표시가 꺼진다
+      queryClient.invalidateQueries({ queryKey: ["recently-removed"] })
+      return report
+    },
     enabled: open && ready,
     staleTime: 0,
     gcTime: 0,

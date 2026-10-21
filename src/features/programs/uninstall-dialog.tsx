@@ -392,6 +392,11 @@ function ResultBody({
         )}
       </div>
       {outcome.kind === "cannotRun" && outcome.command && <CommandPreview command={outcome.command} />}
+      {removed && (
+        <p className="max-w-md text-xs text-muted-foreground">
+          나중에 찾아도 돼요. 잔여물 정리 화면의 "제거한 프로그램"에 남아 있어요.
+        </p>
+      )}
       <div className="mt-2 flex gap-2">
         {view.retry === "recheck" && (
           // 종료 코드를 모르면 언인스톨러가 아직 열려 있을 수 있다. 다시 실행하지 않고 다시 확인만 한다.

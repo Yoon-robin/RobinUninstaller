@@ -142,9 +142,17 @@ export interface ScanReport {
   durationMs: number
 }
 
+/** 제거한 프로그램 (데이터 폴더에 저장돼 앱을 다시 켜도 남는다) */
+export interface RemovedApp extends InstalledApplication {
+  /** 제거한 때 (Unix 초) */
+  removedAt: number
+  /** 남은 흔적을 한 번이라도 찾아봤는지 */
+  scanned: boolean
+}
+
 export const scanApi = {
   scanLeftovers: (id: string) => invoke<ScanReport>("scan_leftovers", { id }),
-  recentlyRemoved: () => invoke<InstalledApplication[]>("recently_removed"),
+  recentlyRemoved: () => invoke<RemovedApp[]>("recently_removed"),
   revealLeftover: (itemId: string) => invoke<void>("reveal_leftover", { itemId }),
 }
 

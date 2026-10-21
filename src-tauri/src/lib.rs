@@ -2,6 +2,7 @@
 //!
 //! 프론트엔드는 경로가 아니라 앱 ID만 넘긴다. 경로는 항상 엔진이 읽어 둔 목록에서 찾는다.
 
+mod removed;
 mod settings;
 #[cfg(windows)]
 pub mod setup;
@@ -49,8 +50,9 @@ pub(crate) struct AppCache {
     store_apps: Mutex<HashMap<String, StoreApp>>,
     /// 마지막으로 직접 잰 설치 폴더 크기 (앱 ID → KB, 목록 내보내기에 쓴다)
     sizes: Mutex<HashMap<String, u64>>,
-    /// 이번 실행 중에 제거한 프로그램 (제거된 뒤에도 잔여물을 찾을 수 있도록 정보를 남겨 둔다)
-    removed: Mutex<Vec<InstalledApplication>>,
+    /// 제거한 프로그램 (제거된 뒤에도 잔여물을 찾을 수 있도록 정보를 남겨 둔다).
+    /// 데이터 폴더의 removed.json에도 저장해 앱을 다시 켜도 보인다.
+    removed: Mutex<Vec<removed::RemovedApp>>,
     /// 마지막 스캔(어느 프로그램을 스캔했는지 + 결과 항목). 정리·탐색기로 열기는 여기 있는 항목만 허용한다.
     pub(crate) last_scan: Mutex<ScanSession>,
     /// 마지막으로 읽은 시작 항목. 아이콘·탐색기 요청은 여기 있는 항목만 허용한다.
@@ -85,8 +87,24 @@ impl AppCache {
             .lock()
             .ok()?
             .iter()
-            .find(|a| a.id == id)
-            .cloned()
+            .find(|r| r.app.id == id)
+            .map(|r| r.app.clone())
+    }
+
+    /// 제거한 프로그램 목록을 고치고 파일에도 저장한다 (바뀐 게 있을 때만).
+    fn update_removed(&self, f: impl FnOnce(&mut Vec<removed::RemovedApp>) -> bool) {
+        if let Ok(mut list) = self.removed.lock()
+            && f(&mut list)
+        {
+            removed::save(&list);
+        }
+    }
+
+    fn new() -> Self {
+        AppCache {
+            removed: Mutex::new(removed::load()),
+            ..Default::default()
+        }
     }
 }
 
@@ -104,9 +122,11 @@ async fn list_installed_apps(
     }
     // 제거했던 프로그램을 다시 설치했으면 "제거한 프로그램"에서 뺀다. 남겨 두면 다시 설치한 파일·등록 정보가
     // 옛 기록 기준으로 "남은 흔적"이 된다.
-    if let Ok(mut removed) = cache.removed.lock() {
-        removed.retain(|r| !apps.iter().any(|a| a.id == r.id));
-    }
+    cache.update_removed(|removed| {
+        let before = removed.len();
+        removed.retain(|r| !apps.iter().any(|a| a.id == r.app.id));
+        removed.len() != before
+    });
     Ok(apps)
 }
 
@@ -389,17 +409,18 @@ async fn uninstall_app(
     if matches!(
         outcome,
         UninstallOutcome::Removed | UninstallOutcome::RemovedRebootRequired
-    ) && let Ok(mut removed) = cache.removed.lock()
-    {
-        removed.retain(|a| a.id != snapshot.id);
-        removed.insert(0, snapshot);
+    ) {
+        cache.update_removed(|removed| {
+            removed::push(removed, snapshot);
+            true
+        });
     }
     Ok(outcome)
 }
 
-/// 이번 실행 중에 제거한 프로그램 (최근 것부터).
+/// 제거한 프로그램 (최근 것부터, 보관 기간 안의 것).
 #[tauri::command]
-fn recently_removed(cache: State<'_, AppCache>) -> Vec<InstalledApplication> {
+fn recently_removed(cache: State<'_, AppCache>) -> Vec<removed::RemovedApp> {
     cache.removed.lock().map(|r| r.clone()).unwrap_or_default()
 }
 
@@ -424,6 +445,14 @@ async fn scan_leftovers(id: String, cache: State<'_, AppCache>) -> Result<ScanRe
     .await
     .map_err(|e| e.to_string())?;
 
+    // 제거한 프로그램이면 "찾아봄"으로 표시 (사이드바 알림을 끈다)
+    cache.update_removed(|removed| {
+        removed
+            .iter_mut()
+            .find(|r| r.app.id == id && !r.scanned)
+            .map(|r| r.scanned = true)
+            .is_some()
+    });
     if let Ok(mut last) = cache.last_scan.lock() {
         last.by_app.insert(id, report.items.clone());
     }
@@ -582,9 +611,13 @@ async fn note_force_removed(cache: &AppCache, force_app_id: Option<String>) {
     })
     .await
     .unwrap_or(true);
-    if !still_installed && let Ok(mut removed) = cache.removed.lock() {
-        removed.retain(|a| a.id != app.id);
-        removed.insert(0, app);
+    if !still_installed {
+        // 강제 제거는 흔적을 찾아 정리한 뒤라 이미 "찾아봄"
+        cache.update_removed(|removed| {
+            removed::push(removed, app);
+            removed[0].scanned = true;
+            true
+        });
     }
 }
 
@@ -1383,7 +1416,7 @@ pub fn run() {
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_updater::Builder::new().build())
         .plugin(tauri_plugin_process::init())
-        .manage(AppCache::default())
+        .manage(AppCache::new())
         // 설치·제거 화면을 Alt+F4 등으로 닫을 때도 진행 중이면 막고, 제거를 마쳤으면 임시 복사본을 정리한다
         .on_window_event(|_window, event| {
             if let tauri::WindowEvent::CloseRequested { api, .. } = event

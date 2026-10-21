@@ -1,3 +1,4 @@
+import { useQuery } from "@tanstack/react-query"
 import {
   ArchiveRestore,
   ArrowDownCircle,
@@ -12,6 +13,7 @@ import {
 import { motion } from "motion/react"
 
 import { Logo } from "@/components/logo"
+import { scanApi } from "@/lib/api"
 import { useUpdates } from "@/features/updates/updates"
 import {
   Sidebar,
@@ -46,6 +48,9 @@ const toolItems: Item[] = [
 
 export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page: Page) => void }) {
   const { version, available, openUpdate } = useUpdates()
+  // 제거했지만 아직 남은 흔적을 찾아보지 않은 프로그램 수 (잔여물 정리 옆에 표시)
+  const removed = useQuery({ queryKey: ["recently-removed"], queryFn: scanApi.recentlyRemoved })
+  const unscanned = (removed.data ?? []).filter((r) => !r.scanned).length
   const collapsed = useSidebar().state === "collapsed"
   const renderItems = (items: Item[]) =>
     items.map((item) => (
@@ -69,6 +74,14 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           <item.icon className={page === item.page ? "text-sidebar-primary" : undefined} />
           <span>{item.label}</span>
         </SidebarMenuButton>
+        {item.page === "leftovers" && unscanned > 0 && (
+          <SidebarMenuBadge
+            aria-label={`흔적을 찾지 않은 프로그램 ${unscanned}개`}
+            className="rounded-full bg-primary px-1.5 text-[11px] text-primary-foreground tabular-nums"
+          >
+            {unscanned}
+          </SidebarMenuBadge>
+        )}
         {item.soon && (
           <SidebarMenuBadge className="rounded-full bg-sidebar-foreground/5 px-1.5 text-[11px] font-normal text-muted-foreground">
             준비 중
