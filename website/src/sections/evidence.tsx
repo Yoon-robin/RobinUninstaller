@@ -119,7 +119,14 @@ function Check({ on, delay, animate }: { on: boolean; delay: number; animate: bo
       )}
       style={{ transitionDelay: animate && on ? `${delay}s` : "0s" }}
     >
-      <svg viewBox="0 0 24 24" className="size-3" fill="none" stroke="oklch(0.17 0.02 264)" strokeWidth={3.5}>
+      <svg
+        aria-hidden
+        viewBox="0 0 24 24"
+        className="size-3"
+        fill="none"
+        stroke="oklch(0.17 0.02 264)"
+        strokeWidth={3.5}
+      >
         <motion.path
           d="M20 6 9 17l-5-5"
           strokeLinecap="round"
@@ -138,21 +145,24 @@ export function Evidence() {
   const panel = useRef<HTMLDivElement>(null)
   const inView = useInView(panel, { amount: 0.4 })
   const seen = useInView(panel, { amount: 0.3, once: true })
-  const [active, setActive] = useState<Group>("sure")
-  const [touched, setTouched] = useState(false)
+  // 저절로 넘어가는 갈래(보여 주기만)와 사용자가 고른 갈래를 나눈다. 고른 것만 aria-pressed로 알린다.
+  const [auto, setAuto] = useState<Group>("sure")
+  const [chosen, setChosen] = useState<Group | null>(null)
+  const active = chosen ?? auto
+  const touched = chosen != null
+  // 마우스를 올려 두거나 키보드 초점이 들어와 있으면 잠깐 멈춘다 (읽는 중에 바뀌지 않게)
+  const [hovering, setHovering] = useState(false)
+  const [focused, setFocused] = useState(false)
 
   // 보이는 동안 세 갈래를 차례로 보여 준다. 직접 고르면 멈춘다
   useEffect(() => {
-    if (reduce || touched || !inView) return
+    if (reduce || touched || !inView || hovering || focused) return
     const order: Group[] = ["sure", "review", "protected"]
-    const t = setInterval(() => setActive((g) => order[(order.indexOf(g) + 1) % order.length]), 3600)
+    const t = setInterval(() => setAuto((g) => order[(order.indexOf(g) + 1) % order.length]), 3600)
     return () => clearInterval(t)
-  }, [reduce, touched, inView])
+  }, [reduce, touched, inView, hovering, focused])
 
-  const pick = (g: Group) => {
-    setTouched(true)
-    setActive(g)
-  }
+  const pick = (g: Group) => setChosen(g)
 
   return (
     <section id="evidence" className="py-20 sm:py-28 lg:py-32">
@@ -168,14 +178,39 @@ export function Evidence() {
           </p>
         </Reveal>
 
-        <div className="mt-12 grid items-start gap-10 sm:mt-14 lg:grid-cols-12 lg:gap-12">
+        <div
+          className="mt-12 grid items-start gap-10 sm:mt-14 lg:grid-cols-12 lg:gap-12"
+          onMouseEnter={() => setHovering(true)}
+          onMouseLeave={() => setHovering(false)}
+          onFocus={() => setFocused(true)}
+          onBlur={(e) => {
+            if (!e.currentTarget.contains(e.relatedTarget as Node | null)) setFocused(false)
+          }}
+        >
           {/* 앱의 남은 흔적 창을 옮긴 조각 */}
           <Reveal className="lg:col-span-7">
-            <div
+            {/* 좁은 화면에서는 설명이 예시 창 아래로 내려가 누르면 바뀌는 게 안 보여서, 창 위에서 고르게 한다 */}
+            <div className="mb-3 flex flex-wrap gap-2 lg:hidden" role="group" aria-label="근거 갈래 고르기">
+              {groups.map((g) => (
+                <button
+                  key={g.key}
+                  type="button"
+                  aria-pressed={chosen === g.key}
+                  onClick={() => pick(g.key)}
+                  className={cn(
+                    "rounded-full border px-3 py-1.5 text-fine font-medium transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none",
+                    active === g.key ? "border-white/20 bg-white/[0.08] text-foreground" : "text-muted-foreground",
+                  )}
+                >
+                  {g.title}
+                </button>
+              ))}
+            </div>
+            <figure
               ref={panel}
               data-ui
               className="window overflow-hidden rounded-[1.25rem]"
-              aria-label="남은 흔적 창 예시"
+              aria-label="남은 흔적 창 예시: 연결 정보가 일치하는 3개는 미리 골라 두고, 직접 확인이 필요한 4개는 고르지 않은 상태"
             >
               <div className="flex flex-wrap items-center gap-2 border-b px-4 py-3 text-[12px] sm:px-5">
                 <span className="rounded-full bg-sure/12 px-2 py-0.5 font-medium text-sure">연결 정보 일치 3</span>
@@ -202,6 +237,7 @@ export function Evidence() {
                       className="flex gap-3 border-b border-white/[0.06] px-4 py-3 last:border-b-0 sm:px-5"
                     >
                       <Check on={r.group === "sure" && seen} delay={0.25 + 0.18 * i} animate={!reduce} />
+                      <span className="sr-only">{r.group === "sure" ? "미리 골라 둠:" : "직접 확인 필요:"}</span>
                       <r.icon className="mt-px size-4 shrink-0 text-muted-foreground" aria-hidden />
                       <div className="min-w-0 flex-1">
                         <p className="text-[12px] leading-5 [overflow-wrap:anywhere]">
@@ -220,7 +256,7 @@ export function Evidence() {
                             ))}
                           </code>
                           {r.value && (
-                            <span className="ml-1.5 rounded bg-white/[0.08] px-1.5 py-0.5 font-sans text-[11px]">
+                            <span className="ml-1.5 rounded bg-white/[0.08] px-1.5 py-0.5 font-sans text-[11px] whitespace-nowrap">
                               값: {r.value}
                             </span>
                           )}
@@ -242,9 +278,9 @@ export function Evidence() {
                   선택 항목 정리
                 </span>
               </div>
-            </div>
+            </figure>
             <p className="mt-3 text-fine text-muted-foreground">
-              앱의 남은 흔적 창을 옮긴 예시예요. 설명을 고르면 그 갈래의 항목이 또렷해져요.
+              앱의 남은 흔적 창을 옮긴 예시예요. 갈래를 고르면 그 항목이 또렷해져요.
             </p>
           </Reveal>
 
@@ -255,9 +291,8 @@ export function Evidence() {
                 <Reveal key={g.key} delay={0.05 * i}>
                   <button
                     type="button"
-                    aria-pressed={on}
+                    aria-pressed={chosen === g.key}
                     onClick={() => pick(g.key)}
-                    onMouseEnter={() => pick(g.key)}
                     className={cn(
                       "relative w-full rounded-[1.25rem] border p-5 text-left transition-colors duration-300 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none sm:p-6",
                       on ? "border-white/15 bg-white/[0.05]" : "border-transparent hover:bg-white/[0.025]",
@@ -281,7 +316,7 @@ export function Evidence() {
               )
             })}
             <Reveal>
-              <p className="mt-4 px-1 text-body font-medium">
+              <p className="mt-4 px-5 text-body font-medium sm:px-6">
                 바탕 화면·문서·다운로드 안의 파일은 이유가 있어도 미리 고르지 않아요. 고른 것도 지우기 전에 백업해요.
               </p>
             </Reveal>
