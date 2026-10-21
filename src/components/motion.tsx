@@ -35,7 +35,7 @@ export function FadeUp({ children, className }: { children: ReactNode; className
   )
 }
 
-const formatInteger = (n: number) => Math.round(n).toLocaleString()
+const formatInteger = (n: number) => Math.round(n).toLocaleString("ko-KR")
 
 /** `id`를 준 숫자가 마지막으로 보여 준 값. 화면을 옮겼다 돌아와도 0부터 다시 세지 않게 한다. */
 const lastShown = new Map<string, number>()

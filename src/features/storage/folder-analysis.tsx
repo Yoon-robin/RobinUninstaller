@@ -3,7 +3,7 @@ import { ArrowUp, File, Folder, FolderOpen, Package, Radar, RefreshCw, Square } 
 import { toast } from "sonner"
 
 import { navigate, storageApi, type FolderAnalysis, type ScanProgress } from "@/lib/api"
-import { formatBytes } from "@/lib/format"
+import { formatBytes, formatCount } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { ScanProgressView } from "@/components/scan-progress"
@@ -150,7 +150,7 @@ export function FolderAnalysisCard() {
                     {formatBytes(item.bytes)}
                   </span>
                   <span className="hidden w-24 shrink-0 text-right text-xs text-muted-foreground tabular-nums sm:block">
-                    {item.isDir ? `파일 ${item.files.toLocaleString()}개` : ""}
+                    {item.isDir ? `파일 ${formatCount(item.files)}개` : ""}
                     {item.inaccessible > 0 && <span className="block">일부 열 수 없음</span>}
                   </span>
                 </button>

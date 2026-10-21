@@ -24,7 +24,7 @@ export function describeEvidence(e: Evidence): { label: string; warn?: boolean }
     case "inUserFolder":
       return { label: "바탕 화면·문서 같은 사용자 폴더 안이에요", warn: true }
     case "sharedWithOtherApp":
-      return { label: `다른 프로그램(${e.appName})과 함께 쓰는 것 같아요`, warn: true }
+      return { label: `다른 프로그램과 함께 쓰는 것 같아요 (${e.appName})`, warn: true }
     case "containsUserDocuments":
       return { label: `직접 만든 문서 ${e.count}개 포함`, warn: true }
     case "tooLargeToCheck":

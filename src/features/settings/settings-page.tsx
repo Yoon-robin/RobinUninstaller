@@ -18,7 +18,7 @@ import { toast } from "sonner"
 
 import { settingsApi, type ScanProgress } from "@/lib/api"
 import { ScanProgressView } from "@/components/scan-progress"
-import { formatBytes } from "@/lib/format"
+import { formatBytes, formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { FadeUp, Stagger } from "@/components/motion"
 import { useTheme } from "@/components/theme"
@@ -330,7 +330,7 @@ export function SettingsPage() {
             {retention}일이 지난 정리 기록과 보관 중인 항목이 영구히 지워져요.{" "}
             <b className="text-foreground">이후에는 되돌릴 수 없어요.</b>
           </DialogDescription>
-          {busy && <ScanProgressView label="오래된 백업을 지우는 중이에요" progress={pruneProgress} />}
+          {busy && <ScanProgressView work label="오래된 백업을 지우는 중이에요" progress={pruneProgress} />}
           <div className="mt-2 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setConfirmPrune(false)} disabled={busy}>
               취소
@@ -360,9 +360,7 @@ function UpdatesSection() {
             지금 버전 <b className="tabular-nums">{version ?? "…"}</b>
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
-            {lastChecked
-              ? `마지막 확인 ${new Date(lastChecked).toLocaleString("ko-KR", { month: "long", day: "numeric", hour: "2-digit", minute: "2-digit" })}`
-              : "아직 확인하지 않았어요"}
+            {lastChecked ? `마지막 확인 ${formatDateTime(lastChecked)}` : "아직 확인하지 않았어요"}
           </p>
         </div>
         <Button variant="outline" onClick={() => void checkNow(true)} disabled={checking}>

@@ -113,7 +113,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
             <SidebarMenuItem>
               <SidebarMenuButton
                 onClick={openUpdate}
-                tooltip={`새 버전 ${available}이 나왔어요`}
+                tooltip={`새 버전이 나왔어요 (${available})`}
                 className="relative h-9 rounded-lg"
               >
                 <ArrowDownCircle className="text-primary" />
@@ -132,7 +132,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
             >
               <ArrowDownCircle className="mt-0.5 size-4 shrink-0 text-primary" />
               <span className="text-xs leading-relaxed">
-                <span className="block font-medium">새 버전 {available}이 나왔어요</span>
+                <span className="block font-medium">새 버전이 나왔어요 ({available})</span>
                 <span className="block text-muted-foreground">눌러서 설치할 수 있어요. 설정과 백업은 그대로예요.</span>
               </span>
             </button>

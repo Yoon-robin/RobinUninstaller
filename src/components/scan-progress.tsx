@@ -2,7 +2,7 @@ import { useEffect, useState } from "react"
 import { Loader2 } from "lucide-react"
 
 import type { ScanProgress } from "@/lib/api"
-import { formatBytes } from "@/lib/format"
+import { formatBytes, formatCount, formatDuration } from "@/lib/format"
 import { cn } from "@/lib/utils"
 
 /** 긴 경로는 끝의 폴더 몇 개만 보여 준다 (어디를 보고 있는지는 끝부분이 알려 준다) */
@@ -22,8 +22,6 @@ function useElapsed() {
   return seconds
 }
 
-const elapsedText = (s: number) => (s < 60 ? `${s}초` : `${Math.floor(s / 60)}분 ${s % 60}초`)
-
 /**
  * 오래 걸리는 탐색의 진행 상황. 멈춘 것처럼 보이지 않게 지금 보는 곳, 센 파일 수, 흐른 시간을 계속 바꿔 보여 준다.
  * 전체 수를 알면 막대가 차오르고, 모르면 막대가 오간다.
@@ -33,7 +31,8 @@ export function ScanProgressView({
   progress,
   unit = "개",
   hint,
-  showBytes = true,
+  showBytes,
+  work = true,
   className,
 }: {
   /** 무엇을 하는 중인지 ("정리할 수 있는 항목을 찾는 중이에요") */
@@ -45,6 +44,8 @@ export function ScanProgressView({
   hint?: string
   /** 센 크기도 보여 줄지 (저장공간 찾기처럼 정리할 크기와 헷갈릴 수 있으면 끈다) */
   showBytes?: boolean
+  /** 찾기가 아니라 옮기기·되돌리기·지우기 중이면 true (문구가 "다루는 곳 / 처리한 파일"로 바뀐다) */
+  work?: boolean
   className?: string
 }) {
   const elapsed = useElapsed()
@@ -61,8 +62,8 @@ export function ScanProgressView({
           {label}
         </span>
         <span className="ml-auto shrink-0 text-xs text-muted-foreground tabular-nums">
-          {p && p.total > 0 && `${p.done.toLocaleString("ko-KR")} / ${p.total.toLocaleString("ko-KR")}${unit} · `}
-          {elapsedText(elapsed)}
+          {p && p.total > 0 && `${formatCount(p.done)} / ${formatCount(p.total)}${unit} · `}
+          {formatDuration(elapsed * 1000)}
         </span>
       </div>
       <div className="h-1.5 overflow-hidden rounded-full bg-muted">
@@ -77,11 +78,17 @@ export function ScanProgressView({
       </div>
       <div className="flex min-w-0 items-center gap-3 text-xs text-muted-foreground">
         <span className="min-w-0 flex-1 truncate" title={p?.current}>
-          {current ? <>지금 보는 곳: {current}</> : "준비하는 중"}
+          {current ? (
+            <>
+              {work ? "지금 다루는 곳" : "지금 보는 곳"}: {current}
+            </>
+          ) : (
+            "준비하는 중"
+          )}
         </span>
         {p && p.files > 0 && (
           <span className="shrink-0 tabular-nums">
-            살펴본 파일 {p.files.toLocaleString("ko-KR")}개{showBytes && ` · ${formatBytes(p.bytes)}`}
+            {work ? "처리한 파일" : "살펴본 파일"} {formatCount(p.files)}개{showBytes && ` · ${formatBytes(p.bytes)}`}
           </span>
         )}
       </div>

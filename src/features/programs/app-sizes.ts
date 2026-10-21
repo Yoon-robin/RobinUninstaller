@@ -28,4 +28,4 @@ export function measureAppSizes() {
 export const useAppSizeProgress = () => useSyncExternalStore(subscribe, () => progress)
 
 /** "5/14" 같은 짧은 진행 표시 (전체를 모르면 빈 문자열) */
-export const sizeProgressText = (p: ScanProgress | null) => (p && p.total > 0 ? ` ${p.done}/${p.total}` : "")
+export const sizeProgressText = (p: ScanProgress | null) => (p && p.total > 0 ? ` ${p.done} / ${p.total}` : "")

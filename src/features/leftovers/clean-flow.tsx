@@ -103,6 +103,7 @@ export function Cleaning({ label, progress }: { label: string; progress?: ScanPr
       // 확인·완료 화면처럼 가운데에 같은 폭으로 둔다
       <motion.div {...panel} className="flex flex-1 flex-col items-center justify-center p-8">
         <ScanProgressView
+          work
           className="w-full max-w-md"
           label={label}
           progress={progress}

@@ -6,7 +6,7 @@ export type QuickFilter = "all" | "recent" | "large" | "user" | "broken"
 export const quickFilters: { key: QuickFilter; label: string }[] = [
   { key: "all", label: "전체" },
   { key: "recent", label: "최근 30일" },
-  { key: "large", label: "1GB 이상" },
+  { key: "large", label: "1 GB 이상" },
   { key: "user", label: "현재 사용자" },
   { key: "broken", label: "언인스톨러 없음" },
 ]

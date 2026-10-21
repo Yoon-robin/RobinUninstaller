@@ -28,7 +28,7 @@ import {
   type ScanProgress,
 } from "@/lib/api"
 import { ScanProgressView } from "@/components/scan-progress"
-import { formatBytes } from "@/lib/format"
+import { formatBytes, formatDateTime } from "@/lib/format"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
@@ -57,15 +57,7 @@ const kindIcons: Record<LeftoverKind, typeof Folder> = {
   registryValue: KeyRound,
 }
 
-function formatDate(seconds: number) {
-  return new Date(seconds * 1000).toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
+const formatDate = (seconds: number) => formatDateTime(seconds * 1000)
 
 export function RestorePage() {
   const backups = useQuery({ queryKey: ["backups"], queryFn: recoveryApi.list })
@@ -251,9 +243,9 @@ function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () =
               ? "찾는 중이에요"
               : count === 0
                 ? `${days}일 지난 백업이 없어요.`
-                : `${count}개, ${formatBytes(preview.data?.bytes ?? 0)}를 지워요.`}
+                : `${count}개를 지워요 (${formatBytes(preview.data?.bytes ?? 0)}).`}
         </p>
-        {busy && <ScanProgressView label="오래된 백업을 지우는 중이에요" progress={progress} />}
+        {busy && <ScanProgressView work label="오래된 백업을 지우는 중이에요" progress={progress} />}
         <div className="mt-2 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={busy}>
             취소
@@ -383,7 +375,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
         </IconTooltip>
       </div>
       {busy != null && busy !== "admin" && (
-        <ScanProgressView className="border-t px-5 py-4" label="되돌리는 중이에요" progress={progress} />
+        <ScanProgressView work className="border-t px-5 py-4" label="되돌리는 중이에요" progress={progress} />
       )}
 
       <AnimatePresence initial={false}>
@@ -493,7 +485,7 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
             </span>
           )}
         </DialogDescription>
-        {busy && <ScanProgressView label="백업을 지우는 중이에요" progress={progress} />}
+        {busy && <ScanProgressView work label="백업을 지우는 중이에요" progress={progress} />}
         <div className="mt-2 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={busy}>
             취소

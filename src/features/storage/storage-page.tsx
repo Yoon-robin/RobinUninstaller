@@ -18,7 +18,7 @@ import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
 import { storageApi, type CleanEvent, type CleanResult, type ScanProgress, type StorageCategory } from "@/lib/api"
-import { formatBytes } from "@/lib/format"
+import { formatBytes, formatCount, formatDuration } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
 import { IconTooltip } from "@/components/icon-tooltip"
@@ -379,7 +379,7 @@ function CategoryRow({
                 <span className="font-medium">왜 지워도 되나요? </span>
                 {c.why}
               </p>
-              {c.files > 0 && <p className="text-muted-foreground">파일 {c.files.toLocaleString()}개</p>}
+              {c.files > 0 && <p className="text-muted-foreground">파일 {formatCount(c.files)}개</p>}
               {c.locations.length > 0 && (
                 <ul data-selectable className="space-y-0.5 font-mono break-all text-muted-foreground">
                   {c.locations.map((l) => (
@@ -595,7 +595,7 @@ function CleanDialog({
           />
         ) : (
           <>
-            <DialogTitle>{formatBytes(total)}를 정리할까요?</DialogTitle>
+            <DialogTitle>{formatBytes(total)} 정리할까요?</DialogTitle>
             <DialogDescription className="leading-relaxed">
               아래 항목의 파일을 바로 지워요. 지금 쓰고 있는 파일은 건너뛰어요.
             </DialogDescription>
@@ -692,11 +692,6 @@ function useNow(intervalMs: number) {
   return now
 }
 
-function formatElapsed(ms: number) {
-  const s = Math.floor(ms / 1000)
-  return s < 60 ? `${s}초` : `${Math.floor(s / 60)}분 ${s % 60}초`
-}
-
 /**
  * 정리하는 동안의 화면. 지금 항목, 지운 파일 수와 크기, 방금 지운 파일, 걸린 시간, 끝난 항목 기록을 보여 줘
  * 오래 걸려도 멈춘 것처럼 보이지 않게 한다. 휴지통과 관리자 권한 정리는 중간 진행을 알 수 없어 시간만 센다.
@@ -720,8 +715,7 @@ function CleanProgressView({ live, items }: { live: LiveProgress; items: Storage
         정리하는 중이에요
       </DialogTitle>
       <DialogDescription className="tabular-nums">
-        {formatElapsed(now - live.startedAt)} 지남 · 지금까지 파일 {doneFiles.toLocaleString()}개,{" "}
-        {formatBytes(doneFreed)}
+        {formatDuration(now - live.startedAt)} 지남 · 지금까지 파일 {formatCount(doneFiles)}개, {formatBytes(doneFreed)}
       </DialogDescription>
 
       <div className="h-1.5 overflow-hidden rounded-full bg-muted" aria-hidden>
@@ -763,13 +757,13 @@ function CleanProgressView({ live, items }: { live: LiveProgress; items: Storage
               <p className="mt-1 text-xs text-muted-foreground">
                 Windows가 휴지통을 한 번에 비워서 중간 진행은 보이지 않아요.
                 {curCategory.bytes > 1e9 ? ` ${formatBytes(curCategory.bytes)}라 몇 분 걸릴 수 있어요.` : ""} (
-                {formatElapsed(quietFor)} 지남)
+                {formatDuration(quietFor)} 지남)
               </p>
             ) : (
               <>
                 <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-                  파일 {cur.deleted.toLocaleString()}개 지움 · {formatBytes(cur.freed)}
-                  {cur.failed > 0 && ` · 사용 중 ${cur.failed.toLocaleString()}개 건너뜀`}
+                  파일 {formatCount(cur.deleted)}개 지움 · {formatBytes(cur.freed)}
+                  {cur.failed > 0 && ` · 사용 중 ${formatCount(cur.failed)}개 건너뜀`}
                 </p>
                 <p
                   data-selectable
@@ -803,7 +797,7 @@ function CleanProgressView({ live, items }: { live: LiveProgress; items: Storage
                   ? "관리자 권한 필요"
                   : r.skipped
                     ? "건너뜀"
-                    : `${r.deletedFiles.toLocaleString()}개 · ${formatBytes(r.freedBytes)}`}
+                    : `${formatCount(r.deletedFiles)}개 · ${formatBytes(r.freedBytes)}`}
               </span>
             </li>
           ))}
@@ -836,7 +830,7 @@ function CleanResultView({
         {freed > 0 ? (
           <>
             <DrawnCheck className="size-5 text-success" />
-            {formatBytes(freed)}를 지웠어요
+            {formatBytes(freed)} 지웠어요
           </>
         ) : (
           "지운 파일이 없어요"
@@ -859,7 +853,7 @@ function CleanResultView({
       )}
       <DialogDescription className="leading-relaxed">
         {failed > 0
-          ? `지금 쓰고 있는 파일 ${failed.toLocaleString()}개는 건너뛰었어요. 해당 프로그램을 닫고 다시 정리하면 더 비울 수 있어요.`
+          ? `지금 쓰고 있는 파일 ${formatCount(failed)}개는 건너뛰었어요. 해당 프로그램을 닫고 다시 정리하면 더 비울 수 있어요.`
           : "고른 항목을 정리했어요. 캐시는 프로그램이 필요할 때 다시 만들어요."}
       </DialogDescription>
       <ul className="max-h-64 divide-y overflow-y-auto rounded-xl border text-sm">
@@ -881,8 +875,8 @@ function CleanResultView({
                   : r.needsAdmin
                     ? "관리자 권한을 받지 못해 건너뛰었어요"
                     : [
-                        `파일 ${r.deletedFiles.toLocaleString()}개 지움`,
-                        r.failedFiles > 0 ? `사용 중 ${r.failedFiles.toLocaleString()}개 건너뜀` : null,
+                        `파일 ${formatCount(r.deletedFiles)}개 지움`,
+                        r.failedFiles > 0 ? `사용 중 ${formatCount(r.failedFiles)}개 건너뜀` : null,
                       ]
                         .filter(Boolean)
                         .join(" · ")}

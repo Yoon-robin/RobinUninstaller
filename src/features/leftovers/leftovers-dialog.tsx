@@ -35,7 +35,7 @@ import {
 } from "@/lib/api"
 import { useQueryClient } from "@tanstack/react-query"
 import { CleanResult, Cleaning, ConfirmClean } from "./clean-flow"
-import { formatBytes } from "@/lib/format"
+import { formatBytes, formatDuration } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { useLastDefined } from "@/hooks/use-last-defined"
 import { EASE_OUT_QUINT } from "@/components/motion"
@@ -442,7 +442,7 @@ function Results({
             <SummaryChip tone="primary" label="연결 정보 일치" value={strong.length} />
             <SummaryChip tone="warn" label="직접 확인 필요" value={review.length} />
             <span className="text-muted-foreground" title={`찾는 데 ${report.durationMs}ms 걸렸어요`}>
-              · {report.durationMs < 1000 ? "1초 안에 찾음" : `${Math.round(report.durationMs / 1000)}초 걸림`}
+              · {report.durationMs < 1000 ? "1초 안에 찾음" : `${formatDuration(report.durationMs)} 걸림`}
             </span>
             {report.protectedSkipped > 0 && (
               <IconTooltip label="Windows 폴더, 여러 프로그램이 함께 쓰는 폴더 등은 점수와 상관없이 건드리지 않아요">

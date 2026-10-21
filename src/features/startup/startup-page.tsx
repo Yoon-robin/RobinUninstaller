@@ -18,6 +18,7 @@ import { AnimatePresence, LayoutGroup, motion } from "motion/react"
 import { toast } from "sonner"
 
 import { isMachineStartup, startupApi, type StartupEntry, type StartupSource } from "@/lib/api"
+import { formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { LetterAvatar } from "@/components/letter-avatar"
 import { CountUp, EASE_OUT_QUINT, FadeUp, Stagger, staggerContainer } from "@/components/motion"
@@ -72,15 +73,7 @@ function formatAgo(seconds: number) {
   return `${Math.floor(days / 365)}년 전에 끔`
 }
 
-function formatDate(seconds: number) {
-  return new Date(seconds * 1000).toLocaleString("ko-KR", {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  })
-}
+const formatDate = (seconds: number) => formatDateTime(seconds * 1000)
 
 export function StartupPage() {
   const items = useQuery({ queryKey: QUERY_KEY, queryFn: startupApi.list })

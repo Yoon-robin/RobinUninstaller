@@ -3,7 +3,7 @@ import { FileArchive, FileVideo, File, FolderOpen, Disc3, Package, ScanSearch, S
 import { toast } from "sonner"
 
 import { storageApi, type LargeFiles, type ScanProgress } from "@/lib/api"
-import { formatBytes } from "@/lib/format"
+import { formatBytes, formatDay } from "@/lib/format"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { ScanProgressView } from "@/components/scan-progress"
 import { Button } from "@/components/ui/button"
@@ -49,7 +49,7 @@ function kindOf(name: string): { label: string; icon: typeof File } {
 
 function formatDate(seconds: number | null) {
   if (!seconds) return ""
-  return new Date(seconds * 1000).toLocaleDateString("ko-KR", { year: "numeric", month: "short", day: "numeric" })
+  return formatDay(seconds * 1000)
 }
 
 /** "C:\Users\me\Videos\a.mp4" → "C:\Users\me\Videos" */
