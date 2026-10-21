@@ -81,7 +81,9 @@ export function StoragePage() {
   const disk = useQuery({ queryKey: DISK_KEY, queryFn: storageApi.diskUsage })
   // 사용자가 직접 바꾼 선택. 없으면 기본 선택(다시 만들어지는 항목)을 따른다.
   const [picked, setPicked] = useState<Record<string, boolean>>({})
-  const [confirming, setConfirming] = useState(false)
+  // 확인 창을 연 순간의 항목. 그 뒤에 다시 찾기가 끝나도 창 안의 목록·합계가 바뀌지 않는다 (보지 못한 항목이 끼어들지 않게)
+  const [confirming, setConfirming] = useState<StorageCategory[]>([])
+  const [confirmOpen, setConfirmOpen] = useState(false)
 
   const items = useMemo(() => (data ?? []).filter((c) => c.kind !== "info"), [data])
   const infos = useMemo(() => (data ?? []).filter((c) => c.kind === "info"), [data])
@@ -182,7 +184,14 @@ export function StoragePage() {
                 <span className="font-semibold tabular-nums">{formatBytes(selectedBytes)}</span>
                 <span className="text-muted-foreground"> 확보 예상</span>
               </p>
-              <Button disabled={selected.length === 0 || finding} onClick={() => setConfirming(true)}>
+              {/* 다시 찾는 동안에는 목록이 곧 바뀌므로 정리를 시작하지 않는다 */}
+              <Button
+                disabled={selected.length === 0 || scan.isFetching}
+                onClick={() => {
+                  setConfirming(selected)
+                  setConfirmOpen(true)
+                }}
+              >
                 <Sparkles />
                 정리하기
               </Button>
@@ -210,9 +219,9 @@ export function StoragePage() {
       </FadeUp>
 
       <CleanDialog
-        open={confirming}
-        items={selected}
-        onClose={() => setConfirming(false)}
+        open={confirmOpen}
+        items={confirming}
+        onClose={() => setConfirmOpen(false)}
         onDone={() => {
           setPicked({})
           refresh()
