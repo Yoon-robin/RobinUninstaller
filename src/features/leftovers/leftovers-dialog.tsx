@@ -36,6 +36,7 @@ import { useQueryClient } from "@tanstack/react-query"
 import { CleanResult, Cleaning, ConfirmClean } from "./clean-flow"
 import { formatBytes } from "@/lib/format"
 import { cn } from "@/lib/utils"
+import { useLastDefined } from "@/hooks/use-last-defined"
 import { EASE_OUT_QUINT } from "@/components/motion"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { BorderBeam } from "@/components/ui/border-beam"
@@ -49,30 +50,39 @@ import { ErrorState } from "@/components/error-state"
 export type LeftoverTarget = { id: string; name: string; removed: boolean; force?: boolean }
 
 /** 남은 흔적 찾기 결과. 고른 항목은 백업·격리한 뒤 정리한다. */
-export function LeftoversDialog({ target, onClose }: { target: LeftoverTarget | null; onClose: () => void }) {
+export function LeftoversDialog({
+  target: targetProp,
+  onClose,
+}: {
+  target: LeftoverTarget | null
+  onClose: () => void
+}) {
+  // 닫히는 동안에도 내용이 남아 있게 마지막 대상을 그린다. 찾기는 열려 있을 때만 한다.
+  const open = targetProp != null
+  const target = useLastDefined(targetProp)
   const force = target?.force === true
   // 강제 제거는 먼저 대상에서 빼야 하는 프로그램인지, 실행 중인지 확인한다
   const check = useQuery({
     queryKey: ["force-check", target?.id],
     queryFn: () => forceApi.check(target!.id),
-    enabled: force,
+    enabled: open && force,
     staleTime: 0,
     gcTime: 0,
   })
   const ready = !force || (check.data != null && check.data.blocked == null && check.data.running.length === 0)
   // 확인·정리·결과 단계에서는 다시 찾기를 막고, 정리 중에는 창도 닫지 못하게 한다
   const [locked, setLocked] = useState<"none" | "stage" | "busy">("none")
-  useEffect(() => setLocked("none"), [target])
+  useEffect(() => setLocked("none"), [targetProp])
   const scan = useQuery({
     queryKey: ["leftovers", target?.id],
     queryFn: () => scanApi.scanLeftovers(target!.id),
-    enabled: target != null && ready,
+    enabled: open && ready,
     staleTime: 0,
     gcTime: 0,
   })
 
   return (
-    <Dialog open={target != null} onOpenChange={(open) => !open && locked !== "busy" && onClose()}>
+    <Dialog open={open} onOpenChange={(next) => !next && locked !== "busy" && onClose()}>
       <DialogContent
         showCloseButton={locked !== "busy"}
         className="flex h-[min(720px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl"

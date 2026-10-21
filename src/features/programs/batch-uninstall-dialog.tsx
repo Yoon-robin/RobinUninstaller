@@ -14,6 +14,7 @@ import {
 
 import { api, needsForce, type InstalledApplication, type UninstallOutcome } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { useLastDefined } from "@/hooks/use-last-defined"
 import { focusMarked } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
@@ -51,7 +52,7 @@ const STUCK_HINT_AFTER_MS = 8000
  * 각 언인스톨러 창의 안내는 사용자가 직접 따른다. 언인스톨러가 없는 프로그램은 강제 제거라 여기서 빼고, 하나씩 하게 한다.
  */
 export function BatchUninstallDialog({
-  apps,
+  apps: appsProp,
   onClose,
   onRemoved,
   onFindLeftovers,
@@ -61,6 +62,8 @@ export function BatchUninstallDialog({
   onRemoved: (app: InstalledApplication) => void
   onFindLeftovers: (app: InstalledApplication) => void
 }) {
+  // 닫히는 동안에도 내용이 남아 있게 마지막 목록을 그린다
+  const apps = useLastDefined(appsProp)
   const queryClient = useQueryClient()
   const [phase, setPhase] = useState<"confirm" | "running" | "done">("confirm")
   const [statuses, setStatuses] = useState<Record<string, Status>>({})
@@ -136,7 +139,7 @@ export function BatchUninstallDialog({
   const removed = runnable.filter((a) => statuses[a.id] && isRemoved(statuses[a.id]))
 
   return (
-    <Dialog open={apps != null} onOpenChange={(o) => !o && close()}>
+    <Dialog open={appsProp != null} onOpenChange={(o) => !o && close()}>
       <DialogContent
         showCloseButton={!running}
         className="flex max-h-[min(720px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"

@@ -2,6 +2,7 @@ import { useState, type ReactNode } from "react"
 import { Check, Copy, FolderOpen, Sparkles, Trash2 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
+import { useLastDefined } from "@/hooks/use-last-defined"
 
 import { api, canUninstall, type InstalledApplication } from "@/lib/api"
 import { formatInstallDate, formatSize } from "@/lib/format"
@@ -18,7 +19,7 @@ const scopeLabels = {
 } as const
 
 export function AppDetailsSheet({
-  app,
+  app: appProp,
   onOpenChange,
   onUninstall,
   onFindLeftovers,
@@ -28,6 +29,8 @@ export function AppDetailsSheet({
   onUninstall: (app: InstalledApplication) => void
   onFindLeftovers: (app: InstalledApplication) => void
 }) {
+  // 닫히는 동안에도 내용이 남아 있게 마지막 대상을 그린다
+  const app = useLastDefined(appProp)
   const openFolder = async () => {
     if (!app) return
     try {
@@ -38,7 +41,7 @@ export function AppDetailsSheet({
   }
 
   return (
-    <Sheet open={app != null} onOpenChange={onOpenChange}>
+    <Sheet open={appProp != null} onOpenChange={onOpenChange}>
       <SheetContent className="w-[460px] gap-0 sm:max-w-[460px]" onOpenAutoFocus={(e) => e.preventDefault()}>
         {app && (
           <>

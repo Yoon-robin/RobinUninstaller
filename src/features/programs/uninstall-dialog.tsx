@@ -11,6 +11,7 @@ import {
   type UninstallOutcome,
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { useLastDefined } from "@/hooks/use-last-defined"
 import { DrawnCheck } from "@/components/drawn-check"
 import { AutoHeight, EASE_OUT_QUINT, focusMarked } from "@/components/motion"
 import { Button } from "@/components/ui/button"
@@ -22,7 +23,7 @@ type Phase =
 
 /** 제거 확인 → 진행 → 결과. 기본 언인스톨러만 실행하고, 파일을 직접 지우지는 않는다. */
 export function UninstallDialog({
-  app,
+  app: appProp,
   onClose,
   onRemoved,
   onFindLeftovers,
@@ -32,6 +33,8 @@ export function UninstallDialog({
   onRemoved: (app: InstalledApplication) => void
   onFindLeftovers: (app: InstalledApplication) => void
 }) {
+  // 닫히는 동안에도 내용이 남아 있게 마지막 대상을 그린다
+  const app = useLastDefined(appProp)
   const [phase, setPhase] = useState<Phase>({ step: "confirm" })
   const queryClient = useQueryClient()
   const running = phase.step === "running"
@@ -66,7 +69,7 @@ export function UninstallDialog({
   }
 
   return (
-    <Dialog open={app != null} onOpenChange={(open) => !open && close()}>
+    <Dialog open={appProp != null} onOpenChange={(open) => !open && close()}>
       <DialogContent
         showCloseButton={!running}
         className="gap-0 overflow-hidden p-0 sm:max-w-md"
