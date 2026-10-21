@@ -12,7 +12,7 @@ import {
 } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { DrawnCheck } from "@/components/drawn-check"
-import { EASE_OUT_QUINT } from "@/components/motion"
+import { AutoHeight, EASE_OUT_QUINT, focusMarked } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { AppIcon } from "./app-icon"
@@ -67,7 +67,11 @@ export function UninstallDialog({
 
   return (
     <Dialog open={app != null} onOpenChange={(open) => !open && close()}>
-      <DialogContent showCloseButton={!running} className="gap-0 overflow-hidden p-0 sm:max-w-md">
+      <DialogContent
+        showCloseButton={!running}
+        className="gap-0 overflow-hidden p-0 sm:max-w-md"
+        onOpenAutoFocus={focusMarked}
+      >
         {app && (
           <>
             <div className="flex items-center gap-3 border-b px-5 py-4">
@@ -80,29 +84,32 @@ export function UninstallDialog({
               </div>
             </div>
 
-            <AnimatePresence mode="wait" initial={false}>
-              <motion.div
-                key={phase.step}
-                initial={{ opacity: 0, y: 6 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -3, transition: { duration: 0.1 } }}
-                transition={{ duration: 0.25, ease: EASE_OUT_QUINT }}
-              >
-                {phase.step === "confirm" && <ConfirmBody app={app} onCancel={close} onStart={start} />}
-                {phase.step === "running" && <RunningBody event={phase.event} />}
-                {phase.step === "done" && (
-                  <ResultBody
-                    outcome={phase.outcome}
-                    onClose={close}
-                    onRetry={start}
-                    onFindLeftovers={() => {
-                      close()
-                      onFindLeftovers(app)
-                    }}
-                  />
-                )}
-              </motion.div>
-            </AnimatePresence>
+            {/* 확인 → 진행 → 결과로 높이가 바뀌어도 창이 한 번에 튀지 않게 */}
+            <AutoHeight>
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={phase.step}
+                  initial={{ opacity: 0, y: 6 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={{ opacity: 0, y: -3, transition: { duration: 0.1 } }}
+                  transition={{ duration: 0.25, ease: EASE_OUT_QUINT }}
+                >
+                  {phase.step === "confirm" && <ConfirmBody app={app} onCancel={close} onStart={start} />}
+                  {phase.step === "running" && <RunningBody event={phase.event} />}
+                  {phase.step === "done" && (
+                    <ResultBody
+                      outcome={phase.outcome}
+                      onClose={close}
+                      onRetry={start}
+                      onFindLeftovers={() => {
+                        close()
+                        onFindLeftovers(app)
+                      }}
+                    />
+                  )}
+                </motion.div>
+              </AnimatePresence>
+            </AutoHeight>
           </>
         )}
       </DialogContent>
@@ -142,7 +149,7 @@ function ConfirmBody({
       </ul>
       <CommandPreview command={uninstallCommandPreview(app)} />
       <div className="flex justify-end gap-2">
-        <Button variant="outline" onClick={onCancel}>
+        <Button variant="outline" onClick={onCancel} data-autofocus>
           취소
         </Button>
         <Button variant="destructive" onClick={onStart}>

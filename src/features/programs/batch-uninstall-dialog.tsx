@@ -14,6 +14,7 @@ import {
 
 import { api, needsForce, type InstalledApplication, type UninstallOutcome } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { focusMarked } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { AppIcon } from "./app-icon"
@@ -139,6 +140,7 @@ export function BatchUninstallDialog({
       <DialogContent
         showCloseButton={!running}
         className="flex max-h-[min(720px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+        onOpenAutoFocus={focusMarked}
       >
         <div className="flex items-center gap-3 border-b px-5 py-4 pr-12">
           <div className="flex size-10 items-center justify-center rounded-xl bg-destructive/12 text-destructive">
@@ -231,7 +233,7 @@ export function BatchUninstallDialog({
         <div className="flex flex-wrap items-center gap-2 border-t px-5 py-3">
           {phase === "confirm" && (
             <>
-              <Button variant="outline" className="ml-auto" onClick={close}>
+              <Button variant="outline" className="ml-auto" onClick={close} data-autofocus>
                 취소
               </Button>
               <Button variant="destructive" onClick={run} disabled={runnable.length === 0}>

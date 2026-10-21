@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react"
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react"
 import { animate, motion, useReducedMotion, type Variants } from "motion/react"
 
 export const EASE_OUT_QUINT = [0.22, 1, 0.36, 1] as const
@@ -64,4 +64,45 @@ export function CountUp({ value, format = formatInteger }: { value: number; form
   }, [value, reduce, format])
 
   return <span ref={ref}>{format(reduce ? value : from.current)}</span>
+}
+
+/**
+ * 안의 내용이 바뀌어 높이가 달라질 때 한 번에 튀지 않고 짧게 따라간다 (대화상자의 단계 전환 등).
+ * 움직임 줄이기면 바로 바뀐다.
+ */
+export function AutoHeight({ children, className }: { children: ReactNode; className?: string }) {
+  const inner = useRef<HTMLDivElement>(null)
+  const [height, setHeight] = useState<number | "auto">("auto")
+  const reduce = useReducedMotion()
+
+  useLayoutEffect(() => {
+    const el = inner.current
+    if (!el) return
+    const observer = new ResizeObserver(() => setHeight(el.offsetHeight))
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
+
+  return (
+    <motion.div
+      className={className}
+      style={{ overflow: "hidden" }}
+      initial={false}
+      animate={{ height }}
+      transition={{ duration: reduce ? 0 : 0.25, ease: EASE_OUT_QUINT }}
+    >
+      <div ref={inner}>{children}</div>
+    </motion.div>
+  )
+}
+
+/**
+ * 대화상자를 열 때 `data-autofocus`가 붙은 요소(보통 취소 버튼)에 포커스를 준다.
+ * 없으면 Radix 기본(첫 번째로 누를 수 있는 요소)을 따른다. `onOpenAutoFocus`에 넘긴다.
+ */
+export function focusMarked(e: Event) {
+  const el = (e.currentTarget as HTMLElement | null)?.querySelector<HTMLElement>("[data-autofocus]")
+  if (!el) return
+  e.preventDefault()
+  el.focus()
 }
