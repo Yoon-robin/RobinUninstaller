@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from "react"
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   Check,
@@ -91,7 +91,8 @@ export function LeftoversDialog({
     <Dialog open={open} onOpenChange={(next) => !next && locked !== "busy" && onClose()}>
       <DialogContent
         showCloseButton={locked !== "busy"}
-        className="flex h-[min(720px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl"
+        // 닫기(X)를 머리글 가운데 높이(다시 찾기 버튼과 같은 줄)에 둔다
+        className="flex h-[min(720px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl [&>[data-slot=dialog-close]]:top-[34px] [&>[data-slot=dialog-close]]:right-3"
       >
         {target && (
           <>
@@ -106,13 +107,15 @@ export function LeftoversDialog({
               </div>
               <div className="min-w-0 flex-1">
                 <DialogTitle className="text-base">{force ? "강제 제거" : "남은 흔적"}</DialogTitle>
-                <DialogDescription className="truncate">
-                  {target.name}
-                  {force
-                    ? " · 언인스톨러 없이 등록 정보와 파일을 직접 정리해요"
-                    : target.removed
-                      ? " · 제거한 뒤 남은 파일과 레지스트리"
-                      : " · 설치된 상태라 대부분 지금 쓰고 있는 항목이에요"}
+                <DialogDescription>
+                  <span className="block truncate">{target.name}</span>
+                  <span className="block">
+                    {force
+                      ? "언인스톨러 없이 등록 정보와 파일을 직접 정리해요"
+                      : target.removed
+                        ? "제거한 뒤 남은 파일과 레지스트리"
+                        : "설치된 상태라 대부분 지금 쓰고 있는 항목이에요"}
+                  </span>
                 </DialogDescription>
               </div>
               <IconTooltip label="다시 찾기">
@@ -144,7 +147,7 @@ export function LeftoversDialog({
               ) : scan.isError ? (
                 <div key="error" className="flex flex-1 items-center justify-center">
                   <ErrorState
-                    title="남은 흔적을 찾지 못했어요"
+                    title="남은 흔적을 찾다가 문제가 생겼어요"
                     hint="아무것도 지우지 않았어요. 다시 찾아보거나 창을 닫아 주세요."
                     error={scan.error}
                     onRetry={() => scan.refetch()}
@@ -327,6 +330,7 @@ function Results({
   const queryClient = useQueryClient()
   const [stage, setStage] = useState<Stage>({ step: "review" })
   const [cleanError, setCleanError] = useState<string | null>(null)
+  const cleanButton = useRef<HTMLButtonElement>(null)
   useEffect(() => {
     onLockChange(stage.step === "review" ? "none" : stage.step === "cleaning" ? "busy" : "stage")
   }, [stage.step, onLockChange])
@@ -359,7 +363,7 @@ function Results({
       setStage({ step: "done", op })
     } catch (e) {
       setCleanError(String(e))
-      setStage({ step: "review" })
+      backToReview()
     } finally {
       for (const key of [
         "backups",
@@ -374,22 +378,36 @@ function Results({
     }
   }
 
-  if (stage.step === "confirm") {
-    return <ConfirmClean items={selectedItems} onCancel={() => setStage({ step: "review" })} onConfirm={runClean} />
+  const backToReview = () => {
+    setStage({ step: "review" })
+    // 돌아오면 "선택 항목 정리" 버튼에 포커스를 둔다 (목록은 숨겨 두었을 뿐이라 스크롤·선택이 그대로다)
+    requestAnimationFrame(() => cleanButton.current?.focus())
   }
-  if (stage.step === "cleaning") {
-    return <Cleaning label="백업하고 정리하는 중이에요" progress={cleanProgress} />
-  }
-  if (stage.step === "done") {
-    return (
+  // 확인 화면에서 Esc는 창을 닫지 않고 목록으로 돌아간다 (고른 것을 잃지 않게).
+  // Radix는 문서에서 Esc를 받으므로 그보다 먼저(window 캡처) 받아 기본 동작을 막는다.
+  useEffect(() => {
+    if (stage.step !== "confirm") return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return
+      e.preventDefault()
+      backToReview()
+    }
+    window.addEventListener("keydown", onKey, true)
+    return () => window.removeEventListener("keydown", onKey, true)
+  })
+  const overlay =
+    stage.step === "confirm" ? (
+      <ConfirmClean items={selectedItems} onCancel={backToReview} onConfirm={runClean} />
+    ) : stage.step === "cleaning" ? (
+      <Cleaning label="백업하고 정리하는 중이에요" progress={cleanProgress} />
+    ) : stage.step === "done" ? (
       <CleanResult
         op={stage.op}
         forceAppId={forceAppId}
         onDone={onClose}
         onBusyChange={(busy) => onLockChange(busy ? "busy" : "stage")}
       />
-    )
-  }
+    ) : null
 
   const exclude = (id: string) =>
     settingsApi
@@ -416,99 +434,126 @@ function Results({
       else next.add(id)
       return next
     })
+  const selectable = report.items.filter((i) => !excluded.has(i.id))
+  const allSelected = selectable.length > 0 && selectable.every((i) => selected.has(i.id))
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 8 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, transition: { duration: 0.12 } }}
-      transition={{ duration: 0.3, ease: EASE_OUT_QUINT }}
-      className="flex min-h-0 flex-1 flex-col"
-    >
-      {report.items.length === 0 ? (
-        <Clean protectedSkipped={report.protectedSkipped} />
-      ) : (
-        <>
-          {forceAppId && (
-            <div className="flex gap-2 border-b bg-destructive/5 px-5 py-2.5 text-xs leading-relaxed text-muted-foreground">
-              <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-primary" />
-              <span>
-                프로그램 등록 정보와 설치 폴더를 지우면 목록에서 사라져요. 백업해 두므로 보관하는 동안 복구 기록에서
-                되돌릴 수 있어요. Windows 서비스는 건드리지 않아요.
-              </span>
-            </div>
-          )}
-          <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-5 py-2.5 text-xs">
-            <SummaryChip tone="primary" label="연결 정보 일치" value={strong.length} />
-            <SummaryChip tone="warn" label="직접 확인 필요" value={review.length} />
-            <span className="text-muted-foreground" title={`찾는 데 ${report.durationMs}ms 걸렸어요`}>
-              · {report.durationMs < 1000 ? "1초 안에 찾음" : `${formatDuration(report.durationMs)} 걸림`}
-            </span>
-            {report.protectedSkipped > 0 && (
-              <IconTooltip label="Windows 폴더, 여러 프로그램이 함께 쓰는 폴더 등은 점수와 상관없이 건드리지 않아요">
-                <span className="ml-auto flex cursor-default items-center gap-1 text-muted-foreground">
-                  <ShieldCheck className="size-3.5 text-primary" />
-                  보호 규칙으로 {report.protectedSkipped}개 제외
-                </span>
-              </IconTooltip>
-            )}
-          </div>
-
-          <div className="min-h-0 flex-1 overflow-y-auto">
-            <Group
-              title="설치 정보와 연결된 흔적"
-              hint={
-                preview
-                  ? "설치 등록 정보가 직접 가리키는 위치예요"
-                  : "설치 등록 정보가 직접 가리키는 위치라 미리 골라 두었어요. 안전을 보장하는 표시는 아니니 한 번 훑어보세요"
-              }
-              items={strong}
-              offset={0}
-              selected={selected}
-              excluded={excluded}
-              onToggle={preview ? undefined : toggle}
-              onExclude={preview ? undefined : exclude}
-            />
-            <Group
-              title="직접 확인이 필요한 항목"
-              hint={
-                preview
-                  ? "이름만 비슷하거나 다른 프로그램과 겹칠 수 있어요"
-                  : "이름만 비슷하거나 다른 프로그램과 겹칠 수 있어요. 확인한 뒤 직접 선택하세요"
-              }
-              items={review}
-              offset={strong.length}
-              selected={selected}
-              excluded={excluded}
-              onToggle={preview ? undefined : toggle}
-              onExclude={preview ? undefined : exclude}
-            />
-          </div>
-        </>
-      )}
-
-      <div className="flex items-center gap-3 border-t px-5 py-3">
-        {preview ? (
-          <p className="mr-auto text-sm text-muted-foreground">
-            설치된 상태라 보여 주기만 해요. 프로그램을 제거한 뒤 남은 흔적을 정리할 수 있어요.
-          </p>
+    <>
+      {overlay}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, transition: { duration: 0.12 } }}
+        transition={{ duration: 0.3, ease: EASE_OUT_QUINT }}
+        hidden={overlay != null}
+        className="flex min-h-0 flex-1 flex-col"
+      >
+        {report.items.length === 0 ? (
+          <Clean protectedSkipped={report.protectedSkipped} />
         ) : (
           <>
-            <p className="mr-auto text-sm text-muted-foreground tabular-nums">
-              {selected.size > 0 ? `${selected.size}개 선택 · ${formatBytes(selectedBytes)}` : "선택한 항목 없음"}
-            </p>
-            {cleanError && <p className="text-xs text-destructive">{cleanError}</p>}
-            <Button variant="destructive" disabled={selected.size === 0} onClick={() => setStage({ step: "confirm" })}>
-              <Trash2 />
-              선택 항목 정리
-            </Button>
+            {forceAppId && (
+              <div className="flex gap-2 border-b bg-destructive/5 px-5 py-2.5 text-xs leading-relaxed text-muted-foreground">
+                <ShieldCheck className="mt-0.5 size-3.5 shrink-0 text-primary" />
+                <span>
+                  프로그램 등록 정보와 설치 폴더를 지우면 목록에서 사라져요. 백업해 두므로 보관하는 동안 복구 기록에서
+                  되돌릴 수 있어요. Windows 서비스는 건드리지 않아요.
+                </span>
+              </div>
+            )}
+            <div className="flex flex-wrap items-center gap-2 border-b bg-muted/20 px-5 py-2.5 text-xs">
+              <SummaryChip tone="primary" label="연결 정보 일치" value={strong.length} />
+              <SummaryChip tone="warn" label="직접 확인 필요" value={review.length} />
+              <span className="text-muted-foreground" title={`찾는 데 ${report.durationMs}ms 걸렸어요`}>
+                · {report.durationMs < 1000 ? "1초 안에 찾음" : `${formatDuration(report.durationMs)} 걸림`}
+              </span>
+              {!preview && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs"
+                  onClick={() => setSelected(allSelected ? new Set() : new Set(selectable.map((i) => i.id)))}
+                >
+                  {allSelected ? "모두 해제" : "모두 선택"}
+                </Button>
+              )}
+              {report.protectedSkipped > 0 && (
+                <IconTooltip label="Windows 폴더, 여러 프로그램이 함께 쓰는 폴더 등은 점수와 상관없이 건드리지 않아요">
+                  <span className="ml-auto flex cursor-default items-center gap-1 text-muted-foreground">
+                    <ShieldCheck className="size-3.5 text-primary" />
+                    보호 규칙으로 {report.protectedSkipped}개 제외
+                  </span>
+                </IconTooltip>
+              )}
+            </div>
+
+            <div className="min-h-0 flex-1 overflow-y-auto" data-leftover-list>
+              <Group
+                title="설치 정보와 연결된 흔적"
+                hint={
+                  preview
+                    ? "설치 등록 정보가 직접 가리키는 위치예요"
+                    : "설치 등록 정보가 직접 가리키는 위치라 미리 골라 두었어요. 안전을 보장하는 표시는 아니니 한 번 훑어보세요"
+                }
+                items={strong}
+                offset={0}
+                selected={selected}
+                excluded={excluded}
+                onToggle={preview ? undefined : toggle}
+                onExclude={preview ? undefined : exclude}
+              />
+              <Group
+                title="직접 확인이 필요한 항목"
+                hint={
+                  preview
+                    ? "이름만 비슷하거나 다른 프로그램과 겹칠 수 있어요"
+                    : "이름만 비슷하거나 다른 프로그램과 겹칠 수 있어요. 확인한 뒤 직접 선택하세요"
+                }
+                items={review}
+                offset={strong.length}
+                selected={selected}
+                excluded={excluded}
+                onToggle={preview ? undefined : toggle}
+                onExclude={preview ? undefined : exclude}
+              />
+            </div>
           </>
         )}
-        <Button variant="outline" onClick={onClose}>
-          닫기
-        </Button>
-      </div>
-    </motion.div>
+
+        {cleanError && (
+          <p role="alert" className="border-t bg-destructive/5 px-5 py-2 text-xs break-all text-destructive">
+            {cleanError}
+          </p>
+        )}
+        <div className="flex items-center gap-3 border-t px-5 py-3">
+          {report.items.length === 0 ? (
+            <span className="mr-auto" />
+          ) : preview ? (
+            <p className="mr-auto text-sm text-muted-foreground">
+              설치된 상태라 보여 주기만 해요. 프로그램을 제거한 뒤 남은 흔적을 정리할 수 있어요.
+            </p>
+          ) : (
+            <>
+              <p className="mr-auto text-sm text-muted-foreground tabular-nums">
+                {selected.size > 0 ? `${selected.size}개 선택 · ${formatBytes(selectedBytes)}` : "선택한 항목 없음"}
+              </p>
+              <Button
+                ref={cleanButton}
+                variant="destructive"
+                disabled={selected.size === 0}
+                onClick={() => setStage({ step: "confirm" })}
+              >
+                <Trash2 />
+                선택 항목 정리
+              </Button>
+            </>
+          )}
+          <Button variant="outline" onClick={onClose}>
+            닫기
+          </Button>
+        </div>
+      </motion.div>
+    </>
   )
 }
 
@@ -608,8 +653,42 @@ function LeftoverRow({
 
   return (
     <li
-      className={cn("group flex gap-3 px-5 py-3 transition-colors hover:bg-accent/30", index < 12 && "row-intro")}
+      data-leftover-row
+      className={cn(
+        "group flex gap-3 px-5 py-3 transition-colors hover:bg-accent/30",
+        onToggle && !excluded && "cursor-pointer",
+        index < 12 && "row-intro",
+      )}
       style={index < 12 ? ({ "--i": index } as CSSProperties) : undefined}
+      // 줄 아무 데나 눌러도 고르고 풀 수 있다 (경로 글자를 고르거나 버튼을 누를 때는 빼고)
+      onClick={(e) => {
+        if (!onToggle || excluded) return
+        if ((e.target as HTMLElement).closest("button, a, [role=checkbox]")) return
+        if (window.getSelection()?.toString()) return
+        onToggle()
+      }}
+      onKeyDown={(e) => {
+        const row = e.currentTarget
+        const target = e.target as HTMLElement
+        if (e.key === "ArrowDown" || e.key === "ArrowUp") {
+          const rows = [
+            ...(row.closest("[data-leftover-list]")?.querySelectorAll<HTMLElement>("[data-leftover-row]") ?? []),
+          ]
+          const next = rows[rows.indexOf(row) + (e.key === "ArrowDown" ? 1 : -1)]
+          const focusable = next?.querySelector<HTMLElement>("[role=checkbox]:not([disabled]), button")
+          if (focusable) {
+            e.preventDefault()
+            focusable.focus()
+          }
+        } else if (e.key === "ArrowRight" || e.key === "ArrowLeft") {
+          const buttons = [...row.querySelectorAll<HTMLElement>("[role=checkbox], [data-row-action]")]
+          const next = buttons[buttons.indexOf(target) + (e.key === "ArrowRight" ? 1 : -1)]
+          if (next) {
+            e.preventDefault()
+            next.focus()
+          }
+        }
+      }}
     >
       {onToggle && (
         <Checkbox
@@ -660,6 +739,7 @@ function LeftoverRow({
       </div>
       <div className="flex shrink-0 flex-col items-end gap-1">
         <span className="text-xs text-muted-foreground tabular-nums">{isFs ? formatBytes(item.sizeBytes) : ""}</span>
+        {/* 줄의 버튼은 Tab에서 뺀다 (체크 상자에서 →/←로 옮긴다) */}
         <div className="flex opacity-0 transition-opacity group-hover:opacity-100 focus-within:opacity-100">
           {isFs && (
             <IconTooltip label="탐색기에서 보기">
@@ -668,6 +748,8 @@ function LeftoverRow({
                 size="icon"
                 className="size-7"
                 aria-label="탐색기에서 보기"
+                tabIndex={-1}
+                data-row-action
                 onClick={() => scanApi.revealLeftover(item.id).catch((e) => toast.error(String(e)))}
               >
                 <FolderOpen />
@@ -676,7 +758,15 @@ function LeftoverRow({
           )}
           {onExclude && !excluded && (
             <IconTooltip label="다음부터 제외 (설정에서 되돌릴 수 있어요)">
-              <Button variant="ghost" size="icon" className="size-7" aria-label="다음부터 제외" onClick={onExclude}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="size-7"
+                aria-label="다음부터 제외"
+                tabIndex={-1}
+                data-row-action
+                onClick={onExclude}
+              >
                 <EyeOff />
               </Button>
             </IconTooltip>
@@ -687,6 +777,8 @@ function LeftoverRow({
               size="icon"
               className="size-7"
               aria-label={copied ? "경로를 복사했어요" : "경로 복사"}
+              tabIndex={-1}
+              data-row-action
               onClick={() =>
                 navigator.clipboard.writeText(fullPath).then(
                   () => setCopied(true),
@@ -715,7 +807,7 @@ function Clean({ protectedSkipped }: { protectedSkipped: number }) {
         <Sparkles className="size-7" />
       </motion.div>
       <div>
-        <p className="text-base font-semibold">남은 흔적을 찾지 못했어요</p>
+        <p className="text-base font-semibold">남은 흔적이 없어요</p>
         <p className="mt-1 text-sm text-muted-foreground">
           설치 폴더, AppData, 레지스트리에서 이 프로그램과 이어진 항목이 없었어요.
           {protectedSkipped > 0 && ` 보호 규칙으로 ${protectedSkipped}개는 살펴보지 않았어요.`}
