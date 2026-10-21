@@ -31,7 +31,8 @@ const SCHEME = process.env.RECORD_SCHEME ?? "dark"
 const W = 1280
 const H = 800
 // 휴대폰용으로 잘라 낼 부분: 남은 흔적 대화창(256~1024, 48~752)과 둘레 조금
-const NARROW = { x: 248, y: 40, width: 784, height: 720 }
+// 대화상자(위 4rem, 높이 720px)를 위아래 여유 8px씩 두고 자른다
+const NARROW = { x: 248, y: 56, width: 784, height: 736 }
 // 고해상도 화면에서 흐리지 않게 2배로 찍는다 (영상 2560×1600, 휴대폰용 1568×1440)
 const SCALE = 2
 const me = String.raw`C:\Users\me\AppData`
@@ -104,6 +105,11 @@ const context = await browser.newContext({
 // 녹화는 페이지를 만들 때 시작한다. 남은 흔적 화면이 뜬 시점부터 남기려고 시간을 잰다.
 await context.addInitScript(
   `document.addEventListener("DOMContentLoaded", () => { document.documentElement.style.zoom = "${SCALE}" })`,
+)
+// CSS zoom은 vh를 키우지 않아서, 대화상자 위치(top: max(4rem, 12vh))가 2배 화면에서는 아래로 밀려 아래 버튼이 잘린다.
+// 녹화에서만 위치를 rem으로 고정한다 (앱에는 zoom이 없어 그대로 맞다).
+await context.addInitScript(
+  `document.addEventListener("DOMContentLoaded", () => { const s = document.createElement("style"); s.textContent = "[data-slot=dialog-content]{top:4rem !important}"; document.head.append(s) })`,
 )
 const started = Date.now()
 const page = await openAppInContext(context, { overrides: handlers, scheme: SCHEME })

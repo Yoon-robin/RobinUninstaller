@@ -108,7 +108,7 @@ export function Walkthrough() {
               src={narrow ? demo("leftovers-narrow.webm") : wideVideo()}
               poster={demo(narrow ? "leftovers-narrow-poster.jpg" : "leftovers-poster.jpg")}
               width={narrow ? 784 : 1280}
-              height={narrow ? 720 : 800}
+              height={narrow ? 736 : 800}
               muted
               loop
               playsInline
@@ -117,7 +117,7 @@ export function Walkthrough() {
               aria-label="RobinX 시연: 남은 흔적 찾기, 찾은 항목 확인, 백업하고 정리, 정리 결과 화면"
               className={
                 "window w-full cursor-pointer object-contain p-2 sm:p-3 " +
-                (narrow ? "aspect-[784/720]" : "aspect-[16/10]")
+                (narrow ? "aspect-[784/736]" : "aspect-[16/10]")
               }
             />
             <button
