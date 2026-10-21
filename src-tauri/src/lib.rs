@@ -137,6 +137,18 @@ async fn measure_app_sizes(
     on_progress: Channel<ProgressSnapshot>,
     cache: State<'_, AppCache>,
 ) -> Result<HashMap<String, u64>, String> {
+    // 한 번에 하나만 잰다. 새로고침·정리·복원 뒤마다 요청이 와도 동시에 여러 번 돌지 않게,
+    // 기다리는 동안 그 요청 뒤에 시작한 측정이 끝났으면 그 결과를 같이 받는다.
+    static REQUESTS: AtomicU64 = AtomicU64::new(0);
+    static COVERED: AtomicU64 = AtomicU64::new(0);
+    static RUNNING: tauri::async_runtime::Mutex<()> = tauri::async_runtime::Mutex::const_new(());
+    let mine = REQUESTS.fetch_add(1, Ordering::SeqCst) + 1;
+    let _turn = RUNNING.lock().await;
+    if COVERED.load(Ordering::SeqCst) >= mine {
+        return Ok(cache.sizes.lock().map(|m| m.clone()).unwrap_or_default());
+    }
+    // 이번 측정은 지금까지 들어온 요청을 모두 맡는다 (모두 지금 목록으로 잰다)
+    let covers = REQUESTS.load(Ordering::SeqCst);
     let apps: Vec<InstalledApplication> = cache
         .apps
         .lock()
@@ -162,6 +174,7 @@ async fn measure_app_sizes(
     if let Ok(mut map) = cache.sizes.lock() {
         *map = sizes.clone();
     }
+    COVERED.store(covers, Ordering::SeqCst);
     Ok(sizes)
 }
 
