@@ -63,7 +63,7 @@ export function StatCard({
               {unit && <span className="ml-0.5 text-base font-medium text-muted-foreground">{unit}</span>}
             </span>
           )}
-          {hint && <span className="block mt-1 truncate text-xs text-muted-foreground">{hint}</span>}
+          {hint && <span className="mt-1 block text-xs text-pretty text-muted-foreground">{hint}</span>}
         </span>
       </Tag>
     </FadeUp>

@@ -332,91 +332,96 @@ export function ProgramsPage() {
                       {loading ? "불러오는 중…" : `${visible.length}개`}
                     </span>
                   </div>
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                    <Input
-                      ref={searchRef}
-                      value={query}
-                      onChange={(e) => setQuery(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Escape" && query) {
-                          e.stopPropagation()
-                          setQuery("")
-                        }
-                        if (e.key === "Enter" && visible[0]) setSelected(visible[0])
-                      }}
-                      placeholder="이름 또는 게시자 검색"
-                      className="h-9 w-64 rounded-lg bg-background/60 pr-14 pl-9"
-                    />
-                    {query ? (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setQuery("")
-                          searchRef.current?.focus()
+                  {/* 좁은 창에서는 버튼 묶음이 통째로 다음 줄로 가고 검색창이 줄어든다 (버튼 하나만 떨어지지 않게) */}
+                  <div className="flex flex-1 items-center justify-end gap-3">
+                    <div className="relative max-w-64 min-w-40 flex-1">
+                      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        ref={searchRef}
+                        value={query}
+                        onChange={(e) => setQuery(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Escape" && query) {
+                            e.stopPropagation()
+                            setQuery("")
+                          }
+                          if (e.key === "Enter" && visible[0]) setSelected(visible[0])
                         }}
-                        aria-label="검색어 지우기"
-                        className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                      >
-                        <X className="size-3.5" />
-                      </button>
-                    ) : (
-                      <kbd className="pointer-events-none absolute top-1/2 right-2 -translate-y-1/2 rounded border bg-muted/60 px-1.5 font-sans text-[10px] text-muted-foreground">
-                        Ctrl F
-                      </kbd>
+                        placeholder="이름 또는 게시자 검색"
+                        className="h-9 w-full rounded-lg bg-background/60 pr-8 pl-9 lg:pr-14"
+                      />
+                      {query ? (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setQuery("")
+                            searchRef.current?.focus()
+                          }}
+                          aria-label="검색어 지우기"
+                          className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
+                        >
+                          <X className="size-3.5" />
+                        </button>
+                      ) : (
+                        <kbd className="pointer-events-none absolute top-1/2 right-2 hidden -translate-y-1/2 rounded border bg-muted/60 px-1.5 font-sans text-[10px] text-muted-foreground lg:block">
+                          Ctrl F
+                        </kbd>
+                      )}
+                    </div>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="outline" className="h-9 rounded-lg">
+                          <ArrowDownWideNarrow />
+                          {sortLabels[sort]}
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        {(Object.keys(sortLabels) as SortKey[]).map((key) => (
+                          <DropdownMenuItem key={key} onClick={() => setSort(key)}>
+                            <Check className={cn(sort !== key && "invisible")} />
+                            {sortLabels[key]}
+                          </DropdownMenuItem>
+                        ))}
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                    <Button
+                      variant={picked ? "default" : "outline"}
+                      className="h-9 rounded-lg"
+                      onClick={() => setPicked((p) => (p ? null : new Set()))}
+                      aria-pressed={picked != null}
+                    >
+                      <ListChecks />
+                      {picked ? "고르기 끝내기" : "여러 개 제거"}
+                    </Button>
+                    {!picked && (
+                      <IconSegmented options={viewOptions} value={view} onChange={setView} layoutId="view-toggle" />
                     )}
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" className="h-9 rounded-lg">
-                        <ArrowDownWideNarrow />
-                        {sortLabels[sort]}
+                    <IconTooltip
+                      label={sizes.isFetching ? "크기를 다 잰 뒤에 내보낼 수 있어요" : "목록 내보내기 (CSV)"}
+                    >
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="size-9 rounded-lg"
+                        disabled={loading || sizes.isFetching}
+                        onClick={exportList}
+                        aria-label="목록 내보내기"
+                      >
+                        <FileDown />
                       </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      {(Object.keys(sortLabels) as SortKey[]).map((key) => (
-                        <DropdownMenuItem key={key} onClick={() => setSort(key)}>
-                          <Check className={cn(sort !== key && "invisible")} />
-                          {sortLabels[key]}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                  <Button
-                    variant={picked ? "default" : "outline"}
-                    className="h-9 rounded-lg"
-                    onClick={() => setPicked((p) => (p ? null : new Set()))}
-                    aria-pressed={picked != null}
-                  >
-                    <ListChecks />
-                    {picked ? "고르기 끝내기" : "여러 개 제거"}
-                  </Button>
-                  {!picked && (
-                    <IconSegmented options={viewOptions} value={view} onChange={setView} layoutId="view-toggle" />
-                  )}
-                  <IconTooltip label={sizes.isFetching ? "크기를 다 잰 뒤에 내보낼 수 있어요" : "목록 내보내기 (CSV)"}>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="size-9 rounded-lg"
-                      disabled={loading || sizes.isFetching}
-                      onClick={exportList}
-                      aria-label="목록 내보내기"
-                    >
-                      <FileDown />
-                    </Button>
-                  </IconTooltip>
-                  <IconTooltip label="새로고침">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      className="size-9 rounded-lg"
-                      onClick={() => apps.refetch()}
-                      aria-label="새로고침"
-                    >
-                      <RefreshCw className={cn(apps.isFetching && "animate-spin")} />
-                    </Button>
-                  </IconTooltip>
+                    </IconTooltip>
+                    <IconTooltip label="새로고침">
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        className="size-9 rounded-lg"
+                        onClick={() => apps.refetch()}
+                        aria-label="새로고침"
+                      >
+                        <RefreshCw className={cn(apps.isFetching && "animate-spin")} />
+                      </Button>
+                    </IconTooltip>
+                  </div>
                 </div>
 
                 <div className="px-5 pb-3">
