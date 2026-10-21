@@ -1,9 +1,11 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ArchiveRestore, ArrowRight, Sparkles, Trash2, TriangleAlert } from "lucide-react"
+import { ArchiveRestore, ArrowRight, Check, Sparkles, Trash2, TriangleAlert, type LucideIcon } from "lucide-react"
 
 import { api, needsForce, scanApi, type InstalledApplication } from "@/lib/api"
 import { FadeUp, Stagger } from "@/components/motion"
+import { ErrorState } from "@/components/error-state"
+import { Skeleton } from "@/components/ui/skeleton"
 import { Button } from "@/components/ui/button"
 import { AppIcon } from "@/features/programs/app-icon"
 import { LeftoversDialog, type LeftoverTarget } from "./leftovers-dialog"
@@ -11,6 +13,8 @@ import { LeftoversDialog, type LeftoverTarget } from "./leftovers-dialog"
 /** 잔여물 정리: 이번 실행에서 제거한 프로그램과, 언인스톨러가 없어 흔적만 남은 프로그램. */
 export function LeftoversPage() {
   const [target, setTarget] = useState<LeftoverTarget | null>(null)
+  // 이번에 정리를 마친 앱 (목록에 "정리함" 표시)
+  const [cleaned, setCleaned] = useState<Set<string>>(() => new Set())
   const removed = useQuery({ queryKey: ["recently-removed"], queryFn: scanApi.recentlyRemoved })
   const installed = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
   const broken = (installed.data ?? []).filter(needsForce)
@@ -37,7 +41,12 @@ export function LeftoversPage() {
             </div>
           }
           apps={removed.data ?? []}
+          loading={removed.isLoading}
+          error={removed.isError ? removed.error : undefined}
+          onRetry={() => removed.refetch()}
+          cleaned={cleaned}
           action="남은 흔적 찾기"
+          icon={Sparkles}
           onPick={(app) => setTarget({ id: app.id, name: app.displayName, removed: true })}
         />
       </FadeUp>
@@ -49,13 +58,19 @@ export function LeftoversPage() {
             hint="등록 정보만 남았거나 언인스톨러 파일이 사라진 프로그램이에요"
             apps={broken}
             action="강제 제거"
+            icon={Trash2}
+            cleaned={cleaned}
             warn
             onPick={(app) => setTarget({ id: app.id, name: app.displayName, removed: false, force: true })}
           />
         </FadeUp>
       )}
 
-      <LeftoversDialog target={target} onClose={() => setTarget(null)} />
+      <LeftoversDialog
+        target={target}
+        onClose={() => setTarget(null)}
+        onCleaned={(id) => setCleaned((s) => new Set(s).add(id))}
+      />
     </Stagger>
   )
 }
@@ -64,7 +79,12 @@ function Section({
   title,
   hint,
   apps,
+  loading,
+  error,
+  onRetry,
+  cleaned,
   action,
+  icon: ActionIcon,
   warn,
   empty,
   onPick,
@@ -72,7 +92,13 @@ function Section({
   title: string
   hint?: string
   apps: InstalledApplication[]
+  loading?: boolean
+  error?: unknown
+  onRetry?: () => void
+  cleaned: Set<string>
   action: string
+  /** 창 안의 같은 동작과 같은 아이콘 (흔적 찾기 ✦, 강제 제거 휴지통) */
+  icon: LucideIcon
   warn?: boolean
   empty?: React.ReactNode
   onPick: (app: InstalledApplication) => void
@@ -83,11 +109,24 @@ function Section({
         <h2 className="flex items-center gap-2 font-semibold">
           {warn && <TriangleAlert className="size-4 text-warning" />}
           {title}
-          <span className="text-sm font-normal text-muted-foreground tabular-nums">{apps.length}</span>
+          {!loading && !error && (
+            <span className="text-sm font-normal text-muted-foreground tabular-nums">{apps.length}</span>
+          )}
         </h2>
         {hint && <p className="mt-0.5 text-xs text-muted-foreground">{hint}</p>}
       </div>
-      {apps.length === 0 ? (
+      {error ? (
+        <ErrorState title="목록을 읽지 못했어요" error={error} onRetry={onRetry} className="py-8" />
+      ) : loading ? (
+        <div className="divide-y">
+          {Array.from({ length: 2 }, (_, i) => (
+            <div key={i} className="flex items-center gap-3 px-5 py-3">
+              <Skeleton className="size-9 rounded-lg" />
+              <Skeleton className="h-4 w-40" />
+            </div>
+          ))}
+        </div>
+      ) : apps.length === 0 ? (
         empty
       ) : (
         <ul className="divide-y">
@@ -95,12 +134,25 @@ function Section({
             <li key={app.id} className="flex items-center gap-3 px-5 py-3">
               <AppIcon app={app} />
               <div className="min-w-0 flex-1">
-                <p className="truncate font-medium">{app.displayName}</p>
+                <p className="flex items-center gap-2 truncate font-medium">
+                  {app.displayName}
+                  {cleaned.has(app.id) && (
+                    <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-chart-5/12 px-1.5 py-0.5 text-[11px] font-medium text-success">
+                      <Check className="size-3" />
+                      정리함
+                    </span>
+                  )}
+                </p>
                 <p className="truncate text-xs text-muted-foreground">{app.publisher ?? "게시자 정보 없음"}</p>
               </div>
-              <Button size="sm" variant="outline" className="rounded-lg" onClick={() => onPick(app)}>
-                <Sparkles />
-                {action}
+              <Button
+                size="sm"
+                variant={cleaned.has(app.id) ? "ghost" : "outline"}
+                className="rounded-lg"
+                onClick={() => onPick(app)}
+              >
+                <ActionIcon />
+                {cleaned.has(app.id) ? "다시 찾기" : action}
               </Button>
             </li>
           ))}

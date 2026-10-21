@@ -111,6 +111,7 @@ pub fn finalize(
         app_name,
         items: merged,
         protected_skipped,
+        excluded_by_user: 0,
         duration_ms,
     }
 }
@@ -164,13 +165,15 @@ fn scan_with(
             item.add_evidence(Evidence::InUserFolder);
         }
     }
-    protected += apply_exclusions(&mut items, exclusions);
-    finalize(
+    let excluded = apply_exclusions(&mut items, exclusions);
+    let mut report = finalize(
         app.display_name.clone(),
         items,
         protected,
         started.elapsed().as_millis() as u64,
-    )
+    );
+    report.excluded_by_user = excluded;
+    report
 }
 
 #[cfg(test)]

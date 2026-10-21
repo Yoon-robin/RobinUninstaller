@@ -217,8 +217,11 @@ pub struct ScanReport {
     pub app_name: String,
     /// 점수 순으로 정렬된 후보 (Low는 빠짐)
     pub items: Vec<Leftover>,
-    /// 보호 규칙 때문에 후보에서 뺀 항목 수
+    /// 보호 규칙(Windows 폴더, 여러 프로그램이 함께 쓰는 폴더 등) 때문에 후보에서 뺀 항목 수
     pub protected_skipped: usize,
+    /// 사용자가 설정에서 "다음부터 제외"로 뺀 위치라 후보에서 뺀 항목 수
+    #[serde(default)]
+    pub excluded_by_user: usize,
     pub duration_ms: u64,
 }
 

@@ -137,6 +137,8 @@ export interface ScanReport {
   appName: string
   items: Leftover[]
   protectedSkipped: number
+  /** 사용자가 설정에서 뺀 위치라 후보에서 뺀 수 */
+  excludedByUser?: number
   durationMs: number
 }
 

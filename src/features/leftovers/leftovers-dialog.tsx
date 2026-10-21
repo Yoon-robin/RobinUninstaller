@@ -55,9 +55,12 @@ export type LeftoverTarget = { id: string; name: string; removed: boolean; force
 export function LeftoversDialog({
   target: targetProp,
   onClose,
+  onCleaned,
 }: {
   target: LeftoverTarget | null
   onClose: () => void
+  /** 정리를 마쳤을 때 (잔여물 정리 페이지가 그 앱에 "정리함" 표시를 단다) */
+  onCleaned?: (appId: string) => void
 }) {
   // 닫히는 동안에도 내용이 남아 있게 마지막 대상을 그린다. 찾기는 열려 있을 때만 한다.
   const open = targetProp != null
@@ -164,6 +167,7 @@ export function LeftoversDialog({
                   preview={!force && !target.removed}
                   onClose={onClose}
                   onLockChange={setLocked}
+                  onCleaned={onCleaned}
                 />
               ) : null}
             </AnimatePresence>
@@ -317,6 +321,7 @@ function Results({
   preview,
   onClose,
   onLockChange,
+  onCleaned,
 }: {
   report: ScanReport
   appId: string
@@ -326,6 +331,7 @@ function Results({
   preview: boolean
   onClose: () => void
   onLockChange: (lock: "none" | "stage" | "busy") => void
+  onCleaned?: (appId: string) => void
 }) {
   const queryClient = useQueryClient()
   const [stage, setStage] = useState<Stage>({ step: "review" })
@@ -361,6 +367,7 @@ function Results({
     try {
       const op = await recoveryApi.clean(appId, appName, [...selected], forceAppId, setCleanProgress)
       setStage({ step: "done", op })
+      onCleaned?.(appId)
     } catch (e) {
       setCleanError(String(e))
       backToReview()
@@ -449,7 +456,7 @@ function Results({
         className="flex min-h-0 flex-1 flex-col"
       >
         {report.items.length === 0 ? (
-          <Clean protectedSkipped={report.protectedSkipped} />
+          <Clean protectedSkipped={report.protectedSkipped} excludedByUser={report.excludedByUser ?? 0} />
         ) : (
           <>
             {forceAppId && (
@@ -477,14 +484,24 @@ function Results({
                   {allSelected ? "모두 해제" : "모두 선택"}
                 </Button>
               )}
-              {report.protectedSkipped > 0 && (
-                <IconTooltip label="Windows 폴더, 여러 프로그램이 함께 쓰는 폴더 등은 점수와 상관없이 건드리지 않아요">
-                  <span className="ml-auto flex cursor-default items-center gap-1 text-muted-foreground">
-                    <ShieldCheck className="size-3.5 text-primary" />
-                    보호 규칙으로 {report.protectedSkipped}개 제외
-                  </span>
-                </IconTooltip>
-              )}
+              <span className="ml-auto flex items-center gap-3">
+                {report.protectedSkipped > 0 && (
+                  <IconTooltip label="Windows 폴더나 여러 프로그램이 함께 쓰는 폴더는 근거가 있어도 건드리지 않아요">
+                    <span className="flex cursor-default items-center gap-1 text-muted-foreground">
+                      <ShieldCheck className="size-3.5 text-primary" />
+                      보호 규칙으로 {report.protectedSkipped}개 뺌
+                    </span>
+                  </IconTooltip>
+                )}
+                {(report.excludedByUser ?? 0) > 0 && (
+                  <IconTooltip label="설정 › 잔여물 스캔에서 직접 뺀 위치예요. 거기서 되돌릴 수 있어요">
+                    <span className="flex cursor-default items-center gap-1 text-muted-foreground">
+                      <EyeOff className="size-3.5" />
+                      직접 뺀 위치 {report.excludedByUser}개
+                    </span>
+                  </IconTooltip>
+                )}
+              </span>
             </div>
 
             <div className="min-h-0 flex-1 overflow-y-auto" data-leftover-list>
@@ -795,7 +812,7 @@ function LeftoverRow({
   )
 }
 
-function Clean({ protectedSkipped }: { protectedSkipped: number }) {
+function Clean({ protectedSkipped, excludedByUser }: { protectedSkipped: number; excludedByUser: number }) {
   return (
     <div className="flex flex-1 flex-col items-center justify-center gap-3 p-8 text-center">
       <motion.div
@@ -810,7 +827,8 @@ function Clean({ protectedSkipped }: { protectedSkipped: number }) {
         <p className="text-base font-semibold">남은 흔적이 없어요</p>
         <p className="mt-1 text-sm text-muted-foreground">
           설치 폴더, AppData, 레지스트리에서 이 프로그램과 이어진 항목이 없었어요.
-          {protectedSkipped > 0 && ` 보호 규칙으로 ${protectedSkipped}개는 살펴보지 않았어요.`}
+          {protectedSkipped > 0 && ` Windows 폴더처럼 보호하는 위치 ${protectedSkipped}개는 후보에서 뺐어요.`}
+          {excludedByUser > 0 && ` 설정에서 직접 뺀 위치 ${excludedByUser}개도 뺐어요.`}
         </p>
       </div>
     </div>
