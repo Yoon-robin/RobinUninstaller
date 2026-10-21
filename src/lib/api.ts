@@ -364,7 +364,10 @@ export interface LargeFiles {
   root: string
   minBytes: number
   items: LargeFile[]
+  /** 멈췄는지 (찾은 데까지만 있다) */
   cancelled: boolean
+  /** 새 찾기가 대신해 멈췄는지. 이 결과는 버린다. */
+  superseded: boolean
 }
 
 export interface FolderAnalysis {
@@ -373,6 +376,8 @@ export interface FolderAnalysis {
   parentId: string | null
   items: FolderItem[]
   cancelled: boolean
+  /** 새 분석이 대신해 멈췄는지. 이 결과는 버린다. */
+  superseded: boolean
 }
 
 /** 오래 걸리는 탐색의 진행 상황 (Rust `ProgressSnapshot`). 0.15초마다, 바뀐 것만 온다. */

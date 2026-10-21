@@ -696,7 +696,7 @@ export function ProgramsPage() {
       )}
 
       <AppDetailsSheet
-        app={selected}
+        app={selected ? (all.find((a) => a.id === selected.id) ?? selected) : null}
         onOpenChange={(open) => !open && setSelected(null)}
         onUninstall={startUninstall}
         onFindLeftovers={handlers.onFindLeftovers}

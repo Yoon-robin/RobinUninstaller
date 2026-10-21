@@ -2,7 +2,7 @@ import { useSyncExternalStore } from "react"
 import { ArrowUp, File, Folder, FolderOpen, Package, Radar, RefreshCw, Square } from "lucide-react"
 
 import { navigate, storageApi, type FolderAnalysis, type ScanProgress } from "@/lib/api"
-import { formatBytes, formatCount } from "@/lib/format"
+import { formatAgo, formatBytes, formatCount } from "@/lib/format"
 import { cn } from "@/lib/utils"
 import { shortenPath } from "@/components/scan-progress"
 import { IconTooltip } from "@/components/icon-tooltip"
@@ -21,8 +21,19 @@ type AnalysisState = {
   progress: ScanProgress | null
   /** 마지막 분석이 실패한 이유 (카드에 남겨 둔다) */
   error: string | null
+  /** 사용자가 마지막 분석을 멈췄는지 (결과는 이전 것을 그대로 둔다) */
+  stopped: boolean
+  /** 지금 결과를 받은 때 */
+  at: number | null
 }
-let analysisState: AnalysisState = { result: null, loading: null, progress: null, error: null }
+let analysisState: AnalysisState = {
+  result: null,
+  loading: null,
+  progress: null,
+  error: null,
+  stopped: false,
+  at: null,
+}
 const listeners = new Set<() => void>()
 function setAnalysis(patch: Partial<AnalysisState>) {
   analysisState = { ...analysisState, ...patch }
@@ -34,11 +45,14 @@ function subscribe(listener: () => void) {
 }
 
 async function load(id?: string, label?: string) {
-  setAnalysis({ loading: label ?? "C 드라이브", progress: null, error: null })
+  setAnalysis({ loading: label ?? "C 드라이브", progress: null, error: null, stopped: false })
   try {
     const next = await storageApi.analyze(id, (progress) => setAnalysis({ progress }))
     // 다른 분석을 시작해 멈춘 결과는 버린다
-    if (!next.cancelled) setAnalysis({ result: next })
+    // 새 분석이 대신한 결과는 조용히 버리고, 사용자가 멈췄으면 그렇다고 남긴다 (반쯤 센 크기는 보이지 않는다)
+    if (next.superseded) return
+    if (next.cancelled) setAnalysis({ stopped: true })
+    else setAnalysis({ result: next, at: Date.now() })
   } catch (e) {
     setAnalysis({ error: String(e) })
   } finally {
@@ -51,7 +65,7 @@ const SHOWN = 30
 
 /** 큰 폴더 찾기. 크기를 보여 주고 탐색기로 열어 주기만 한다 (사용자 파일은 지우지 않는다). */
 export function FolderAnalysisCard() {
-  const { result, loading, progress, error } = useSyncExternalStore(subscribe, () => analysisState)
+  const { result, loading, progress, error, stopped, at } = useSyncExternalStore(subscribe, () => analysisState)
 
   const max = result?.items[0]?.bytes ?? 0
 
@@ -102,6 +116,7 @@ export function FolderAnalysisCard() {
           <p data-selectable className="min-w-0 flex-1 truncate font-mono text-xs" title={result.path}>
             {shortenPath(result.path)}
           </p>
+          {at != null && <span className="shrink-0 text-xs text-muted-foreground">{formatAgo(at)}에 셈</span>}
           <IconTooltip label="이 폴더 다시 세기">
             <Button
               variant="ghost"
@@ -124,6 +139,11 @@ export function FolderAnalysisCard() {
           progress={progress}
           hint={result ? undefined : "파일이 많으면 1~2분 걸릴 수 있어요. 언제든 멈출 수 있어요."}
         />
+      )}
+      {stopped && !loading && (
+        <p className="border-b bg-muted/30 px-5 py-2 text-xs text-muted-foreground" role="status">
+          분석을 멈췄어요.{result ? " 아래는 그 전에 센 결과예요." : ""}
+        </p>
       )}
       {error && !loading && (
         <InlineError
@@ -184,7 +204,11 @@ export function FolderAnalysisCard() {
                       variant="ghost"
                       size="icon"
                       className="size-7 text-muted-foreground"
-                      onClick={() => storageApi.revealFolderItem(item.id).catch(failed("탐색기에서 열지 못했어요"))}
+                      onClick={() =>
+                        storageApi
+                          .revealFolderItem(item.id)
+                          .catch(failed("탐색기에서 열지 못했어요. 이미 지웠거나 옮겼다면 다시 세어 주세요"))
+                      }
                       aria-label={`${item.name} 탐색기에서 열기`}
                     >
                       <FolderOpen />

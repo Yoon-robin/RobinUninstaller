@@ -33,12 +33,16 @@ export function matchesStoreApp(app: StoreApp, query: string) {
 
 const openSettings = () => storeApi.openSettings().catch(failed("Windows 설정을 열지 못했어요"))
 /** 설정은 특정 앱을 바로 열 수 없어 앱 목록이 열린다. 이름을 복사해 두고 검색 칸에 붙여 넣게 한다. */
-const openSettingsFor = (name: string) => {
+const openSettingsFor = (name: string, onBack: () => void) => {
   navigator.clipboard
     .writeText(name)
     .then(() => toast.success(`"${name}" 이름을 복사했어요`, { description: "설정의 앱 검색 칸에 붙여 넣으세요" }))
     .catch(failed("이름을 복사하지 못했어요"))
-  void openSettings()
+  void openSettings().then(() => refetchOnReturn(onBack))
+}
+/** 설정 창에서 돌아와 RobinX 창이 다시 포커스를 받으면 한 번 다시 읽는다 (거기서 앱을 지웠을 수 있다) */
+function refetchOnReturn(refetch: () => void) {
+  window.addEventListener("focus", () => refetch(), { once: true })
 }
 
 /**
@@ -72,7 +76,11 @@ export function StoreAppsSection({
             </span>
           </div>
           <SearchInput inputRef={ownRef} value={query} onChange={setQuery} className="w-64" />
-          <Button variant="outline" className="h-9 rounded-lg" onClick={openSettings}>
+          <Button
+            variant="outline"
+            className="h-9 rounded-lg"
+            onClick={() => void openSettings().then(() => refetchOnReturn(() => void apps.refetch()))}
+          >
             <ExternalLink />
             Windows 설정에서 제거
           </Button>
@@ -184,7 +192,7 @@ export function StoreAppsSection({
                   className="h-7 justify-self-end opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   aria-label={`${app.displayName} 설정에서 제거`}
                   title="이름을 복사하고 Windows 설정의 앱 목록을 열어요"
-                  onClick={() => openSettingsFor(app.displayName)}
+                  onClick={() => openSettingsFor(app.displayName, () => void apps.refetch())}
                 >
                   설정에서 제거
                 </Button>

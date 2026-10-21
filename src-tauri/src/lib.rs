@@ -42,6 +42,37 @@ impl ScanSession {
     }
 }
 
+/// 오래 걸리는 탐색을 멈추는 신호. `superseded`면 사용자가 멈춘 게 아니라 새 탐색이 대신한 것이다
+/// (화면은 대신한 결과를 조용히 버리고, 사용자가 멈춘 결과는 "멈췄어요"로 남긴다).
+#[derive(Clone, Default)]
+pub(crate) struct Cancel {
+    stop: Arc<AtomicBool>,
+    superseded: Arc<AtomicBool>,
+}
+
+impl Cancel {
+    /// 새 탐색을 시작하며 슬롯에 넣고, 앞서 돌던 탐색은 "대신함"으로 멈춘다.
+    fn start(slot: &Mutex<Option<Cancel>>) -> Cancel {
+        let next = Cancel::default();
+        if let Ok(mut slot) = slot.lock()
+            && let Some(previous) = slot.replace(next.clone())
+        {
+            previous.superseded.store(true, Ordering::Relaxed);
+            previous.stop.store(true, Ordering::Relaxed);
+        }
+        next
+    }
+
+    /// 사용자가 "멈추기"를 눌렀을 때.
+    fn stop(slot: &Mutex<Option<Cancel>>) {
+        if let Ok(slot) = slot.lock()
+            && let Some(cancel) = slot.as_ref()
+        {
+            cancel.stop.store(true, Ordering::Relaxed);
+        }
+    }
+}
+
 #[derive(Default)]
 pub(crate) struct AppCache {
     apps: Mutex<HashMap<String, InstalledApplication>>,
@@ -61,9 +92,9 @@ pub(crate) struct AppCache {
     folders: Mutex<HashMap<String, PathBuf>>,
     next_folder: AtomicU64,
     /// 진행 중인 폴더 분석의 취소 신호 (새 분석을 시작하면 이전 것을 멈춘다)
-    analysis_cancel: Mutex<Option<Arc<AtomicBool>>>,
+    analysis_cancel: Mutex<Option<Cancel>>,
     /// 진행 중인 큰 파일 찾기의 취소 신호
-    large_files_cancel: Mutex<Option<Arc<AtomicBool>>>,
+    large_files_cancel: Mutex<Option<Cancel>>,
     /// 마지막 저장공간 스캔 결과 (탐색기로 열기는 여기 있는 위치만 허용)
     storage: Mutex<Vec<robin_storage::Category>>,
 }
@@ -1270,6 +1301,8 @@ struct FolderAnalysis {
     parent_id: Option<String>,
     items: Vec<FolderItem>,
     cancelled: bool,
+    /// 새 분석이 이 분석을 대신해 멈췄는지 (사용자가 멈춘 것과 구분)
+    superseded: bool,
 }
 
 impl AppCache {
@@ -1343,12 +1376,7 @@ async fn analyze_folder(
         return Err("폴더가 없어요".into());
     }
 
-    let cancel = Arc::new(AtomicBool::new(false));
-    if let Ok(mut slot) = cache.analysis_cancel.lock()
-        && let Some(previous) = slot.replace(cancel.clone())
-    {
-        previous.store(true, Ordering::Relaxed);
-    }
+    let cancel = Cancel::start(&cache.analysis_cancel);
 
     let progress = Arc::new(Progress::new());
     let _ticker = ProgressTicker::start(progress.clone(), on_progress);
@@ -1356,8 +1384,8 @@ async fn analyze_folder(
         let path = path.clone();
         let cancel = cancel.clone();
         tauri::async_runtime::spawn_blocking(move || {
-            let entries = robin_storage::analyze(&path, &cancel, &progress);
-            (entries, cancel.load(Ordering::Relaxed))
+            let entries = robin_storage::analyze(&path, &cancel.stop, &progress);
+            (entries, cancel.stop.load(Ordering::Relaxed))
         })
         .await
         .map_err(|e| e.to_string())?
@@ -1376,17 +1404,14 @@ async fn analyze_folder(
         parent_id: path.parent().map(|p| cache.folder_id(p)),
         items,
         cancelled,
+        superseded: cancel.superseded.load(Ordering::Relaxed),
     })
 }
 
 /// 진행 중인 폴더 분석을 멈춘다.
 #[tauri::command]
 fn cancel_folder_analysis(cache: State<'_, AppCache>) {
-    if let Ok(slot) = cache.analysis_cancel.lock()
-        && let Some(cancel) = slot.as_ref()
-    {
-        cancel.store(true, Ordering::Relaxed);
-    }
+    Cancel::stop(&cache.analysis_cancel);
 }
 
 #[derive(serde::Serialize)]
@@ -1404,6 +1429,8 @@ struct LargeFiles {
     min_bytes: u64,
     items: Vec<LargeFileItem>,
     cancelled: bool,
+    /// 새 찾기가 이 찾기를 대신해 멈췄는지 (사용자가 멈춘 것과 구분)
+    superseded: bool,
 }
 
 /// 시스템 드라이브에서 큰 파일을 찾는다 (읽기 전용). Windows 폴더는 건너뛴다.
@@ -1416,20 +1443,16 @@ async fn find_large_files(
     const MIN_BYTES: u64 = 200 * 1024 * 1024;
     const LIMIT: usize = 40;
     let root = PathBuf::from(system_drive());
-    let cancel = Arc::new(AtomicBool::new(false));
-    if let Ok(mut slot) = cache.large_files_cancel.lock()
-        && let Some(previous) = slot.replace(cancel.clone())
-    {
-        previous.store(true, Ordering::Relaxed);
-    }
+    let cancel = Cancel::start(&cache.large_files_cancel);
     let progress = Arc::new(Progress::new());
     let _ticker = ProgressTicker::start(progress.clone(), on_progress);
     let (files, cancelled) = {
         let root = root.clone();
         let cancel = cancel.clone();
         tauri::async_runtime::spawn_blocking(move || {
-            let files = robin_storage::largest_files(&root, MIN_BYTES, LIMIT, &cancel, &progress);
-            (files, cancel.load(Ordering::Relaxed))
+            let files =
+                robin_storage::largest_files(&root, MIN_BYTES, LIMIT, &cancel.stop, &progress);
+            (files, cancel.stop.load(Ordering::Relaxed))
         })
         .await
         .map_err(|e| e.to_string())?
@@ -1446,17 +1469,14 @@ async fn find_large_files(
         min_bytes: MIN_BYTES,
         items,
         cancelled,
+        superseded: cancel.superseded.load(Ordering::Relaxed),
     })
 }
 
 /// 진행 중인 큰 파일 찾기를 멈춘다.
 #[tauri::command]
 fn cancel_large_files(cache: State<'_, AppCache>) {
-    if let Ok(slot) = cache.large_files_cancel.lock()
-        && let Some(cancel) = slot.as_ref()
-    {
-        cancel.store(true, Ordering::Relaxed);
-    }
+    Cancel::stop(&cache.large_files_cancel);
 }
 
 /// 분석 결과의 항목을 탐색기로 연다.
