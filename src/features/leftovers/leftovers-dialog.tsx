@@ -1,8 +1,6 @@
 import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
-  Check,
-  Copy,
   EyeOff,
   FileText,
   Folder,
@@ -47,6 +45,8 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { describeEvidence, describeKind, kindLabels } from "./evidence"
 import { ErrorState } from "@/components/error-state"
 import { useBusy } from "@/lib/busy"
+import { failed } from "@/lib/notify"
+import { CopyButton } from "@/components/copy-button"
 
 /** `force`: 언인스톨러가 없는 프로그램의 강제 제거. 등록 정보와 파일을 같은 백업 흐름으로 정리한다. */
 export type LeftoverTarget = { id: string; name: string; removed: boolean; force?: boolean }
@@ -450,7 +450,7 @@ function Results({
           description: "되돌리려면 설정 › 잔여물 스캔에서 뺄 항목을 보세요",
         })
       })
-      .catch((e) => toast.error(String(e)))
+      .catch(failed("제외 목록에 넣지 못했어요"))
 
   const toggle = (id: string) =>
     setSelected((s) => {
@@ -682,13 +682,6 @@ function LeftoverRow({
   const Icon = kindIcons[item.kind]
   const isFs = item.kind === "folder" || item.kind === "file"
   const fullPath = item.valueName ? `${item.location} › ${item.valueName}` : item.location
-  // 복사했다는 것은 그 자리에서 아이콘으로 알린다 (알림이 대화상자 아래 버튼을 가리지 않게)
-  const [copied, setCopied] = useState(false)
-  useEffect(() => {
-    if (!copied) return
-    const t = setTimeout(() => setCopied(false), 1200)
-    return () => clearTimeout(t)
-  }, [copied])
 
   return (
     <li
@@ -790,7 +783,7 @@ function LeftoverRow({
                 aria-label="탐색기에서 보기"
                 tabIndex={-1}
                 data-row-action
-                onClick={() => scanApi.revealLeftover(item.id).catch((e) => toast.error(String(e)))}
+                onClick={() => scanApi.revealLeftover(item.id).catch(failed("탐색기에서 열지 못했어요"))}
               >
                 <FolderOpen />
               </Button>
@@ -811,24 +804,7 @@ function LeftoverRow({
               </Button>
             </IconTooltip>
           )}
-          <IconTooltip label={copied ? "복사했어요" : "경로 복사"}>
-            <Button
-              variant="ghost"
-              size="icon"
-              className="size-7"
-              aria-label={copied ? "경로를 복사했어요" : "경로 복사"}
-              tabIndex={-1}
-              data-row-action
-              onClick={() =>
-                navigator.clipboard.writeText(fullPath).then(
-                  () => setCopied(true),
-                  (e) => toast.error(String(e)),
-                )
-              }
-            >
-              {copied ? <Check className="text-success" /> : <Copy />}
-            </Button>
-          </IconTooltip>
+          <CopyButton text={fullPath} label="경로 복사" tabIndex={-1} data-row-action />
         </div>
       </div>
     </li>

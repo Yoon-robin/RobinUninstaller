@@ -52,6 +52,7 @@ import { BatchUninstallDialog } from "./batch-uninstall-dialog"
 import { StoreAppsSection, matchesStoreApp } from "./store-apps-section"
 import { LeftoversDialog, type LeftoverTarget } from "@/features/leftovers/leftovers-dialog"
 import { ErrorState, StaleBanner } from "@/components/error-state"
+import { notifyError } from "@/lib/notify"
 
 type ViewMode = "list" | "grid"
 
@@ -339,7 +340,7 @@ export function ProgramsPage() {
       const name = await api.exportAppList()
       if (name) toast.success(`${name} 파일로 저장했어요`)
     } catch (e) {
-      toast.error(String(e))
+      notifyError("목록을 파일로 저장하지 못했어요", e)
     } finally {
       setExporting(false)
     }

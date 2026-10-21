@@ -2,7 +2,6 @@ import { useEffect, useMemo, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   Check,
-  Copy,
   ChevronRight,
   CircleSlash,
   FolderOpen,
@@ -16,7 +15,6 @@ import {
 } from "lucide-react"
 import { DrawnCheck } from "@/components/drawn-check"
 import { AnimatePresence, motion } from "motion/react"
-import { toast } from "sonner"
 
 import { storageApi, type CleanEvent, type CleanResult, type ScanProgress, type StorageCategory } from "@/lib/api"
 import { formatBytes, formatCount, formatDuration } from "@/lib/format"
@@ -34,6 +32,8 @@ import { LargeFilesCard } from "./large-files"
 import { BigProgramsCard } from "./big-programs"
 import { ErrorState, StaleBanner, InlineError } from "@/components/error-state"
 import { useBusy } from "@/lib/busy"
+import { failed, notifyError } from "@/lib/notify"
+import { CopyButton } from "@/components/copy-button"
 
 const SCAN_KEY = ["storage-scan"]
 const DISK_KEY = ["disk-usage"]
@@ -349,7 +349,7 @@ function CategoryRow({
 }) {
   const [open, setOpen] = useState(false)
   const blocked = c.running.length > 0
-  const reveal = () => storageApi.revealCategory(c.id).catch((e) => toast.error(String(e)))
+  const reveal = () => storageApi.revealCategory(c.id).catch(failed(`${c.name} 위치를 열지 못했어요`))
 
   return (
     <li className={cn(blocked && "bg-muted/20")}>
@@ -449,28 +449,10 @@ function Guidance({ text }: { text: string }) {
 }
 
 function Command({ command }: { command: string }) {
-  const [copied, setCopied] = useState(false)
   return (
     <span className="mx-0.5 inline-flex items-center gap-1 rounded-md border bg-muted/60 py-0.5 pr-0.5 pl-1.5 align-middle">
       <code className="font-mono text-[11px]">{command}</code>
-      <IconTooltip label={copied ? "복사했어요" : "명령 복사"}>
-        <button
-          type="button"
-          aria-label={copied ? "명령을 복사했어요" : `${command} 복사`}
-          className="flex size-5 items-center justify-center rounded text-muted-foreground hover:bg-muted hover:text-foreground"
-          onClick={() =>
-            navigator.clipboard.writeText(command).then(
-              () => {
-                setCopied(true)
-                setTimeout(() => setCopied(false), 1200)
-              },
-              (e) => toast.error(String(e)),
-            )
-          }
-        >
-          {copied ? <Check className="size-3 text-success" /> : <Copy className="size-3" />}
-        </button>
-      </IconTooltip>
+      <CopyButton text={command} label="명령 복사" className="size-5 [&_svg]:size-3" />
     </span>
   )
 }
@@ -507,7 +489,11 @@ function InfoSection({ items }: { items: StorageCategory[] }) {
               {c.guidance && <Guidance text={c.guidance} />}
             </div>
             {c.id === "hibernation" ? null : c.id === "windows-old" ? (
-              <Button size="sm" variant="outline" onClick={() => storageApi.openSettings()}>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => storageApi.openSettings().catch(failed("Windows 저장소 설정을 열지 못했어요"))}
+              >
                 <Settings2 />
                 저장소 설정 열기
               </Button>
@@ -515,7 +501,7 @@ function InfoSection({ items }: { items: StorageCategory[] }) {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => storageApi.revealCategory(c.id).catch((e) => toast.error(String(e)))}
+                onClick={() => storageApi.revealCategory(c.id).catch(failed(`${c.name} 위치를 열지 못했어요`))}
               >
                 <FolderOpen />
                 위치 열기
@@ -640,7 +626,7 @@ function CleanDialog({
       setMeasured(before && after ? { drive: after.drive, gained: after.free - before.free } : null)
       onDone()
     } catch (e) {
-      toast.error(String(e))
+      notifyError("저장공간을 정리하지 못했어요", e, { persist: true })
     } finally {
       setBusy(false)
       setUnderstood(false)

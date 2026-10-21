@@ -27,6 +27,8 @@ import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { AppIcon } from "./app-icon"
 import { useBusy } from "@/lib/busy"
+import { failed } from "@/lib/notify"
+import { CopyButton } from "@/components/copy-button"
 
 type Phase =
   { step: "confirm" } | { step: "running"; event: UninstallEvent | null } | { step: "done"; outcome: UninstallOutcome }
@@ -361,9 +363,12 @@ function CommandPreview({ command }: { command: string | null }) {
             transition={{ duration: 0.25, ease: EASE_OUT_QUINT }}
             className="overflow-hidden"
           >
-            <p data-selectable className="mt-2 rounded-lg border bg-muted/40 p-2.5 font-mono leading-5 break-all">
-              {command}
-            </p>
+            <div className="mt-2 flex items-start gap-1 rounded-lg border bg-muted/40 py-1 pr-1 pl-2.5">
+              <p data-selectable className="min-w-0 flex-1 py-1.5 font-mono leading-5 break-all">
+                {command}
+              </p>
+              <CopyButton text={command} label="명령 복사" />
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
@@ -436,7 +441,10 @@ function ResultBody({
             <Button variant="outline" onClick={onClose}>
               닫기
             </Button>
-            <Button variant="outline" onClick={() => storeApi.openSettings().catch((e) => toast.error(String(e)))}>
+            <Button
+              variant="outline"
+              onClick={() => storeApi.openSettings().catch(failed("Windows 설정을 열지 못했어요"))}
+            >
               <ExternalLink />
               Windows 설정에서 제거
             </Button>

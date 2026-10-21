@@ -33,6 +33,7 @@ import { StatCard } from "@/features/programs/stat-card"
 import { MissingCleanupDialog } from "./missing-cleanup-dialog"
 import { HiddenTasksCard } from "./hidden-tasks"
 import { ErrorState, StaleBanner } from "@/components/error-state"
+import { failed, notifyError } from "@/lib/notify"
 
 const QUERY_KEY = ["startup-items"]
 
@@ -349,13 +350,13 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
         description: enabled ? "다음 로그인부터 다시 실행돼요" : "다음 로그인부터 실행되지 않아요",
       })
     } catch (e) {
-      toast.error(String(e))
+      notifyError(enabled ? `${entry.name}을(를) 켜지 못했어요` : `${entry.name}을(를) 끄지 못했어요`, e)
     } finally {
       setBusy(false)
     }
   }
 
-  const reveal = () => startupApi.reveal(entry.id).catch((e) => toast.error(String(e)))
+  const reveal = () => startupApi.reveal(entry.id).catch(failed(`${entry.name} 위치를 열지 못했어요`))
   const inFolder = entry.source === "folderUser" || entry.source === "folderCommon"
 
   return (

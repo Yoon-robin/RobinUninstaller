@@ -42,6 +42,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Skeleton } from "@/components/ui/skeleton"
 import { rovingKeyDown } from "@/features/programs/segmented"
 import { useBusy } from "@/lib/busy"
+import { failed, notifyError } from "@/lib/notify"
 
 const statusLabels: Record<ItemStatus, { label: string; tone: string }> = {
   // 곧 처리될 것처럼 읽히지 않게: 지난번 정리가 이 항목에서 멈췄다는 뜻이다
@@ -105,7 +106,7 @@ export function RestorePage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => recoveryApi.openFolder().catch((e) => toast.error(String(e)))}
+              onClick={() => recoveryApi.openFolder().catch(failed("백업 폴더를 열지 못했어요"))}
             >
               백업 폴더 열기
             </Button>
@@ -239,7 +240,7 @@ function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () =
       }
       onClose()
     } catch (e) {
-      toast.error("백업을 지우지 못했어요", { description: String(e) })
+      notifyError("오래된 백업을 지우지 못했어요", e, { persist: true })
     } finally {
       setBusy(false)
       for (const key of ["backups", "backup-usage", "old-backups"]) queryClient.invalidateQueries({ queryKey: [key] })
@@ -366,17 +367,21 @@ function OperationCard({
     try {
       const updated = await action()
       const mine = updated.items.filter((i) => ids.includes(i.id))
-      const failed = mine.filter((i) => isRestorable(i.status) && i.restoreFailed).length
+      const notRestored = mine.filter((i) => isRestorable(i.status) && i.restoreFailed).length
       // 같은 이름이 이미 있어 덮어쓰지 않은 항목은 백업에만 남는다
       const clashed = mine.filter((i) => i.status === "conflicted").length
-      if (failed > 0) toast.error(`${failed}개는 되돌리지 못했어요. 항목을 펼쳐 이유를 확인하세요`)
+      if (notRestored > 0)
+        toast.error(`${notRestored}개는 되돌리지 못했어요`, {
+          description: "항목을 펼쳐 이유를 확인하세요",
+          duration: 8000,
+        })
       else if (clashed > 0)
         toast.warning(`${clashed}개는 같은 이름이 이미 있어 백업에 남겨 뒀어요`, {
           description: "항목을 펼쳐 백업 폴더에서 직접 꺼낼 수 있어요",
         })
       else toast.success("되돌렸어요")
     } catch (e) {
-      toast.error(String(e))
+      notifyError("되돌리지 못했어요", e, { persist: true })
     } finally {
       setBusy(null)
       // 복원하면 프로그램·시작 항목이 다시 생길 수 있다
@@ -493,7 +498,9 @@ function OperationCard({
                           size="sm"
                           variant="outline"
                           className="mt-2 h-7"
-                          onClick={() => recoveryApi.openOperationFolder(op.id).catch((e) => toast.error(String(e)))}
+                          onClick={() =>
+                            recoveryApi.openOperationFolder(op.id).catch(failed("이 기록의 백업 폴더를 열지 못했어요"))
+                          }
                         >
                           <FolderOpen />
                           백업 폴더 열기
@@ -550,7 +557,7 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
       toast.success("백업을 삭제했어요")
       onClose()
     } catch (e) {
-      toast.error(String(e))
+      notifyError(`${op.appName} 백업을 지우지 못했어요`, e, { persist: true })
     } finally {
       setBusy(false)
       for (const key of ["backups", "backup-usage", "old-backups"]) queryClient.invalidateQueries({ queryKey: [key] })

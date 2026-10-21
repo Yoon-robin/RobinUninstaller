@@ -1,20 +1,21 @@
 import { useSyncExternalStore } from "react"
 import { FileArchive, FileVideo, File, FolderOpen, Disc3, Package, ScanSearch, Square, RefreshCw } from "lucide-react"
-import { toast } from "sonner"
 
 import { storageApi, type LargeFiles, type ScanProgress } from "@/lib/api"
 import { formatBytes, formatDay } from "@/lib/format"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { ScanProgressView, shortenPath } from "@/components/scan-progress"
+import { InlineError } from "@/components/error-state"
 import { Button } from "@/components/ui/button"
+import { failed } from "@/lib/notify"
 
 /**
  * 큰 파일 찾기. 공간을 많이 차지하는 파일을 보여 주고 탐색기로 열어 줄 뿐, 아무것도 지우지 않는다.
  * 사용자 파일은 자동으로 지우지 않는다는 원칙(CLAUDE.md "삭제 원칙")에 따라, 지울지는 사용자가 탐색기에서 정한다.
  * 결과는 화면 밖(모듈)에 둬서 다른 탭에 다녀와도 남는다.
  */
-type State = { result: LargeFiles | null; loading: boolean; progress: ScanProgress | null }
-let state: State = { result: null, loading: false, progress: null }
+type State = { result: LargeFiles | null; loading: boolean; progress: ScanProgress | null; error: string | null }
+let state: State = { result: null, loading: false, progress: null, error: null }
 const listeners = new Set<() => void>()
 function set(patch: Partial<State>) {
   state = { ...state, ...patch }
@@ -26,12 +27,12 @@ function subscribe(listener: () => void) {
 }
 
 async function find() {
-  set({ loading: true, progress: null })
+  set({ loading: true, progress: null, error: null })
   try {
     const next = await storageApi.findLargeFiles((progress) => set({ progress }))
     if (!next.cancelled) set({ result: next })
   } catch (e) {
-    toast.error(String(e))
+    set({ error: String(e) })
   } finally {
     set({ loading: false })
   }
@@ -61,7 +62,7 @@ function folderOf(path: string) {
 }
 
 export function LargeFilesCard() {
-  const { result, loading, progress } = useSyncExternalStore(subscribe, () => state)
+  const { result, loading, progress, error } = useSyncExternalStore(subscribe, () => state)
   const max = result?.items[0]?.bytes ?? 0
   const total = result?.items.reduce((s, f) => s + f.bytes, 0) ?? 0
 
@@ -94,6 +95,14 @@ export function LargeFilesCard() {
         )}
       </div>
 
+      {error && !loading && (
+        <InlineError
+          className="border-b px-5 py-3"
+          message="큰 파일을 찾지 못했어요"
+          error={error}
+          onRetry={() => void find()}
+        />
+      )}
       {loading ? (
         <ScanProgressView
           className="px-5 py-6"
@@ -142,7 +151,7 @@ export function LargeFilesCard() {
                       variant="ghost"
                       size="icon"
                       className="size-7 text-muted-foreground"
-                      onClick={() => storageApi.revealFolderItem(f.id).catch((e) => toast.error(String(e)))}
+                      onClick={() => storageApi.revealFolderItem(f.id).catch(failed("탐색기에서 열지 못했어요"))}
                       aria-label={`${f.name} 탐색기에서 보기`}
                     >
                       <FolderOpen />

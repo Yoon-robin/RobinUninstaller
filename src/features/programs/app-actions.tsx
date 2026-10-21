@@ -17,6 +17,7 @@ import {
   DropdownMenuLabel,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu"
+import { failed } from "@/lib/notify"
 
 export type AppActionHandlers = {
   onSelect: (app: InstalledApplication) => void
@@ -45,19 +46,22 @@ function actionsFor(
       label: "설치 폴더 열기",
       icon: FolderOpen,
       disabled: !app.installLocation,
-      run: () => api.openInstallLocation(app.id).catch((e) => toast.error(String(e))),
+      run: () => api.openInstallLocation(app.id).catch(failed(`${app.displayName} 설치 폴더를 열지 못했어요`)),
     },
     {
       key: "copy",
       label: "이름 복사",
       icon: Copy,
-      run: () => navigator.clipboard.writeText(app.displayName).then(() => toast.success("이름을 복사했어요")),
+      run: () =>
+        navigator.clipboard
+          .writeText(app.displayName)
+          .then(() => toast.success("이름을 복사했어요"), failed("이름을 복사하지 못했어요")),
     },
     {
       key: "web",
       label: "웹에서 검색",
       icon: Globe,
-      run: () => api.searchWeb(app.id).catch((e) => toast.error(String(e))),
+      run: () => api.searchWeb(app.id).catch(failed("웹 검색을 열지 못했어요")),
     },
     { key: "leftovers", label: "흔적 미리 보기", icon: Sparkles, run: () => onFindLeftovers(app) },
     {

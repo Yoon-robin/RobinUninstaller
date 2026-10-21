@@ -3,6 +3,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window"
 import { Copy, RefreshCw, TriangleAlert, X } from "lucide-react"
 
 import { Button } from "@/components/ui/button"
+import { failed } from "@/lib/notify"
+import { toast } from "sonner"
 
 /**
  * 화면을 그리다 오류가 나면 창 전체가 빈 화면이 되지 않게, 무슨 일이 있었는지와 다시 불러오기를 보여 준다.
@@ -58,7 +60,14 @@ export class AppErrorBoundary extends Component<{ children: ReactNode }, { error
             <X />
             닫기
           </Button>
-          <Button variant="outline" onClick={() => navigator.clipboard.writeText(detail).catch(() => {})}>
+          <Button
+            variant="outline"
+            onClick={() =>
+              navigator.clipboard
+                .writeText(detail)
+                .then(() => toast.success("오류 내용을 복사했어요"), failed("복사하지 못했어요"))
+            }
+          >
             <Copy />
             오류 복사
           </Button>

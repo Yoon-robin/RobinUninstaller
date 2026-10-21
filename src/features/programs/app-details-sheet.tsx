@@ -1,7 +1,6 @@
-import { useState, type ReactNode } from "react"
+import type { ReactNode } from "react"
 import { Check, Copy, FolderOpen, Sparkles, Trash2 } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
-import { toast } from "sonner"
 import { useLastDefined } from "@/hooks/use-last-defined"
 
 import { api, canUninstall, type InstalledApplication } from "@/lib/api"
@@ -11,6 +10,7 @@ import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet"
 import { AppIcon } from "./app-icon"
 import { UninstallerBadge } from "./uninstaller-badge"
+import { notifyError, useCopy } from "@/lib/notify"
 
 const scopeLabels = {
   machine64: "모든 사용자 · 64비트",
@@ -36,7 +36,7 @@ export function AppDetailsSheet({
     try {
       await api.openInstallLocation(app.id)
     } catch (e) {
-      toast.error(String(e))
+      notifyError(`${app.displayName} 설치 폴더를 열지 못했어요`, e)
     }
   }
 
@@ -137,18 +137,8 @@ function Field({ label, children }: { label: string; children: ReactNode }) {
 }
 
 function CodeField({ label, value }: { label: string; value: string | null }) {
-  const [copied, setCopied] = useState(false)
-  const copy = async () => {
-    if (!value) return
-    try {
-      await navigator.clipboard.writeText(value)
-    } catch (e) {
-      toast.error("복사하지 못했어요", { description: String(e) })
-      return
-    }
-    setCopied(true)
-    setTimeout(() => setCopied(false), 1200)
-  }
+  const { copied, copy: copyText } = useCopy()
+  const copy = () => value && void copyText(value)
 
   return (
     <div className="group/code px-4 py-2.5 text-sm">

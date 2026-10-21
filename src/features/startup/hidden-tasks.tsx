@@ -1,9 +1,9 @@
-import { toast } from "sonner"
 import { useQuery } from "@tanstack/react-query"
 import { ExternalLink, EyeOff, Loader2, ShieldAlert } from "lucide-react"
 
 import { startupApi } from "@/lib/api"
 import { Button } from "@/components/ui/button"
+import { failed } from "@/lib/notify"
 
 /**
  * 일반 사용자에게 안 보이는 예약 작업(SYSTEM 등 다른 계정으로 도는 것). 관리자 권한(UAC)으로 읽어 보여 주기만 한다.
@@ -66,7 +66,7 @@ export function HiddenTasksCard() {
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => startupApi.openTaskScheduler().catch((e) => toast.error(String(e)))}
+                  onClick={() => startupApi.openTaskScheduler().catch(failed("작업 스케줄러를 열지 못했어요"))}
                 >
                   <ExternalLink />
                   작업 스케줄러 열기

@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AppIcon } from "./app-icon"
 import { ErrorState, StaleBanner } from "@/components/error-state"
+import { failed } from "@/lib/notify"
 
 /** 목록 열. 좁은 창에서는 설치일·출처를 숨겨 이름 칸이 사라지지 않게 한다 (숨긴 칸에는 `STORE_WIDE_ONLY`). */
 const STORE_GRID =
@@ -30,13 +31,13 @@ export function matchesStoreApp(app: StoreApp, query: string) {
   return !q || app.displayName.toLowerCase().includes(q) || (app.publisher ?? "").toLowerCase().includes(q)
 }
 
-const openSettings = () => storeApi.openSettings().catch((e) => toast.error(String(e)))
+const openSettings = () => storeApi.openSettings().catch(failed("Windows 설정을 열지 못했어요"))
 /** 설정은 특정 앱을 바로 열 수 없어 앱 목록이 열린다. 이름을 복사해 두고 검색 칸에 붙여 넣게 한다. */
 const openSettingsFor = (name: string) => {
   navigator.clipboard
     .writeText(name)
     .then(() => toast.success(`"${name}" 이름을 복사했어요`, { description: "설정의 앱 검색 칸에 붙여 넣으세요" }))
-    .catch(() => {})
+    .catch(failed("이름을 복사하지 못했어요"))
   void openSettings()
 }
 

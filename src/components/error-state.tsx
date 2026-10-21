@@ -61,7 +61,11 @@ export function InlineError({
       <TriangleAlert className="size-4 shrink-0 text-destructive" />
       <span className="min-w-0 flex-1">
         {message}
-        {error != null && <span className="ml-1 text-xs text-muted-foreground">({String(error)})</span>}
+        {error != null && (
+          <span data-selectable className="ml-1 text-xs text-muted-foreground">
+            ({String(error)})
+          </span>
+        )}
       </span>
       {onRetry && (
         <Button variant="outline" size="sm" onClick={onRetry} disabled={retrying}>
@@ -96,7 +100,9 @@ export function StaleBanner({
       <TriangleAlert className="size-4 shrink-0 text-warning" />
       <span className="min-w-0 flex-1">
         새로 읽지 못해 마지막으로 읽은 목록을 보여 주고 있어요.
-        <span className="ml-1 text-xs text-muted-foreground">({String(error)})</span>
+        <span data-selectable className="ml-1 text-xs text-muted-foreground">
+          ({String(error)})
+        </span>
       </span>
       <Button variant="outline" size="sm" onClick={onRetry} disabled={retrying}>
         <RefreshCw className={cn(retrying && "animate-spin")} />

@@ -291,8 +291,18 @@ function InstallFlow({ info }: { info: SetupInfo }) {
     }
   }
 
+  const [launchError, setLaunchError] = useState<string | null>(null)
   const finish = async () => {
-    if (openAfter) await setupApi.launch().catch(() => {})
+    if (openAfter) {
+      try {
+        await setupApi.launch()
+      } catch (e) {
+        // 창을 닫지 않고 알린다. 다시 "완료"를 누르면 열지 않고 닫는다.
+        setLaunchError(String(e))
+        setOpenAfter(false)
+        return
+      }
+    }
     await setupApi.finish()
   }
 
@@ -338,6 +348,14 @@ function InstallFlow({ info }: { info: SetupInfo }) {
               <Checkbox checked={openAfter} onCheckedChange={(v) => setOpenAfter(v === true)} />
               RobinX 바로 열기
             </label>
+            {launchError && (
+              <Note tone="danger">
+                RobinX를 열지 못했어요. 시작 메뉴에서 열어 주세요.
+                <span data-selectable className="mt-1 block font-mono text-xs break-all">
+                  {launchError}
+                </span>
+              </Note>
+            )}
           </div>
           <div className="flex justify-end">
             <Button size="lg" onClick={finish}>

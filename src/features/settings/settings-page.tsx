@@ -35,6 +35,7 @@ import { useUpdates } from "@/features/updates/updates"
 import { useLastDefined } from "@/hooks/use-last-defined"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { useBusy } from "@/lib/busy"
+import { failed, notifyError } from "@/lib/notify"
 
 function Section({
   icon: Icon,
@@ -141,7 +142,7 @@ export function SettingsPage() {
       await settingsApi.setRetention(days)
       toast.success(days == null ? "백업을 계속 보관해요" : `${days}일이 지난 백업은 앱을 켤 때 지워요`)
     } catch (e) {
-      toast.error(String(e))
+      notifyError("보관 기간을 저장하지 못했어요", e)
     } finally {
       setBusy(false)
       setPendingRetention(undefined)
@@ -157,7 +158,7 @@ export function SettingsPage() {
       if (r.failed > 0) toast.warning(`${r.deleted}개를 지웠어요. ${r.failed}개는 복구 기록에서 하나씩 지워 주세요`)
       else toast.success(`오래된 백업 ${r.deleted}개를 지웠어요`)
     } catch (e) {
-      toast.error(String(e))
+      notifyError("오래된 백업을 지우지 못했어요", e, { persist: true })
     } finally {
       setBusy(false)
       setConfirmPrune(false)
@@ -174,7 +175,7 @@ export function SettingsPage() {
       await settingsApi.removeExclusion(index, location, valueName)
       toast.success("제외 목록에서 뺐어요. 다음 스캔부터 다시 찾아요")
     } catch (e) {
-      toast.error(String(e))
+      notifyError("제외 목록에서 빼지 못했어요", e)
     } finally {
       await queryClient.invalidateQueries({ queryKey: ["settings"] })
       setRemoving(null)
@@ -406,7 +407,7 @@ export function SettingsPage() {
 
 function AboutSection() {
   const { version } = useUpdates()
-  const open = (page: "home" | "issues") => openProjectPage(page).catch((e) => toast.error(String(e)))
+  const open = (page: "home" | "issues") => openProjectPage(page).catch(failed("브라우저를 열지 못했어요"))
   return (
     <Section
       icon={Info}
@@ -429,7 +430,7 @@ function AboutSection() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() => recoveryApi.openFolder().catch((e) => toast.error(String(e)))}
+            onClick={() => recoveryApi.openFolder().catch(failed("백업 폴더를 열지 못했어요"))}
           >
             <FolderOpen />
             백업 폴더 열기
