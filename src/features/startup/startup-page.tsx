@@ -19,6 +19,7 @@ import { toast } from "sonner"
 
 import { isMachineStartup, startupApi, type StartupEntry, type StartupSource } from "@/lib/api"
 import { cn } from "@/lib/utils"
+import { LetterAvatar } from "@/components/letter-avatar"
 import { CountUp, EASE_OUT_QUINT, FadeUp, Stagger, staggerContainer } from "@/components/motion"
 import { Highlight } from "@/components/highlight"
 import { IconTooltip } from "@/components/icon-tooltip"
@@ -308,12 +309,6 @@ export function StartupPage() {
   )
 }
 
-function hueOf(name: string) {
-  let h = 0
-  for (const ch of name) h = (h * 31 + ch.codePointAt(0)!) % 360
-  return h
-}
-
 function StartupIcon({ entry }: { entry: StartupEntry }) {
   const icon = useQuery({
     queryKey: ["startup-icon", entry.id],
@@ -328,15 +323,7 @@ function StartupIcon({ entry }: { entry: StartupEntry }) {
       </div>
     )
   }
-  const hue = hueOf(entry.name)
-  return (
-    <div
-      className="flex size-9 shrink-0 items-center justify-center rounded-lg text-sm font-semibold"
-      style={{ background: `oklch(0.72 0.12 ${hue} / 16%)`, color: `oklch(0.82 0.12 ${hue})` }}
-    >
-      {[...entry.name.trim()][0]?.toUpperCase() ?? "?"}
-    </div>
-  )
+  return <LetterAvatar name={entry.name} />
 }
 
 function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
