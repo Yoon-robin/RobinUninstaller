@@ -131,11 +131,11 @@ export function ThemeToggle() {
   }
 
   return (
-    <IconTooltip label={isDark ? "라이트 모드로" : "다크 모드로"}>
+    <IconTooltip label={isDark ? "어두운 테마 · 누르면 밝게" : "밝은 테마 · 누르면 어둡게"}>
       <button
         type="button"
         onClick={toggle}
-        aria-label={isDark ? "라이트 모드로" : "다크 모드로"}
+        aria-label={isDark ? "밝은 테마로 바꾸기" : "어두운 테마로 바꾸기"}
         className="relative flex size-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-foreground/8 hover:text-foreground"
       >
         <AnimatePresence mode="popLayout" initial={false}>

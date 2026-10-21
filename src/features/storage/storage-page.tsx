@@ -354,12 +354,15 @@ function CategoryRow({
   return (
     <li className={cn(blocked && "bg-muted/20")}>
       <div className="flex items-center gap-4 px-5 py-3 transition-colors has-[>button[aria-expanded]:hover]:bg-accent/30">
-        <Checkbox
-          checked={checked}
-          disabled={blocked}
-          onCheckedChange={(v) => onCheckedChange(v === true)}
-          aria-label={`${c.name} 선택`}
-        />
+        {/* 16px 상자만 정확히 누르지 않아도 되게 둘레까지 누르는 자리 */}
+        <label className={cn("-m-2 flex p-2", !blocked && "cursor-pointer")}>
+          <Checkbox
+            checked={checked}
+            disabled={blocked}
+            onCheckedChange={(v) => onCheckedChange(v === true)}
+            aria-label={`${c.name} 선택`}
+          />
+        </label>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}

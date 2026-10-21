@@ -9,10 +9,8 @@ import {
   PowerOff,
   RefreshCw,
   Rocket,
-  Search,
   SearchX,
   ShieldAlert,
-  X,
 } from "lucide-react"
 import { AnimatePresence, LayoutGroup, motion } from "motion/react"
 import { toast } from "sonner"
@@ -25,7 +23,6 @@ import { CountUp, EASE_OUT_QUINT, FadeUp, Stagger, staggerContainer } from "@/co
 import { Highlight } from "@/components/highlight"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { FilterChips } from "@/features/programs/segmented"
@@ -34,6 +31,7 @@ import { MissingCleanupDialog } from "./missing-cleanup-dialog"
 import { HiddenTasksCard } from "./hidden-tasks"
 import { ErrorState, StaleBanner } from "@/components/error-state"
 import { failed, notifyError } from "@/lib/notify"
+import { SearchInput } from "@/components/search-input"
 
 const QUERY_KEY = ["startup-items"]
 
@@ -175,35 +173,12 @@ export function StartupPage() {
                   {loading ? "불러오는 중…" : `${visible.length}개`}
                 </span>
               </div>
-              <div className="relative min-w-36 flex-1 basis-40 @2xl:max-w-64">
-                <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  ref={searchRef}
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Escape" && query) {
-                      e.stopPropagation()
-                      setQuery("")
-                    }
-                  }}
-                  placeholder="이름 또는 게시자 검색"
-                  className="h-9 w-full rounded-lg bg-background/60 pr-9 pl-9"
-                />
-                {query && (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setQuery("")
-                      searchRef.current?.focus()
-                    }}
-                    aria-label="검색어 지우기"
-                    className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                  >
-                    <X className="size-3.5" />
-                  </button>
-                )}
-              </div>
+              <SearchInput
+                inputRef={searchRef}
+                value={query}
+                onChange={setQuery}
+                className="min-w-36 flex-1 basis-40 @2xl:max-w-64"
+              />
               {all.some((e) => e.targetMissing && e.source !== "task") && (
                 <Button variant="outline" className="h-9 rounded-lg" onClick={() => setCleanupOpen(true)}>
                   <FileWarning className="text-warning" />
@@ -422,7 +397,11 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
           )}
         </div>
 
-        <div className="flex justify-end">
+        <div
+          // 36×20 스위치만 정확히 누르지 않아도 되게 오른쪽 칸 전체를 누르는 자리로 쓴다
+          className="-my-2.5 flex cursor-pointer items-center justify-end self-stretch py-2.5 pl-3"
+          onClick={(e) => e.target === e.currentTarget && !busy && toggle(!entry.enabled)}
+        >
           {/* 바꾸는 동안에도 스위치를 그대로 둔다 (스피너로 바꾸면 키보드 포커스가 사라졌다). 그동안은 누르지 않는다. */}
           <Switch
             checked={entry.enabled}

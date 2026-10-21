@@ -13,11 +13,9 @@ import {
   ListChecks,
   Package,
   RefreshCw,
-  Search,
   SearchX,
   Trash2,
   TriangleAlert,
-  X,
 } from "lucide-react"
 import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { toast } from "sonner"
@@ -30,7 +28,6 @@ import { IconTooltip } from "@/components/icon-tooltip"
 import { CountUp, FadeUp, Stagger, staggerContainer } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AppDetailsSheet } from "./app-details-sheet"
 import {
@@ -53,6 +50,7 @@ import { StoreAppsSection, matchesStoreApp } from "./store-apps-section"
 import { LeftoversDialog, type LeftoverTarget } from "@/features/leftovers/leftovers-dialog"
 import { ErrorState, StaleBanner } from "@/components/error-state"
 import { notifyError } from "@/lib/notify"
+import { SearchInput } from "@/components/search-input"
 
 type ViewMode = "list" | "grid"
 
@@ -210,25 +208,6 @@ export function ProgramsPage() {
     const t = setTimeout(() => setIntroDone(true), 1400)
     return () => clearTimeout(t)
   }, [apps.data, ready])
-
-  // Ctrl+F: 검색창으로. 키보드 동작이라 애니메이션 없이 바로.
-  useEffect(() => {
-    const onKey = (e: KeyboardEvent) => {
-      // 다른 화면에서는 이 화면이 숨겨진 채 남아 있으므로, 검색창이 보일 때만 가로챈다
-      if (
-        (e.ctrlKey || e.metaKey) &&
-        e.key.toLowerCase() === "f" &&
-        searchRef.current?.offsetParent &&
-        !document.querySelector('[role="dialog"]')
-      ) {
-        e.preventDefault()
-        searchRef.current?.focus()
-        searchRef.current?.select()
-      }
-    }
-    window.addEventListener("keydown", onKey)
-    return () => window.removeEventListener("keydown", onKey)
-  }, [])
 
   // 언인스톨러가 있으면 실행하고, 없으면 강제 제거(확인 → 스캔 → 백업 정리)로 간다.
   const startUninstall = (app: InstalledApplication) => {
@@ -407,7 +386,7 @@ export function ProgramsPage() {
 
       {tab === "store" ? (
         <FadeUp>
-          <StoreAppsSection query={storeQuery} onQueryChange={setStoreQuery} searchRef={searchRef} />
+          <StoreAppsSection query={storeQuery} onQueryChange={setStoreQuery} />
         </FadeUp>
       ) : (
         <>
@@ -489,40 +468,13 @@ export function ProgramsPage() {
                   </div>
                   {/* 좁은 창에서는 버튼 묶음이 통째로 다음 줄로 가고 검색창이 줄어든다 (버튼 하나만 떨어지지 않게) */}
                   <div className="flex flex-1 items-center justify-end gap-3">
-                    <div className="relative max-w-64 min-w-40 flex-1">
-                      <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-                      <Input
-                        ref={searchRef}
-                        value={query}
-                        onChange={(e) => setQuery(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Escape" && query) {
-                            e.stopPropagation()
-                            setQuery("")
-                          }
-                          if (e.key === "Enter" && visible[0]) setSelected(visible[0])
-                        }}
-                        placeholder="이름 또는 게시자 검색"
-                        className="h-9 w-full rounded-lg bg-background/60 pr-8 pl-9 lg:pr-14"
-                      />
-                      {query ? (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setQuery("")
-                            searchRef.current?.focus()
-                          }}
-                          aria-label="검색어 지우기"
-                          className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-                        >
-                          <X className="size-3.5" />
-                        </button>
-                      ) : (
-                        <kbd className="pointer-events-none absolute top-1/2 right-2 hidden -translate-y-1/2 rounded border bg-muted/60 px-1.5 font-sans text-[11px] text-muted-foreground lg:block">
-                          Ctrl F
-                        </kbd>
-                      )}
-                    </div>
+                    <SearchInput
+                      inputRef={searchRef}
+                      value={query}
+                      onChange={setQuery}
+                      onEnter={() => visible[0] && setSelected(visible[0])}
+                      className="max-w-64 min-w-40 flex-1"
+                    />
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="h-9 rounded-lg">

@@ -1,6 +1,6 @@
-import { useMemo, type RefObject } from "react"
+import { useMemo, useRef } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ExternalLink, Info, RefreshCw, Search, SearchX, Store, X } from "lucide-react"
+import { ExternalLink, Info, RefreshCw, SearchX, Store } from "lucide-react"
 import { toast } from "sonner"
 
 import { storeApi, type PackageSource, type StoreApp } from "@/lib/api"
@@ -9,11 +9,11 @@ import { cn } from "@/lib/utils"
 import { Highlight } from "@/components/highlight"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AppIcon } from "./app-icon"
 import { ErrorState, StaleBanner } from "@/components/error-state"
 import { failed } from "@/lib/notify"
+import { SearchInput } from "@/components/search-input"
 
 /** 목록 열. 좁은 창에서는 설치일·출처를 숨겨 이름 칸이 사라지지 않게 한다 (숨긴 칸에는 `STORE_WIDE_ONLY`). */
 const STORE_GRID =
@@ -48,18 +48,16 @@ const openSettingsFor = (name: string) => {
 export function StoreAppsSection({
   query,
   onQueryChange: setQuery,
-  searchRef,
 }: {
   /** 검색어는 프로그램 화면이 들고 있어 탭을 오가도 그대로 남는다 */
   query: string
   onQueryChange: (query: string) => void
-  /** Ctrl+F가 이 검색창으로 오게 (프로그램 화면과 같은 ref) */
-  searchRef?: RefObject<HTMLInputElement | null>
 }) {
   const apps = useQuery({ queryKey: ["store-apps"], queryFn: storeApi.list })
   // 처음부터 읽지 못했을 때만 오류 화면. 이미 읽은 목록이 있으면 그대로 두고 위에 띠만 보인다.
   const appsFailed = apps.isError && apps.data == null
   const appsStale = apps.isError && apps.data != null
+  const ownRef = useRef<HTMLInputElement>(null)
   const visible = useMemo(() => (apps.data ?? []).filter((a) => matchesStoreApp(a, query)), [apps.data, query])
 
   return (
@@ -73,32 +71,7 @@ export function StoreAppsSection({
               {apps.isLoading ? "불러오는 중…" : `${visible.length}개`}
             </span>
           </div>
-          <div className="relative">
-            <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              ref={searchRef}
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Escape" && query) {
-                  e.stopPropagation()
-                  setQuery("")
-                }
-              }}
-              placeholder="이름 또는 게시자 검색"
-              className="h-9 w-64 rounded-lg bg-background/60 pr-9 pl-9"
-            />
-            {query && (
-              <button
-                type="button"
-                onClick={() => setQuery("")}
-                aria-label="검색어 지우기"
-                className="absolute top-1/2 right-2 flex size-5 -translate-y-1/2 items-center justify-center rounded-full text-muted-foreground hover:bg-muted hover:text-foreground"
-              >
-                <X className="size-3.5" />
-              </button>
-            )}
-          </div>
+          <SearchInput inputRef={ownRef} value={query} onChange={setQuery} className="w-64" />
           <Button variant="outline" className="h-9 rounded-lg" onClick={openSettings}>
             <ExternalLink />
             Windows 설정에서 제거

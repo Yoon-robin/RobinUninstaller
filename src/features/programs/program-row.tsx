@@ -167,18 +167,20 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
             onKeyDown={(e) => e.stopPropagation()}
           >
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  // 마우스용 버튼이다. 키보드에서는 행에서 메뉴 키(또는 Shift+F10)로 같은 메뉴를 연다.
-                  tabIndex={-1}
-                  className="size-8 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
-                  aria-label={`${app.displayName} 작업`}
-                >
-                  <MoreHorizontal />
-                </Button>
-              </DropdownMenuTrigger>
+              <IconTooltip label="작업">
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    // 마우스용 버튼이다. 키보드에서는 행에서 메뉴 키(또는 Shift+F10)로 같은 메뉴를 연다.
+                    tabIndex={-1}
+                    className="size-8 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
+                    aria-label={`${app.displayName} 작업`}
+                  >
+                    <MoreHorizontal />
+                  </Button>
+                </DropdownMenuTrigger>
+              </IconTooltip>
               <AppDropdownContent app={app} {...handlers} />
             </DropdownMenu>
           </div>
