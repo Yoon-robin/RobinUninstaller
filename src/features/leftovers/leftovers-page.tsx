@@ -1,8 +1,8 @@
 import { useState } from "react"
 import { useQuery } from "@tanstack/react-query"
-import { ArchiveRestore, ArrowRight, Check, Sparkles, Trash2, TriangleAlert, type LucideIcon } from "lucide-react"
+import { ArrowRight, Check, Sparkles, Trash2, TriangleAlert, type LucideIcon } from "lucide-react"
 
-import { api, needsForce, scanApi, type InstalledApplication, type RemovedApp } from "@/lib/api"
+import { navigate, api, needsForce, scanApi, type InstalledApplication, type RemovedApp } from "@/lib/api"
 import { formatDay } from "@/lib/format"
 import { FadeUp, Stagger } from "@/components/motion"
 import { ErrorState } from "@/components/error-state"
@@ -38,6 +38,10 @@ export function LeftoversPage() {
                 프로그램을 제거하면 여기에 나타나요. 제거가 끝난 화면에서 바로 찾거나, 다시 시작한 뒤 여기서 찾을 수
                 있어요.
               </p>
+              <Button variant="outline" size="sm" onClick={() => navigate("programs")}>
+                <Trash2 />
+                프로그램 화면에서 제거 시작
+              </Button>
             </div>
           }
           apps={removed.data ?? []}
@@ -168,24 +172,22 @@ function Section({
   )
 }
 
-/** 정리 흐름 안내: 제거 → 흔적 찾기 → 백업하고 정리 */
+/** 정리 흐름 안내: 제거 → 흔적 찾기 → 백업하고 정리 (눌리는 것이 아니라 단계 표시) */
 function Flow() {
-  const steps = [
-    { icon: Trash2, label: "기본 언인스톨러로 제거" },
-    { icon: Sparkles, label: "남은 흔적 찾기" },
-    { icon: ArchiveRestore, label: "백업하고 정리" },
-  ]
+  const steps = ["기본 언인스톨러로 제거", "남은 흔적 찾기", "백업하고 정리"]
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2 text-xs">
-      {steps.map((s, i) => (
-        <div key={s.label} className="flex items-center gap-2">
-          <span className="flex items-center gap-1.5 rounded-full bg-primary/10 px-3 py-1.5 text-primary">
-            <s.icon className="size-3.5" />
-            {s.label}
+    <ol className="flex flex-wrap items-center justify-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+      {steps.map((label, i) => (
+        <li key={label} className="flex items-center gap-2">
+          <span className="flex items-center gap-1.5">
+            <span className="flex size-4 items-center justify-center rounded-full border text-[10px] tabular-nums">
+              {i + 1}
+            </span>
+            {label}
           </span>
-          {i < steps.length - 1 && <ArrowRight className="size-3.5 text-muted-foreground" />}
-        </div>
+          {i < steps.length - 1 && <ArrowRight className="size-3 opacity-60" aria-hidden />}
+        </li>
       ))}
-    </div>
+    </ol>
   )
 }

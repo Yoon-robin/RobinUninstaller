@@ -1,17 +1,18 @@
-import { useEffect, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArchiveRestore,
   ChevronRight,
-  HardDrive,
   FileText,
   Folder,
   FolderOpen,
+  HardDrive,
   KeyRound,
   ListTree,
   Loader2,
   RotateCcw,
   ShieldAlert,
+  Sparkles,
   Trash2,
   TriangleAlert,
 } from "lucide-react"
@@ -19,6 +20,8 @@ import { AnimatePresence, motion } from "motion/react"
 import { toast } from "sonner"
 
 import {
+  navigate,
+  restoreFocus,
   countedItems,
   isRestorable,
   recoveryApi,
@@ -122,6 +125,10 @@ export function RestorePage() {
             </div>
             <p className="font-medium">아직 정리한 기록이 없어요</p>
             <p className="text-sm text-muted-foreground">잔여물을 정리하면 되돌릴 수 있도록 여기에 기록돼요.</p>
+            <Button variant="outline" size="sm" className="mt-1" onClick={() => navigate("leftovers")}>
+              <Sparkles />
+              잔여물 정리로 가기
+            </Button>
           </div>
         </FadeUp>
       ) : (
@@ -290,7 +297,17 @@ function OperationCard({
   onDelete: () => void
 }) {
   const queryClient = useQueryClient()
-  const [open, setOpen] = useState(false)
+  // 정리를 마치고 "복구 기록 보기"로 왔으면 그 기록을 펼치고 보이는 곳으로 옮긴다
+  const [focused] = useState(() => restoreFocus.id === op.id)
+  const [open, setOpen] = useState(focused)
+  const cardRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!focused) return
+    restoreFocus.id = null
+    // 페이지가 들어오는 움직임이 끝난 뒤에 옮긴다
+    const t = setTimeout(() => cardRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }), 300)
+    return () => clearTimeout(t)
+  }, [focused])
   const [busy, setBusy] = useState<string | null>(null)
   useBusy(busy != null)
   // 되돌리는 동안: 지금 항목, 복사한 파일 수 (관리자 권한 작업자는 따로 도는 프로세스라 진행을 알 수 없다)
@@ -341,7 +358,7 @@ function OperationCard({
   }
 
   return (
-    <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
+    <section ref={cardRef} className="scroll-mt-4 overflow-hidden rounded-2xl border bg-card shadow-sm">
       <div className="flex flex-wrap items-center gap-3 px-5 py-4">
         <button
           type="button"

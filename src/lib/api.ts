@@ -272,6 +272,8 @@ export interface StartupEntry {
 export const isMachineStartup = (e: StartupEntry) => e.needsAdmin
 
 export const startupApi = {
+  /** Windows 작업 스케줄러 열기 (숨은 예약 작업은 거기서 끈다) */
+  openTaskScheduler: () => invoke<void>("open_task_scheduler"),
   list: () => invoke<StartupEntry[]>("list_startup_items"),
   /** 관리자 권한(UAC)으로만 보이는 예약 작업. 읽기만 한다. */
   hiddenTasks: () => invoke<StartupEntry[]>("list_hidden_startup_tasks"),
@@ -408,6 +410,9 @@ export const storageApi = {
 }
 
 /** 다른 화면으로 이동 요청 (App이 받아 처리). */
+/** 복구 기록 화면이 열릴 때 펼쳐 보여 줄 기록 ID (정리 완료의 "복구 기록 보기") */
+export const restoreFocus: { id: string | null } = { id: null }
+
 export function navigate(page: "programs" | "leftovers" | "restore") {
   window.dispatchEvent(new CustomEvent("robin:navigate", { detail: page }))
 }

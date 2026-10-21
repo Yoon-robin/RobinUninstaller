@@ -31,6 +31,14 @@ export function matchesStoreApp(app: StoreApp, query: string) {
 }
 
 const openSettings = () => storeApi.openSettings().catch((e) => toast.error(String(e)))
+/** 설정은 특정 앱을 바로 열 수 없어 앱 목록이 열린다. 이름을 복사해 두고 검색 칸에 붙여 넣게 한다. */
+const openSettingsFor = (name: string) => {
+  navigator.clipboard
+    .writeText(name)
+    .then(() => toast.success(`"${name}" 이름을 복사했어요`, { description: "설정의 앱 검색 칸에 붙여 넣으세요" }))
+    .catch(() => {})
+  void openSettings()
+}
 
 /**
  * Microsoft Store·MSIX 앱 목록 (읽기 전용).
@@ -197,7 +205,8 @@ export function StoreAppsSection({
                   size="sm"
                   className="h-7 justify-self-end opacity-0 group-hover:opacity-100 focus-visible:opacity-100"
                   aria-label={`${app.displayName} 설정에서 제거`}
-                  onClick={openSettings}
+                  title="이름을 복사하고 Windows 설정의 앱 목록을 열어요"
+                  onClick={() => openSettingsFor(app.displayName)}
                 >
                   설정에서 제거
                 </Button>

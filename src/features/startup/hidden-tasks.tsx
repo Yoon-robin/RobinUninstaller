@@ -1,5 +1,6 @@
+import { toast } from "sonner"
 import { useQuery } from "@tanstack/react-query"
-import { EyeOff, Loader2, ShieldAlert } from "lucide-react"
+import { ExternalLink, EyeOff, Loader2, ShieldAlert } from "lucide-react"
 
 import { startupApi } from "@/lib/api"
 import { Button } from "@/components/ui/button"
@@ -56,28 +57,48 @@ export function HiddenTasksCard() {
               관리자 권한으로만 보이는 예약 작업이 없어요. 로그인·부팅 때 실행되는 작업은 위 목록에 모두 있어요.
             </p>
           ) : (
-            <ul className="divide-y">
-              {tasks.map((t) => (
-                <li key={t.id} className="flex items-start gap-3 px-5 py-3 text-sm">
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate font-medium">{t.name}</p>
-                    {t.command ? (
-                      <p data-selectable className="truncate font-mono text-xs text-muted-foreground" title={t.command}>
-                        {t.command}
+            <>
+              <div className="flex flex-wrap items-center gap-3 bg-muted/20 px-5 py-2.5 text-xs text-muted-foreground">
+                <span className="min-w-0 flex-1">
+                  끄려면 작업 스케줄러에서 같은 이름의 작업을 찾아 "사용 안 함"을 고르세요. 관리자 권한 요청이 뜰 수
+                  있어요.
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => startupApi.openTaskScheduler().catch((e) => toast.error(String(e)))}
+                >
+                  <ExternalLink />
+                  작업 스케줄러 열기
+                </Button>
+              </div>
+              <ul className="divide-y">
+                {tasks.map((t) => (
+                  <li key={t.id} className="flex items-start gap-3 px-5 py-3 text-sm">
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate font-medium">{t.name}</p>
+                      {t.command ? (
+                        <p
+                          data-selectable
+                          className="truncate font-mono text-xs text-muted-foreground"
+                          title={t.command}
+                        >
+                          {t.command}
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">프로그램을 실행하지 않는 작업이에요</p>
+                      )}
+                      <p className="truncate text-xs text-muted-foreground">
+                        {t.approvedName}
+                        {t.author && ` · 만든 이 ${t.author}`}
+                        {t.targetMissing && <span className="text-warning"> · 실행 파일이 없어요</span>}
                       </p>
-                    ) : (
-                      <p className="text-xs text-muted-foreground">프로그램을 실행하지 않는 작업이에요</p>
-                    )}
-                    <p className="truncate text-xs text-muted-foreground">
-                      {t.approvedName}
-                      {t.author && ` · 만든 이 ${t.author}`}
-                      {t.targetMissing && <span className="text-warning"> · 실행 파일이 없어요</span>}
-                    </p>
-                  </div>
-                  <span className="shrink-0 text-xs text-muted-foreground">{t.enabled ? "켜짐" : "꺼짐"}</span>
-                </li>
-              ))}
-            </ul>
+                    </div>
+                    <span className="shrink-0 text-xs text-muted-foreground">{t.enabled ? "켜짐" : "꺼짐"}</span>
+                  </li>
+                ))}
+              </ul>
+            </>
           )}
         </div>
       )}

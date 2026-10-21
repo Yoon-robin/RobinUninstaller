@@ -4,6 +4,7 @@ import { ArchiveRestore, Loader2, ShieldAlert, Trash2, TriangleAlert } from "luc
 import { motion } from "motion/react"
 
 import {
+  restoreFocus,
   api,
   countStatus,
   countedItems,
@@ -298,6 +299,7 @@ export function CleanResult({
           disabled={elevating}
           onClick={() => {
             onDone()
+            restoreFocus.id = current.id
             navigate("restore")
           }}
         >

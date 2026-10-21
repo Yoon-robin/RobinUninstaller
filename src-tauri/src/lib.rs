@@ -317,6 +317,17 @@ fn open_apps_settings() -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// Windows 작업 스케줄러를 연다 (숨은 예약 작업은 RobinX가 바꾸지 않고, 거기서 사용자가 직접 끈다).
+#[tauri::command]
+fn open_task_scheduler() -> Result<(), String> {
+    let root = std::env::var("SystemRoot").unwrap_or_else(|_| r"C:\Windows".to_string());
+    std::process::Command::new("explorer.exe")
+        .arg(PathBuf::from(root).join("System32").join("taskschd.msc"))
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 /// 한 번에 하나만 제거한다 (Windows Installer도 동시에 하나만 처리한다).
 static UNINSTALLING: AtomicBool = AtomicBool::new(false);
 /// 사용자가 "기다리지 않고 확인"을 눌렀는지.
@@ -1489,6 +1500,7 @@ pub fn run() {
             uninstall_app,
             uninstall_command_preview,
             uninstall_may_be_shared,
+            open_task_scheduler,
             stop_waiting_uninstall,
             recently_removed,
             scan_leftovers,

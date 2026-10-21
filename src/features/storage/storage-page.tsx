@@ -156,7 +156,10 @@ export function StoragePage() {
                 <Sparkles className="size-6 text-primary" />
               </div>
               <p className="font-medium">정리할 게 없어요</p>
-              <p className="text-sm text-muted-foreground">지금은 정리할 만한 캐시와 임시 파일을 찾지 못했어요.</p>
+              <p className="text-sm text-muted-foreground">
+                지금은 정리할 만한 캐시와 임시 파일을 찾지 못했어요. 아래 "용량이 큰 프로그램"과 "큰 폴더 찾기"에서
+                공간을 많이 쓰는 곳을 볼 수 있어요.
+              </p>
             </div>
           ) : (
             <ul className="divide-y">
