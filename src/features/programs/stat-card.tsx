@@ -9,6 +9,8 @@ const toneClasses = {
   "chart-2": "bg-chart-2/12 text-chart-2",
   "chart-3": "bg-chart-3/12 text-warning",
   "chart-5": "bg-chart-5/12 text-success",
+  /** 아직 모르는 값 (불러오는 중·불러오지 못함) */
+  muted: "bg-muted text-muted-foreground",
 } as const
 
 export function StatCard({

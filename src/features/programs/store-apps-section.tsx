@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useMemo, type RefObject } from "react"
 import { useQuery } from "@tanstack/react-query"
 import { ExternalLink, Info, RefreshCw, Search, SearchX, Store, X } from "lucide-react"
 import { toast } from "sonner"
@@ -36,9 +36,18 @@ const openSettings = () => storeApi.openSettings().catch((e) => toast.error(Stri
  * Microsoft Store·MSIX 앱 목록 (읽기 전용).
  * Store 앱은 Windows가 앱 데이터까지 함께 지우므로 제거는 Windows 설정으로 안내한다.
  */
-export function StoreAppsSection({ initialQuery = "" }: { initialQuery?: string }) {
+export function StoreAppsSection({
+  query,
+  onQueryChange: setQuery,
+  searchRef,
+}: {
+  /** 검색어는 프로그램 화면이 들고 있어 탭을 오가도 그대로 남는다 */
+  query: string
+  onQueryChange: (query: string) => void
+  /** Ctrl+F가 이 검색창으로 오게 (프로그램 화면과 같은 ref) */
+  searchRef?: RefObject<HTMLInputElement | null>
+}) {
   const apps = useQuery({ queryKey: ["store-apps"], queryFn: storeApi.list })
-  const [query, setQuery] = useState(initialQuery)
   const visible = useMemo(() => (apps.data ?? []).filter((a) => matchesStoreApp(a, query)), [apps.data, query])
 
   return (
@@ -54,6 +63,7 @@ export function StoreAppsSection({ initialQuery = "" }: { initialQuery?: string 
           <div className="relative">
             <Search className="pointer-events-none absolute top-1/2 left-3 size-4 -translate-y-1/2 text-muted-foreground" />
             <Input
+              ref={searchRef}
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               onKeyDown={(e) => {
@@ -134,9 +144,24 @@ export function StoreAppsSection({ initialQuery = "" }: { initialQuery?: string 
           ))}
         </div>
       ) : visible.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 px-5 py-16 text-center text-sm text-muted-foreground">
-          {query ? <SearchX className="size-8 opacity-60" /> : <Store className="size-8 opacity-60" />}
-          {query ? `"${query}"와 맞는 Store 앱이 없어요` : "설치된 Store 앱이 없어요"}
+        // 데스크톱 목록의 빈 화면과 같은 모양
+        <div className="flex flex-col items-center gap-2 px-5 py-16 text-center">
+          <div className="mb-1 flex size-12 items-center justify-center rounded-2xl bg-muted">
+            {query ? (
+              <SearchX className="size-6 text-muted-foreground" />
+            ) : (
+              <Store className="size-6 text-muted-foreground" />
+            )}
+          </div>
+          <p className="font-medium">{query ? "조건에 맞는 Store 앱이 없어요" : "설치된 Store 앱이 없어요"}</p>
+          {query && (
+            <>
+              <p className="text-sm text-muted-foreground">{`"${query}" 검색 결과가 없어요.`}</p>
+              <Button variant="outline" size="sm" className="mt-2 rounded-lg" onClick={() => setQuery("")}>
+                검색어 지우기
+              </Button>
+            </>
+          )}
         </div>
       ) : (
         <ul className="divide-y">

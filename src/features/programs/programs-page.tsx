@@ -3,6 +3,8 @@ import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import {
   ArrowDownWideNarrow,
   Check,
+  CircleCheck,
+  MousePointerClick,
   FileDown,
   HardDrive,
   LayoutGrid,
@@ -16,7 +18,7 @@ import {
   TriangleAlert,
   X,
 } from "lucide-react"
-import { AnimatePresence, motion } from "motion/react"
+import { AnimatePresence, motion, useReducedMotion } from "motion/react"
 import { toast } from "sonner"
 
 import { api, storeApi, canUninstall, type InstalledApplication } from "@/lib/api"
@@ -161,6 +163,10 @@ export function ProgramsPage() {
   )
 
   const loading = apps.isLoading
+  // 목록을 다 읽어 숫자를 믿을 수 있는지 (읽는 중·못 읽음이면 "0개"나 초록 표시를 하지 않는다)
+  const known = !loading && !apps.isError
+  const noneInstalled = known && (apps.data?.length ?? 0) === 0
+  const reduceMotion = useReducedMotion()
 
   // 목록이 처음 나타날 때만 순서대로 등장시킨다. 검색·필터·정렬 때는 움직이지 않는다.
   const [intro, setIntro] = useState(true)
@@ -292,30 +298,39 @@ export function ProgramsPage() {
         />
       </FadeUp>
 
-      {!introDismissed && (
-        <FadeUp>
-          <div className="flex items-start gap-3 rounded-2xl border border-primary/30 bg-primary/8 px-5 py-4 text-sm">
-            <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 font-semibold text-primary">
-              1
-            </span>
-            <div className="min-w-0 flex-1">
-              <p className="font-medium">제거는 오른쪽 클릭 메뉴에서 시작해요</p>
-              <p className="mt-1 text-muted-foreground">
-                지울 프로그램을 오른쪽 클릭해 <b className="text-foreground">제거</b>를 고르면, 끝난 뒤 남은 흔적을 찾아
-                백업하고 정리할 수 있어요. 지우기 전에 무엇이 남을지 보려면{" "}
-                <b className="whitespace-nowrap text-foreground">흔적 미리 보기</b>를 고르세요.
-              </p>
+      {/* 오른쪽 클릭 메뉴가 있는 데스크톱 목록에서만. 닫으면 아래가 튀지 않게 접히며 사라진다 (간격 gap-6만큼 함께 줄인다). */}
+      <AnimatePresence initial={false}>
+        {!introDismissed && tab === "desktop" && (
+          <motion.div
+            key="intro"
+            exit={reduceMotion ? { opacity: 0 } : { opacity: 0, height: 0, marginBottom: -24 }}
+            transition={{ duration: 0.22, ease: [0.22, 1, 0.36, 1] }}
+            className="overflow-hidden"
+          >
+            <div className="flex items-start gap-3 rounded-2xl border border-primary/30 bg-primary/8 px-5 py-4 text-sm">
+              <span className="mt-0.5 flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary/15 text-primary">
+                <MousePointerClick className="size-4" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <p className="font-medium">프로그램 메뉴에서 제거해요</p>
+                <p className="mt-1 text-muted-foreground">
+                  지울 프로그램을 오른쪽 클릭하거나 <b className="text-foreground">⋯</b>를 눌러{" "}
+                  <b className="text-foreground">제거</b>를 고르면, 끝난 뒤 남은 흔적을 찾아 백업하고 정리할 수 있어요.
+                  항목을 누르면 열리는 자세히 보기에도 같은 버튼이 있어요. 지우기 전에 무엇이 남을지 보려면{" "}
+                  <b className="whitespace-nowrap text-foreground">흔적 미리 보기</b>를 고르세요.
+                </p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={dismissIntro}>
+                알겠어요
+              </Button>
             </div>
-            <Button variant="ghost" size="sm" onClick={dismissIntro}>
-              알겠어요
-            </Button>
-          </div>
-        </FadeUp>
-      )}
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {tab === "store" ? (
         <FadeUp>
-          <StoreAppsSection initialQuery={storeQuery} />
+          <StoreAppsSection query={storeQuery} onQueryChange={setStoreQuery} searchRef={searchRef} />
         </FadeUp>
       ) : (
         <>
@@ -326,7 +341,7 @@ export function ProgramsPage() {
               label="설치된 프로그램"
               value={loading ? null : apps.isError ? "—" : <CountUp value={stats.total} />}
               unit="개"
-              hint={loading ? undefined : `EXE ${stats.total - stats.msi} · MSI ${stats.msi}`}
+              hint={loading || apps.isError ? undefined : `EXE ${stats.total - stats.msi} · MSI ${stats.msi}`}
             />
             <StatCard
               icon={HardDrive}
@@ -334,25 +349,30 @@ export function ProgramsPage() {
               label="전체 예상 용량"
               value={loading ? null : apps.isError ? "—" : <CountUp value={stats.totalKb} format={formatSize} />}
               hint={
-                sizes.isFetching
-                  ? `크기를 재는 중${sizeProgressText(sizeProgress)}`
-                  : stats.measured > 0
-                    ? `기록한 크기 + 직접 잰 ${stats.measured}개`
-                    : "설치 프로그램이 기록한 크기 기준"
+                loading || apps.isError
+                  ? undefined
+                  : sizes.isFetching
+                    ? `크기를 재는 중${sizeProgressText(sizeProgress)}`
+                    : stats.measured > 0
+                      ? `기록한 크기 + 직접 잰 ${stats.measured}개`
+                      : "설치 프로그램이 기록한 크기 기준"
               }
             />
             <StatCard
-              icon={TriangleAlert}
-              tone={stats.broken > 0 ? "chart-3" : "chart-5"}
+              // 다 읽은 뒤 0개일 때만 초록 체크. 읽는 중이거나 못 읽었으면 아무 색도 아니다.
+              icon={known && stats.broken === 0 ? CircleCheck : TriangleAlert}
+              tone={!known ? "muted" : stats.broken > 0 ? "chart-3" : "chart-5"}
               label="언인스톨러 없음"
               value={loading ? null : apps.isError ? "—" : <CountUp value={stats.broken} />}
               unit="개"
               hint={
-                filter === "broken"
-                  ? "필터 적용 중 · 다시 누르면 해제"
-                  : stats.broken > 0
-                    ? "눌러서 해당 항목만 보기"
-                    : "모든 프로그램에 언인스톨러가 있어요"
+                !known || noneInstalled
+                  ? undefined
+                  : filter === "broken"
+                    ? "필터 적용 중 · 다시 누르면 해제"
+                    : stats.broken > 0
+                      ? "눌러서 해당 항목만 보기"
+                      : "모든 프로그램에 언인스톨러가 있어요"
               }
               active={filter === "broken"}
               onClick={
@@ -531,9 +551,15 @@ export function ProgramsPage() {
                   <div className="mb-1 flex size-12 items-center justify-center rounded-2xl bg-muted">
                     <SearchX className="size-6 text-muted-foreground" />
                   </div>
-                  <p className="font-medium">조건에 맞는 프로그램이 없어요</p>
+                  <p className="font-medium">
+                    {noneInstalled ? "설치된 프로그램을 찾지 못했어요" : "조건에 맞는 프로그램이 없어요"}
+                  </p>
                   <p className="text-sm text-muted-foreground">
-                    {query ? `"${query}"` : "선택한 필터"}에 해당하는 항목이 없어요.
+                    {noneInstalled
+                      ? "Windows에 등록된 프로그램이 없어요. 새로 설치했다면 새로고침해 보세요."
+                      : query
+                        ? `"${query}" 검색 결과가 없어요.`
+                        : "선택한 필터에 해당하는 프로그램이 없어요."}
                   </p>
                   <div className="mt-2 flex flex-wrap justify-center gap-2">
                     {storeMatches > 0 && (
@@ -548,9 +574,11 @@ export function ProgramsPage() {
                         Store 앱에서 {storeMatches}개 보기
                       </Button>
                     )}
-                    <Button variant="outline" size="sm" className="rounded-lg" onClick={resetFilters}>
-                      검색과 필터 지우기
-                    </Button>
+                    {!noneInstalled && (
+                      <Button variant="outline" size="sm" className="rounded-lg" onClick={resetFilters}>
+                        검색과 필터 지우기
+                      </Button>
+                    )}
                   </div>
                 </motion.div>
               ) : (
