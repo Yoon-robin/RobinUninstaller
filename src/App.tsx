@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { ChevronRight } from "lucide-react"
 import { MotionConfig, motion, useReducedMotion } from "motion/react"
@@ -45,13 +45,52 @@ const titles: Record<Page, string> = {
 
 export default function App() {
   const [page, setPage] = useState<Page>("programs")
-  // 내용이 제목 표시줄 밑으로 지나가기 시작하면 표시줄을 유리처럼 만든다.
+  // 내용을 내리면 제목 표시줄 아래에 구분선을 그린다.
   const [scrolled, setScrolled] = useState(false)
   // 시작 화면이 걷히면 앱 화면이 살짝 커지며 자리 잡는다
   const [ready, setReady] = useState(false)
   const onSplashDone = useCallback(() => setReady(true), [])
   const reduce = useReducedMotion()
-  useEffect(() => setScrolled(false), [page])
+
+  // 페이지마다 스크롤 위치를 따로 기억한다. 모든 페이지가 <main> 하나를 같이 써서, 그대로 두면 프로그램 목록을
+  // 내린 채 설정으로 가면 설정이 중간부터 열린다. 처음 여는 페이지는 맨 위에서 시작한다.
+  const main = useRef<HTMLElement>(null)
+  const positions = useRef<Partial<Record<Page, number>>>({})
+  const restoring = useRef(false)
+  useLayoutEffect(() => {
+    const el = main.current
+    if (!el) return
+    const target = positions.current[page] ?? 0
+    restoring.current = true
+    el.scrollTop = target
+    setScrolled(el.scrollTop > 4)
+    // 새로 그린 페이지는 내용이 늦게 차서 처음에는 그만큼 내려가지 못할 수 있다. 잠깐 동안 다시 맞춘다.
+    let frame = 0
+    const started = performance.now()
+    const retry = () => {
+      if (el.scrollTop < target - 1 && performance.now() - started < 600) {
+        el.scrollTop = target
+        frame = requestAnimationFrame(retry)
+      } else {
+        restoring.current = false
+        setScrolled(el.scrollTop > 4)
+      }
+    }
+    frame = requestAnimationFrame(retry)
+    // 사용자가 그 사이 직접 굴리면 그만둔다
+    const stop = () => {
+      cancelAnimationFrame(frame)
+      restoring.current = false
+    }
+    el.addEventListener("wheel", stop, { passive: true, once: true })
+    el.addEventListener("keydown", stop, { once: true })
+    return () => {
+      cancelAnimationFrame(frame)
+      restoring.current = false
+      el.removeEventListener("wheel", stop)
+      el.removeEventListener("keydown", stop)
+    }
+  }, [page])
   // 정리·되돌리기·제거 중에 창을 닫으면(X, Alt+F4) 한 번 막고 묻는다. 그래도 닫겠다면 그때 닫는다.
   useEffect(() => {
     const win = getCurrentWindow()
@@ -108,12 +147,12 @@ export default function App() {
                 <SidebarProvider className="h-svh">
                   <AppSidebar page={page} onNavigate={setPage} />
                   <SidebarInset className="relative h-svh min-w-0 overflow-hidden bg-transparent">
-                    {/* 제목 표시줄: 빈 곳을 끌면 창이 움직이고, 더블클릭하면 최대화된다. 내용 위에 떠 있다. */}
+                    {/* 제목 표시줄: 빈 곳을 끌면 창이 움직이고, 더블클릭하면 최대화된다. 스크롤하는 내용 위쪽에 고정돼 있다. */}
                     <header
                       data-tauri-drag-region
                       className={cn(
                         // 불투명한 바탕: 스크롤한 내용이 제목 줄 뒤로 비치지 않는다. 스크롤하면 아래 구분선만 보인다.
-                        "absolute inset-x-0 top-0 z-20 flex h-12 items-center gap-1 bg-background pl-2 shadow-[0_1px_0_transparent] transition-shadow duration-200",
+                        "relative z-20 flex h-12 shrink-0 items-center gap-1 bg-background pl-2 shadow-[0_1px_0_transparent] transition-shadow duration-200",
                         scrolled && "shadow-[0_1px_0_var(--border)]",
                       )}
                     >
@@ -143,9 +182,15 @@ export default function App() {
                       <div className="mx-1.5 h-4 w-px bg-border" />
                       <WindowControls />
                     </header>
+                    {/* 스크롤은 제목 줄 아래에서 시작한다 (제목 줄이 스크롤바 위쪽을 가리지 않게) */}
                     <main
-                      className="relative flex-1 scroll-pt-16 scroll-pb-4 overflow-y-auto pt-12"
-                      onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 4)}
+                      ref={main}
+                      className="relative min-h-0 flex-1 scroll-pt-4 scroll-pb-4 overflow-y-auto"
+                      onScroll={(e) => {
+                        const top = e.currentTarget.scrollTop
+                        if (!restoring.current) positions.current[page] = top
+                        setScrolled(top > 4)
+                      }}
                     >
                       {/* 목록 페이지는 숨기기만 해서 스크롤·검색 상태를 유지한다. */}
                       <div hidden={page !== "programs"} className="min-h-full">
