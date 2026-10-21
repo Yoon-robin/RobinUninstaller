@@ -32,6 +32,7 @@ import { FolderAnalysisCard } from "./folder-analysis"
 import { LargeFilesCard } from "./large-files"
 import { BigProgramsCard } from "./big-programs"
 import { ErrorState } from "@/components/error-state"
+import { useBusy } from "@/lib/busy"
 
 const SCAN_KEY = ["storage-scan"]
 const DISK_KEY = ["disk-usage"]
@@ -467,6 +468,7 @@ function CleanDialog({
   onDone: () => void
 }) {
   const [busy, setBusy] = useState(false)
+  useBusy(busy)
   // 정리를 시작할 때 고른 항목. 끝나면 화면이 선택을 비우고 다시 찾으므로, 결과는 이 목록으로 보여 준다
   const [ranItems, setRanItems] = useState<StorageCategory[] | null>(null)
   const items = ranItems ?? selectedItems

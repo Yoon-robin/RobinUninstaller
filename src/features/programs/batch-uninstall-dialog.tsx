@@ -19,6 +19,7 @@ import { focusMarked } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { AppIcon } from "./app-icon"
+import { useBusy } from "@/lib/busy"
 
 type Status =
   | { kind: "waiting" }
@@ -133,6 +134,7 @@ export function BatchUninstallDialog({
   }
 
   const running = phase === "running"
+  useBusy(running)
   const close = () => {
     if (!running) onClose()
   }

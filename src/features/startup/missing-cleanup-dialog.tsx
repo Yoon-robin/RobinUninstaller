@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/button"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { CleanResult, Cleaning } from "@/features/leftovers/clean-flow"
+import { useBusy } from "@/lib/busy"
 
 type Stage = { step: "select" } | { step: "cleaning" } | { step: "done"; op: Operation }
 
@@ -27,8 +28,10 @@ export function MissingCleanupDialog({
   const skippedTasks = entries.filter((e) => e.targetMissing && e.source === "task").length
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [stage, setStage] = useState<Stage>({ step: "select" })
+  useBusy(stage.step === "cleaning")
   const [error, setError] = useState<string | null>(null)
   const [elevating, setElevating] = useState(false)
+  useBusy(elevating)
 
   // 열 때마다 처음 상태로. 현재 사용자 항목만 미리 고르고, 모든 사용자(관리자) 항목은 직접 고르게 한다.
   // 화면에 그리기 전에 바꿔서 지난 결과가 잠깐 보이지 않게 한다.

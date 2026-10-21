@@ -35,6 +35,7 @@ import { Button } from "@/components/ui/button"
 import { ErrorState } from "@/components/error-state"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
+import { useBusy } from "@/lib/busy"
 
 const statusLabels: Record<ItemStatus, { label: string; tone: string }> = {
   pending: { label: "대기", tone: "text-muted-foreground" },
@@ -183,6 +184,7 @@ function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () =
   const settings = useQuery({ queryKey: ["settings"], queryFn: settingsApi.get, enabled: open })
   const [days, setDays] = useState<number | null>(null)
   const [busy, setBusy] = useState(false)
+  useBusy(busy)
   // 지우는 동안: 몇 번째 백업인지, 지운 크기
   const [progress, setProgress] = useState<ScanProgress | null>(null)
   const preview = useQuery({
@@ -269,6 +271,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
   const queryClient = useQueryClient()
   const [open, setOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
+  useBusy(busy != null)
   // 되돌리는 동안: 지금 항목, 복사한 파일 수 (관리자 권한 작업자는 따로 도는 프로세스라 진행을 알 수 없다)
   const [progress, setProgress] = useState<ScanProgress | null>(null)
 
@@ -447,6 +450,7 @@ function OperationCard({ op, onDelete }: { op: Operation; onDelete: () => void }
 function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: () => void }) {
   const queryClient = useQueryClient()
   const [busy, setBusy] = useState(false)
+  useBusy(busy)
   const [progress, setProgress] = useState<ScanProgress | null>(null)
   // 닫히는 애니메이션 동안 op가 null이 돼도 문구가 깨지지 않게 마지막 값을 보여 준다
   const [shown, setShown] = useState(op)

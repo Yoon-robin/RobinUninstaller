@@ -18,6 +18,7 @@ import { DrawnCheck } from "@/components/drawn-check"
 import { EASE_OUT_QUINT } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { ScanProgressView } from "@/components/scan-progress"
+import { useBusy } from "@/lib/busy"
 
 const panel = {
   initial: { opacity: 0, y: 8 },
@@ -135,6 +136,7 @@ export function CleanResult({
   const queryClient = useQueryClient()
   const [current, setCurrent] = useState(op)
   const [elevating, setElevating] = useState(false)
+  useBusy(elevating)
   const [error, setError] = useState<string | null>(null)
 
   const removed = countStatus(current, "removed") + countStatus(current, "alreadyGone")

@@ -17,6 +17,7 @@ import { AutoHeight, EASE_OUT_QUINT, focusMarked } from "@/components/motion"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { AppIcon } from "./app-icon"
+import { useBusy } from "@/lib/busy"
 
 type Phase =
   { step: "confirm" } | { step: "running"; event: UninstallEvent | null } | { step: "done"; outcome: UninstallOutcome }
@@ -38,6 +39,7 @@ export function UninstallDialog({
   const [phase, setPhase] = useState<Phase>({ step: "confirm" })
   const queryClient = useQueryClient()
   const running = phase.step === "running"
+  useBusy(running)
   // 사라지는 중인 화면의 단추도 잠깐 눌리므로, 두 번 눌러도 한 번만 시작한다
   const starting = useRef(false)
 

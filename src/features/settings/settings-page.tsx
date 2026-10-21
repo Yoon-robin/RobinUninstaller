@@ -28,6 +28,7 @@ import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/compone
 import { Skeleton } from "@/components/ui/skeleton"
 import { Switch } from "@/components/ui/switch"
 import { useUpdates } from "@/features/updates/updates"
+import { useBusy } from "@/lib/busy"
 
 function Section({
   icon: Icon,
@@ -119,6 +120,7 @@ export function SettingsPage() {
   const [pendingRetention, setPendingRetention] = useState<number | null | undefined>(undefined)
   const [confirmPrune, setConfirmPrune] = useState(false)
   const [busy, setBusy] = useState(false)
+  useBusy(busy)
 
   // "지금 정리"로 백업을 지우는 동안: 몇 번째 백업인지, 지운 크기
   const [pruneProgress, setPruneProgress] = useState<ScanProgress | null>(null)

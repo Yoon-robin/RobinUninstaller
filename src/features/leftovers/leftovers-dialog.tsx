@@ -45,6 +45,7 @@ import { Checkbox } from "@/components/ui/checkbox"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { describeEvidence, kindLabels } from "./evidence"
 import { ErrorState } from "@/components/error-state"
+import { useBusy } from "@/lib/busy"
 
 /** `force`: 언인스톨러가 없는 프로그램의 강제 제거. 등록 정보와 파일을 같은 백업 흐름으로 정리한다. */
 export type LeftoverTarget = { id: string; name: string; removed: boolean; force?: boolean }
@@ -72,6 +73,7 @@ export function LeftoversDialog({
   const ready = !force || (check.data != null && check.data.blocked == null && check.data.running.length === 0)
   // 확인·정리·결과 단계에서는 다시 찾기를 막고, 정리 중에는 창도 닫지 못하게 한다
   const [locked, setLocked] = useState<"none" | "stage" | "busy">("none")
+  useBusy(locked === "busy")
   useEffect(() => setLocked("none"), [targetProp])
   const scan = useQuery({
     queryKey: ["leftovers", target?.id],

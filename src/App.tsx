@@ -20,6 +20,9 @@ import { Toaster } from "@/components/ui/sonner"
 import { TooltipProvider } from "@/components/ui/tooltip"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT } from "@/components/motion"
+import { isBusy } from "@/lib/busy"
+import { getCurrentWindow } from "@tauri-apps/api/window"
+import { toast } from "sonner"
 
 // retry: false — 모두 이 PC를 읽는 작업이라 다시 해도 결과가 같다. 기본값(3번 다시)이면 실패한 스캔을
 // 오류를 보여 주기 전에 몇 초씩 세 번 더 돈다.
@@ -45,6 +48,22 @@ export default function App() {
   const onSplashDone = useCallback(() => setReady(true), [])
   const reduce = useReducedMotion()
   useEffect(() => setScrolled(false), [page])
+  // 정리·되돌리기·제거 중에 창을 닫으면(X, Alt+F4) 한 번 막고 묻는다. 그래도 닫겠다면 그때 닫는다.
+  useEffect(() => {
+    const win = getCurrentWindow()
+    const unlisten = win.onCloseRequested((e) => {
+      if (!isBusy()) return
+      e.preventDefault()
+      toast.warning("작업이 끝난 뒤에 닫아 주세요", {
+        id: "close-while-busy",
+        description: "정리·되돌리기·제거가 진행 중이에요. 지금 닫으면 중간에 멈출 수 있어요.",
+        action: { label: "그래도 닫기", onClick: () => void win.destroy() },
+      })
+    })
+    return () => {
+      unlisten.then((off) => off()).catch(() => {})
+    }
+  }, [])
   // 페이지를 옮기면 새 페이지 제목에 포커스를 둔다 (처음 열 때는 건드리지 않는다)
   const firstPage = useRef(true)
   useEffect(() => {
