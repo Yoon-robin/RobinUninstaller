@@ -274,7 +274,21 @@
 .scan-sweep {
   animation: scan-sweep 1.4s linear infinite;
 }
+/* 테두리를 따라 도는 빛 (components/ui/border-beam.tsx) */
+@keyframes border-beam {
+  to {
+    offset-distance: 100%;
+  }
+}
+.border-beam {
+  animation: border-beam var(--beam-duration, 6s) linear var(--beam-delay, 0s) infinite;
+}
 @media (prefers-reduced-motion: reduce) {
+  /* 멈춘 모양으로 둔다: 빛은 한 자리에, 로딩 자리표시는 깜빡이지 않게 */
+  .border-beam,
+  .animate-pulse {
+    animation: none;
+  }
   .scan-sweep {
     animation: none;
     width: 100%;

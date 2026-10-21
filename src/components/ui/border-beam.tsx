@@ -1,7 +1,7 @@
 // 출처: Magic UI Border Beam (https://magicui.design/docs/components/border-beam)
 // MIT License, Copyright (c) Magic UI
 
-import { motion, type MotionStyle, type Transition } from "motion/react"
+import type { Transition } from "motion/react"
 
 import { cn } from "@/lib/utils"
 
@@ -74,9 +74,11 @@ export const BorderBeam = ({
         } as React.CSSProperties
       }
     >
-      <motion.div
+      {/* CSS 애니메이션으로 돈다 (motion의 initial={false}가 첫 등장에서 멈춰 버렸고, 움직임 줄이기에서도 계속 돌았다).
+          움직임 줄이기에서는 index.css가 멈춘 모양으로 둔다. */}
+      <div
         className={cn(
-          "absolute aspect-square",
+          "border-beam absolute aspect-square",
           "bg-linear-to-l from-(--color-from) via-(--color-to) to-transparent",
           className
         )}
@@ -84,24 +86,15 @@ export const BorderBeam = ({
           {
             width: size,
             offsetPath: `rect(0 auto auto 0 round ${size}px)`,
+            offsetDistance: `${initialOffset}%`,
             "--color-from": colorFrom,
             "--color-to": colorTo,
+            "--beam-duration": `${transition?.duration ?? duration}s`,
+            "--beam-delay": `${-delay}s`,
+            animationDirection: reverse ? "reverse" : undefined,
             ...style,
-          } as MotionStyle
+          } as React.CSSProperties
         }
-        initial={{ offsetDistance: `${initialOffset}%` }}
-        animate={{
-          offsetDistance: reverse
-            ? [`${100 - initialOffset}%`, `${-initialOffset}%`]
-            : [`${initialOffset}%`, `${100 + initialOffset}%`],
-        }}
-        transition={{
-          repeat: Infinity,
-          ease: "linear",
-          duration,
-          delay: -delay,
-          ...transition,
-        }}
       />
     </div>
   )
