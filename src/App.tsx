@@ -4,6 +4,7 @@ import { ChevronRight } from "lucide-react"
 import { MotionConfig, motion, useReducedMotion } from "motion/react"
 
 import { AppSidebar, type Page } from "@/components/app-sidebar"
+import { AppReadyContext } from "@/lib/app-ready"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { StartupSplash } from "@/components/startup-splash"
 import { UpdatesProvider } from "@/features/updates/updates"
@@ -186,84 +187,86 @@ export default function App() {
           {/* 첫 툴팁은 잠깐 기다렸다가, 이어서 옮겨 다닐 때는 바로 뜬다. */}
           <TooltipProvider delayDuration={400} skipDelayDuration={300}>
             <UpdatesProvider ready={ready}>
-              <motion.div
-                className="h-svh"
-                initial={reduce ? false : { opacity: 0, scale: 0.985 }}
-                animate={ready || reduce ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.985 }}
-                transition={{ duration: 0.55, ease: EASE_OUT_QUINT }}
-              >
-                <SidebarProvider className="h-svh" open={sidebarOpen} onOpenChange={changeSidebar}>
-                  <AppSidebar page={page} onNavigate={setPage} />
-                  <SidebarInset className="relative h-svh min-w-0 overflow-hidden bg-transparent">
-                    {/* 제목 표시줄: 빈 곳을 끌면 창이 움직이고, 더블클릭하면 최대화된다. 스크롤하는 내용 위쪽에 고정돼 있다. */}
-                    <header
-                      data-tauri-drag-region
-                      // 대화상자·시트는 이 줄 아래에만 덮인다. 열려 있는 동안에도 창을 끌고 줄이고 닫을 수 있게
-                      // (모달이 body에 거는 pointer-events: none을 이 줄만 되돌린다).
-                      data-app-titlebar
-                      ref={titlebar}
-                      className={cn(
-                        "pointer-events-auto",
-                        // 불투명한 바탕: 스크롤한 내용이 제목 줄 뒤로 비치지 않는다. 스크롤하면 아래 구분선만 보인다.
-                        "relative z-20 flex h-12 shrink-0 items-center gap-1 bg-background pl-2 shadow-[0_1px_0_transparent] transition-shadow duration-200",
-                        scrolled && "shadow-[0_1px_0_var(--border)]",
-                      )}
-                    >
-                      <IconTooltip label="사이드바 접기/펼치기">
-                        <SidebarTrigger className="size-8 rounded-md text-muted-foreground hover:bg-foreground/8 hover:text-foreground" />
-                      </IconTooltip>
-                      <div
+              <AppReadyContext.Provider value={ready}>
+                <motion.div
+                  className="h-svh"
+                  initial={reduce ? false : { opacity: 0, scale: 0.985 }}
+                  animate={ready || reduce ? { opacity: 1, scale: 1 } : { opacity: 0, scale: 0.985 }}
+                  transition={{ duration: 0.55, ease: EASE_OUT_QUINT }}
+                >
+                  <SidebarProvider className="h-svh" open={sidebarOpen} onOpenChange={changeSidebar}>
+                    <AppSidebar page={page} onNavigate={setPage} />
+                    <SidebarInset className="relative h-svh min-w-0 overflow-hidden bg-transparent">
+                      {/* 제목 표시줄: 빈 곳을 끌면 창이 움직이고, 더블클릭하면 최대화된다. 스크롤하는 내용 위쪽에 고정돼 있다. */}
+                      <header
                         data-tauri-drag-region
-                        className="pointer-events-none flex items-center gap-1.5 text-sm text-muted-foreground"
+                        // 대화상자·시트는 이 줄 아래에만 덮인다. 열려 있는 동안에도 창을 끌고 줄이고 닫을 수 있게
+                        // (모달이 body에 거는 pointer-events: none을 이 줄만 되돌린다).
+                        data-app-titlebar
+                        ref={titlebar}
+                        className={cn(
+                          "pointer-events-auto",
+                          // 불투명한 바탕: 스크롤한 내용이 제목 줄 뒤로 비치지 않는다. 스크롤하면 아래 구분선만 보인다.
+                          "relative z-20 flex h-12 shrink-0 items-center gap-1 bg-background pl-2 shadow-[0_1px_0_transparent] transition-shadow duration-200",
+                          scrolled && "shadow-[0_1px_0_var(--border)]",
+                        )}
                       >
-                        <span>RobinX</span>
-                        <ChevronRight className="size-3.5" />
-                        {/* 새 제목만 떠오르고 옛 제목은 바로 사라진다. 나가는 애니메이션을 두면 탭을 빠르게 바꿀 때
-                          사라지는 중인 제목들이 겹겹이 쌓여 보였다. */}
-                        <motion.span
-                          key={page}
-                          className="font-medium text-foreground"
-                          initial={{ opacity: 0, y: 4 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          transition={{ duration: 0.18, ease: EASE_OUT_QUINT }}
+                        <IconTooltip label="사이드바 접기/펼치기">
+                          <SidebarTrigger className="size-8 rounded-md text-muted-foreground hover:bg-foreground/8 hover:text-foreground" />
+                        </IconTooltip>
+                        <div
+                          data-tauri-drag-region
+                          className="pointer-events-none flex items-center gap-1.5 text-sm text-muted-foreground"
                         >
-                          {titles[page]}
-                        </motion.span>
-                      </div>
-                      <div data-tauri-drag-region className="h-full flex-1" />
-                      <ThemeToggle />
-                      <div className="ml-1.5 h-4 w-px bg-border" />
-                      <WindowControls />
-                    </header>
-                    {/* 스크롤은 제목 줄 아래에서 시작한다 (제목 줄이 스크롤바 위쪽을 가리지 않게) */}
-                    <main
-                      ref={main}
-                      className="relative min-h-0 flex-1 scroll-pt-4 scroll-pb-4 overflow-y-auto"
-                      onScroll={(e) => {
-                        const top = e.currentTarget.scrollTop
-                        if (!restoring.current) positions.current[page] = top
-                        setScrolled(top > 4)
-                      }}
-                    >
-                      {/* 목록 페이지는 숨기기만 해서 스크롤·검색 상태를 유지한다. */}
-                      <div hidden={page !== "programs"} className="min-h-full">
-                        <ProgramsPage />
-                      </div>
-                      {page === "leftovers" && <LeftoversPage />}
-                      {page === "restore" && <RestorePage />}
-                      {page === "storage" && <StoragePage />}
-                      {page === "startup" && <StartupPage />}
-                      {page === "settings" && <SettingsPage />}
-                    </main>
-                  </SidebarInset>
-                </SidebarProvider>
-              </motion.div>
-              <Toaster
-                position={toastsUp ? "top-center" : "bottom-right"}
-                offset={toastsUp ? { top: 60 } : undefined}
-                containerAriaLabel="알림"
-              />
-              <StartupSplash onDone={onSplashDone} />
+                          <span>RobinX</span>
+                          <ChevronRight className="size-3.5" />
+                          {/* 새 제목만 떠오르고 옛 제목은 바로 사라진다. 나가는 애니메이션을 두면 탭을 빠르게 바꿀 때
+                          사라지는 중인 제목들이 겹겹이 쌓여 보였다. */}
+                          <motion.span
+                            key={page}
+                            className="font-medium text-foreground"
+                            initial={{ opacity: 0, y: 4 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: 0.18, ease: EASE_OUT_QUINT }}
+                          >
+                            {titles[page]}
+                          </motion.span>
+                        </div>
+                        <div data-tauri-drag-region className="h-full flex-1" />
+                        <ThemeToggle />
+                        <div className="ml-1.5 h-4 w-px bg-border" />
+                        <WindowControls />
+                      </header>
+                      {/* 스크롤은 제목 줄 아래에서 시작한다 (제목 줄이 스크롤바 위쪽을 가리지 않게) */}
+                      <main
+                        ref={main}
+                        className="relative min-h-0 flex-1 scroll-pt-4 scroll-pb-4 overflow-y-auto"
+                        onScroll={(e) => {
+                          const top = e.currentTarget.scrollTop
+                          if (!restoring.current) positions.current[page] = top
+                          setScrolled(top > 4)
+                        }}
+                      >
+                        {/* 목록 페이지는 숨기기만 해서 스크롤·검색 상태를 유지한다. */}
+                        <div hidden={page !== "programs"} className="min-h-full">
+                          <ProgramsPage />
+                        </div>
+                        {page === "leftovers" && <LeftoversPage />}
+                        {page === "restore" && <RestorePage />}
+                        {page === "storage" && <StoragePage />}
+                        {page === "startup" && <StartupPage />}
+                        {page === "settings" && <SettingsPage />}
+                      </main>
+                    </SidebarInset>
+                  </SidebarProvider>
+                </motion.div>
+                <Toaster
+                  position={toastsUp ? "top-center" : "bottom-right"}
+                  offset={toastsUp ? { top: 60 } : undefined}
+                  containerAriaLabel="알림"
+                />
+                <StartupSplash onDone={onSplashDone} />
+              </AppReadyContext.Provider>
             </UpdatesProvider>
           </TooltipProvider>
         </MotionConfig>

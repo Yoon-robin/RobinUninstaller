@@ -23,6 +23,7 @@ import { toast } from "sonner"
 
 import { api, storeApi, canUninstall, needsForce, type InstalledApplication } from "@/lib/api"
 import { formatSize } from "@/lib/format"
+import { useAppReady } from "@/lib/app-ready"
 import { cn } from "@/lib/utils"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { CountUp, FadeUp, Stagger, staggerContainer } from "@/components/motion"
@@ -198,12 +199,15 @@ export function ProgramsPage() {
   const reduceMotion = useReducedMotion()
 
   // 목록이 처음 나타날 때만 순서대로 등장시킨다. 검색·필터·정렬 때는 움직이지 않는다.
-  const [intro, setIntro] = useState(true)
+  // 시작 화면이 걷힌 뒤에 시작한다 (그 뒤에서 끝나 버리지 않게).
+  const ready = useAppReady()
+  const [introDone, setIntroDone] = useState(false)
+  const intro = ready && !introDone
   useEffect(() => {
-    if (!apps.data) return
-    const t = setTimeout(() => setIntro(false), 1400)
+    if (!apps.data || !ready) return
+    const t = setTimeout(() => setIntroDone(true), 1400)
     return () => clearTimeout(t)
-  }, [apps.data])
+  }, [apps.data, ready])
 
   // Ctrl+F: 검색창으로. 키보드 동작이라 애니메이션 없이 바로.
   useEffect(() => {
@@ -368,7 +372,7 @@ export function ProgramsPage() {
               icon={Package}
               tone="chart-1"
               label="설치된 프로그램"
-              value={loading ? null : apps.isError ? "—" : <CountUp value={stats.total} />}
+              value={loading || !ready ? null : apps.isError ? "—" : <CountUp value={stats.total} />}
               unit="개"
               hint={loading || apps.isError ? undefined : `EXE ${stats.total - stats.msi} · MSI ${stats.msi}`}
             />
@@ -376,7 +380,9 @@ export function ProgramsPage() {
               icon={HardDrive}
               tone="chart-2"
               label="전체 예상 용량"
-              value={loading ? null : apps.isError ? "—" : <CountUp value={stats.totalKb} format={formatSize} />}
+              value={
+                loading || !ready ? null : apps.isError ? "—" : <CountUp value={stats.totalKb} format={formatSize} />
+              }
               hint={
                 loading || apps.isError
                   ? undefined
@@ -392,7 +398,7 @@ export function ProgramsPage() {
               icon={known && stats.broken === 0 ? CircleCheck : TriangleAlert}
               tone={!known ? "muted" : stats.broken > 0 ? "chart-3" : "chart-5"}
               label="언인스톨러 없음"
-              value={loading ? null : apps.isError ? "—" : <CountUp value={stats.broken} />}
+              value={loading || !ready ? null : apps.isError ? "—" : <CountUp value={stats.broken} />}
               unit="개"
               hint={
                 !known || noneInstalled
@@ -502,16 +508,19 @@ export function ProgramsPage() {
                     <IconTooltip
                       label={sizes.isFetching ? "크기를 다 잰 뒤에 내보낼 수 있어요" : "목록 내보내기 (CSV)"}
                     >
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        className="size-9 rounded-lg"
-                        disabled={loading || sizes.isFetching}
-                        onClick={exportList}
-                        aria-label="목록 내보내기"
-                      >
-                        <FileDown />
-                      </Button>
+                      {/* 꺼진 버튼은 마우스 이벤트를 받지 않아 툴팁이 뜨지 않으므로 바깥 칸이 받는다 */}
+                      <span tabIndex={loading || sizes.isFetching ? 0 : -1} className="inline-flex rounded-lg">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="size-9 rounded-lg"
+                          disabled={loading || sizes.isFetching}
+                          onClick={exportList}
+                          aria-label="목록 내보내기"
+                        >
+                          <FileDown />
+                        </Button>
+                      </span>
                     </IconTooltip>
                     <IconTooltip label="새로고침">
                       <Button

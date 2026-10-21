@@ -6,6 +6,7 @@ import {
   CircleAlert,
   ExternalLink,
   Loader2,
+  RefreshCw,
   RotateCcw,
   Sparkles,
   ShieldAlert,
@@ -65,15 +66,47 @@ export function UninstallDialog({
       starting.current = false
     }
     setPhase({ step: "done", outcome })
-    if (outcome.kind === "removed" || outcome.kind === "removedRebootRequired") {
-      onRemoved(app)
-      queryClient.invalidateQueries({ queryKey: ["installed-apps"] })
-      queryClient.invalidateQueries({ queryKey: ["recently-removed"] })
+    if (outcome.kind === "removed" || outcome.kind === "removedRebootRequired") removedApp.current = app
+  }
+
+  // 제거한 프로그램은 창을 닫은 뒤에 목록에서 뺀다 (접히며 사라지는 모습이 창 뒤에서 끝나 버리지 않게)
+  const removedApp = useRef<InstalledApplication | null>(null)
+  const flushRemoved = () => {
+    const removed = removedApp.current
+    if (!removed) return
+    removedApp.current = null
+    onRemoved(removed)
+    queryClient.invalidateQueries({ queryKey: ["installed-apps"] })
+    queryClient.invalidateQueries({ queryKey: ["recently-removed"] })
+  }
+
+  // 언인스톨러를 다시 실행하지 않고, 지금 설치 목록에 아직 있는지만 다시 본다
+  const [rechecking, setRechecking] = useState(false)
+  const recheck = async () => {
+    if (!app) return
+    setRechecking(true)
+    try {
+      const list = await queryClient.fetchQuery({
+        queryKey: ["installed-apps"],
+        queryFn: api.listInstalledApps,
+        staleTime: 0,
+      })
+      if (!list.some((a) => a.id === app.id)) {
+        removedApp.current = app
+        setPhase({ step: "done", outcome: { kind: "removed" } })
+      } else {
+        toast.info("아직 설치 목록에 있어요")
+      }
+    } catch (e) {
+      toast.error("설치 목록을 다시 읽지 못했어요", { description: String(e) })
+    } finally {
+      setRechecking(false)
     }
   }
 
   const close = () => {
     if (running) return // 언인스톨러가 도는 동안은 닫지 않는다
+    flushRemoved()
     onClose()
     // 닫힘 애니메이션이 끝난 뒤 처음 상태로
     setTimeout(() => setPhase({ step: "confirm" }), 200)
@@ -115,6 +148,8 @@ export function UninstallDialog({
                       outcome={phase.outcome}
                       onClose={close}
                       onRetry={start}
+                      onRecheck={recheck}
+                      rechecking={rechecking}
                       onFindLeftovers={() => {
                         close()
                         onFindLeftovers(app)
@@ -318,12 +353,16 @@ function ResultBody({
   outcome,
   onClose,
   onRetry,
+  onRecheck,
+  rechecking,
   onFindLeftovers,
   onForceUninstall,
 }: {
   outcome: UninstallOutcome
   onClose: () => void
   onRetry: () => void
+  onRecheck: () => void
+  rechecking: boolean
   onFindLeftovers: () => void
   onForceUninstall?: () => void
 }) {
@@ -341,11 +380,25 @@ function ResultBody({
       </motion.div>
       <div>
         <p className="text-base font-semibold">{view.title}</p>
-        <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{view.body}</p>
+        {outcome.kind === "failed" ? (
+          // 실패 이유는 고르고 복사할 수 있게 (문제를 알려 줄 때 쓰도록, ErrorState와 같은 모양)
+          <p data-selectable className="mt-2 max-w-md font-mono text-xs break-all text-muted-foreground select-text">
+            {view.body}
+          </p>
+        ) : (
+          <p className="mt-1 text-sm leading-relaxed text-muted-foreground">{view.body}</p>
+        )}
       </div>
       {outcome.kind === "cannotRun" && outcome.command && <CommandPreview command={outcome.command} />}
       <div className="mt-2 flex gap-2">
-        {view.retry && (
+        {view.retry === "recheck" && (
+          // 종료 코드를 모르면 언인스톨러가 아직 열려 있을 수 있다. 다시 실행하지 않고 다시 확인만 한다.
+          <Button variant="outline" onClick={onRecheck} disabled={rechecking}>
+            <RefreshCw className={cn(rechecking && "animate-spin")} />
+            다시 확인
+          </Button>
+        )}
+        {view.retry === true && (
           <Button variant="outline" onClick={onRetry}>
             <RotateCcw />
             다시 시도
@@ -412,9 +465,9 @@ function describe(outcome: UninstallOutcome) {
           outcome.exitCode === 1602
             ? "언인스톨러에서 취소한 것 같아요."
             : outcome.exitCode == null
-              ? "언인스톨러가 아직 열려 있다면 마저 진행한 뒤 다시 시도해 주세요."
+              ? "언인스톨러가 아직 열려 있다면 마저 진행한 뒤 다시 확인해 주세요."
               : `언인스톨러가 끝났지만 프로그램이 그대로 남아 있어요. (종료 코드 ${outcome.exitCode})`,
-        retry: true,
+        retry: outcome.exitCode == null ? ("recheck" as const) : true,
       }
     case "elevationDenied":
       return {
