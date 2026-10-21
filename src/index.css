@@ -374,3 +374,43 @@ h1[tabindex="-1"]:focus {
 .below-titlebar {
   clip-path: polygon(0 0, var(--titlebar-left, 0px) 0, var(--titlebar-left, 0px) 3rem, 100% 3rem, 100% 100%, 0 100%);
 }
+
+/* ── Windows 고대비(강제 색) 모드 ─────────────────────────
+ * 배경색이 모두 시스템 색으로 바뀌어 선택 표시·스위치·막대가 사라지므로, 테두리·윤곽선과 시스템 색으로 다시 그린다.
+ * 키보드 초점은 위의 outline 규칙이 그대로 보인다.
+ */
+@media (forced-colors: active) {
+  /* 탭·보기 전환·필터 칩·테마·보관 기간·사이드바의 고른 칸 */
+  [role="tab"][aria-selected="true"],
+  [role="radio"][aria-checked="true"],
+  [aria-pressed="true"],
+  [aria-current="page"] {
+    outline: 2px solid Highlight;
+    outline-offset: -2px;
+  }
+  /* 스위치: 켜짐은 강조색으로 채우고, 꺼짐은 테두리만 */
+  [data-slot="switch"] {
+    border: 1px solid CanvasText;
+  }
+  [data-slot="switch"][data-state="checked"] {
+    forced-color-adjust: none;
+    background: Highlight;
+  }
+  [data-slot="switch-thumb"] {
+    forced-color-adjust: none;
+    background: CanvasText;
+  }
+  [data-slot="switch"][data-state="checked"] [data-slot="switch-thumb"] {
+    background: HighlightText;
+  }
+  /* 막대: 채움은 강조색, 사용 중(디스크)은 회색 글자색으로 구별 */
+  .forced-fill,
+  .scan-sweep {
+    forced-color-adjust: none;
+    background: Highlight !important;
+  }
+  .forced-fill-used {
+    forced-color-adjust: none;
+    background: GrayText !important;
+  }
+}

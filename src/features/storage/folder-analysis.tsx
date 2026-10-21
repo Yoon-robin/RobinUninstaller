@@ -145,7 +145,7 @@ export function FolderAnalysisCard() {
                     <div className="min-w-0 flex-1">
                       <p className={cn("truncate text-sm", item.isDir && "group-hover:underline")}>{item.name}</p>
                       <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                        <div className="h-full rounded-full bg-chart-2" style={{ width: `${pct}%` }} />
+                        <div className="forced-fill h-full rounded-full bg-chart-2" style={{ width: `${pct}%` }} />
                       </div>
                     </div>
                     <span

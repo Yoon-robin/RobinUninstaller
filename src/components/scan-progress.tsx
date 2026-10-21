@@ -71,7 +71,7 @@ export function ScanProgressView({
           <div className="scan-sweep h-full w-1/3 rounded-full bg-primary" />
         ) : (
           <div
-            className="h-full rounded-full bg-primary transition-[width] duration-300"
+            className="forced-fill h-full rounded-full bg-primary transition-[width] duration-300"
             style={{ width: `${Math.max(percent, 3)}%` }}
           />
         )}

@@ -133,7 +133,7 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
             {sizeRatio > 0 && (
               <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className={cn("h-full rounded-full bg-chart-2/70", introIndex != null && "bar-intro")}
+                  className={cn("forced-fill h-full rounded-full bg-chart-2/70", introIndex != null && "bar-intro")}
                   style={{ width: `${sizeRatio * 100}%` }}
                 />
               </div>

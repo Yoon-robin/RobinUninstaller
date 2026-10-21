@@ -74,7 +74,10 @@ export function BigProgramsCard() {
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium">{app.displayName}</p>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-chart-2" style={{ width: `${(kb / max) * 100}%` }} />
+                      <div
+                        className="forced-fill h-full rounded-full bg-chart-2"
+                        style={{ width: `${(kb / max) * 100}%` }}
+                      />
                     </div>
                   </div>
                   <span className="w-20 shrink-0 text-right text-sm font-semibold tabular-nums">

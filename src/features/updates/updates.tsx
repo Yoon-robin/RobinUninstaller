@@ -260,7 +260,10 @@ function UpdateDialog({ update, open, onClose }: { update: Update | null; open: 
               {percent == null ? (
                 <div className="scan-sweep h-full w-1/3 rounded-full bg-primary" />
               ) : (
-                <div className="h-full rounded-full bg-primary transition-[width]" style={{ width: `${percent}%` }} />
+                <div
+                  className="forced-fill h-full rounded-full bg-primary transition-[width]"
+                  style={{ width: `${percent}%` }}
+                />
               )}
             </div>
             <p className="text-xs text-muted-foreground tabular-nums">

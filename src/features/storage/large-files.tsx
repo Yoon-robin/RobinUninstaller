@@ -127,7 +127,7 @@ export function LargeFilesCard() {
                       {shortenPath(folderOf(f.path))}
                     </p>
                     <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-muted">
-                      <div className="h-full rounded-full bg-chart-2" style={{ width: `${pct}%` }} />
+                      <div className="forced-fill h-full rounded-full bg-chart-2" style={{ width: `${pct}%` }} />
                     </div>
                   </div>
                   <span className="hidden w-24 shrink-0 text-right text-xs text-muted-foreground sm:block">

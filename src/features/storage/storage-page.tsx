@@ -269,7 +269,10 @@ function DriveCard({
       </div>
       <div className="relative mt-3 h-3 overflow-hidden rounded-full bg-muted">
         <motion.div
-          className={cn("absolute inset-y-0 left-0 overflow-hidden rounded-full", low ? "bg-chart-3" : "bg-chart-2")}
+          className={cn(
+            "forced-fill-used absolute inset-y-0 left-0 overflow-hidden rounded-full",
+            low ? "bg-chart-3" : "bg-chart-2",
+          )}
           initial={{ width: 0 }}
           animate={{ width: `${usedPct}%` }}
           transition={{ duration: 0.8, ease: EASE_OUT_QUINT }}
@@ -277,19 +280,19 @@ function DriveCard({
           {/* 정리하면 비는 부분: 사용 중 막대 안쪽 끝에 붙여 둔다 (따로 두면 처음에 막대와 떨어져 떠 보였다).
               폭은 사용 중 막대에 대한 비율이고, 오른쪽 끝을 기준으로 늘고 준다. */}
           <div
-            className="absolute inset-y-0 right-0 w-full origin-right bg-primary/70 transition-transform duration-300 ease-(--ease-out-quint)"
+            className="forced-fill absolute inset-y-0 right-0 w-full origin-right bg-primary/70 transition-transform duration-300 ease-(--ease-out-quint)"
             style={{ transform: `scaleX(${usedPct > 0 ? planPct / usedPct : 0})` }}
           />
         </motion.div>
       </div>
       <div className="mt-2 flex gap-4 text-xs text-muted-foreground">
         <span className="flex items-center gap-1.5">
-          <span className="size-2 rounded-full bg-chart-2" />
+          <span className="forced-fill-used size-2 rounded-full bg-chart-2" />
           사용 중 {formatBytes(used)}
         </span>
         {plan > 0 && (
           <span className="flex items-center gap-1.5">
-            <span className="size-2 rounded-full bg-primary" />
+            <span className="forced-fill size-2 rounded-full bg-primary" />
             정리 예정 {formatBytes(plan)}
           </span>
         )}
@@ -783,7 +786,7 @@ function CleanProgressView({ live, items }: { live: LiveProgress; items: Storage
           <div className="scan-sweep h-full w-1/3 rounded-full bg-primary" />
         ) : (
           <div
-            className="h-full rounded-full bg-primary transition-[width] duration-300"
+            className="forced-fill h-full rounded-full bg-primary transition-[width] duration-300"
             style={{ width: `${percent}%` }}
           />
         )}
