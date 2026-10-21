@@ -317,6 +317,21 @@ fn open_apps_settings() -> Result<(), String> {
         .map_err(|e| e.to_string())
 }
 
+/// RobinX 저장소·문제 알리기 페이지를 기본 브라우저로 연다. 주소는 여기 정해 둔 것만 쓴다.
+#[tauri::command]
+fn open_project_page(page: String) -> Result<(), String> {
+    let url = match page.as_str() {
+        "home" => "https://github.com/Yoon-robin/RobinX",
+        "issues" => "https://github.com/Yoon-robin/RobinX/issues",
+        _ => return Err("알 수 없는 페이지예요".into()),
+    };
+    std::process::Command::new("explorer.exe")
+        .arg(url)
+        .spawn()
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
 /// Windows 작업 스케줄러를 연다 (숨은 예약 작업은 RobinX가 바꾸지 않고, 거기서 사용자가 직접 끈다).
 #[tauri::command]
 fn open_task_scheduler() -> Result<(), String> {
@@ -1501,6 +1516,7 @@ pub fn run() {
             uninstall_command_preview,
             uninstall_may_be_shared,
             open_task_scheduler,
+            open_project_page,
             stop_waiting_uninstall,
             recently_removed,
             scan_leftovers,

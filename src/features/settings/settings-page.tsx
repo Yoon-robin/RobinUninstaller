@@ -3,7 +3,10 @@ import { useQuery, useQueryClient } from "@tanstack/react-query"
 import {
   ArchiveRestore,
   Download,
+  ExternalLink,
   EyeOff,
+  FolderOpen,
+  Info,
   KeyRound,
   Loader2,
   Monitor,
@@ -16,7 +19,7 @@ import {
 } from "lucide-react"
 import { toast } from "sonner"
 
-import { settingsApi, type ScanProgress } from "@/lib/api"
+import { recoveryApi, openProjectPage, settingsApi, type ScanProgress } from "@/lib/api"
 import { ScanProgressView } from "@/components/scan-progress"
 import { formatBytes, formatDateTime } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -198,7 +201,9 @@ export function SettingsPage() {
     <Stagger className="relative mx-auto flex max-w-3xl min-w-0 flex-col gap-6 px-7 pt-7 pb-10">
       <FadeUp>
         <h1 className="text-2xl font-bold tracking-tight">설정</h1>
-        <p className="mt-1 text-sm text-muted-foreground">화면, 백업 보관, 잔여물 스캔에서 뺄 항목을 정해요.</p>
+        <p className="mt-1 text-sm text-muted-foreground">
+          화면, 업데이트, 백업 보관, 잔여물 스캔에서 뺄 항목을 정해요.
+        </p>
       </FadeUp>
 
       <FadeUp>
@@ -322,6 +327,10 @@ export function SettingsPage() {
         </Section>
       </FadeUp>
 
+      <FadeUp>
+        <AboutSection />
+      </FadeUp>
+
       <Dialog open={pendingRetention != null} onOpenChange={(o) => !o && !busy && setPendingRetention(undefined)}>
         <DialogContent className="sm:max-w-md">
           <DialogTitle>{shownRetention}일이 지난 백업을 지울까요?</DialogTitle>
@@ -369,6 +378,42 @@ export function SettingsPage() {
         </DialogContent>
       </Dialog>
     </Stagger>
+  )
+}
+
+function AboutSection() {
+  const { version } = useUpdates()
+  const open = (page: "home" | "issues") => openProjectPage(page).catch((e) => toast.error(String(e)))
+  return (
+    <Section
+      icon={Info}
+      title="정보"
+      description="RobinX는 무료로 쓰는 공개 프로그램이에요. 소스 코드와 문제 알리기는 GitHub에 있어요."
+    >
+      <div className="flex flex-wrap items-center gap-x-6 gap-y-3 text-sm">
+        <p className="min-w-0 flex-1">
+          RobinX <b className="tabular-nums">{version ?? "…"}</b>
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button variant="outline" size="sm" onClick={() => open("home")}>
+            <ExternalLink />
+            GitHub
+          </Button>
+          <Button variant="outline" size="sm" onClick={() => open("issues")}>
+            <ExternalLink />
+            문제 알리기
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => recoveryApi.openFolder().catch((e) => toast.error(String(e)))}
+          >
+            <FolderOpen />
+            백업 폴더 열기
+          </Button>
+        </div>
+      </div>
+    </Section>
   )
 }
 

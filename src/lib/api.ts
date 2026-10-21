@@ -88,6 +88,14 @@ export function canUninstall(app: InstalledApplication) {
 }
 
 /** 기본 언인스톨러를 쓸 수 없어 강제 제거로 가야 하는 프로그램. 필터·경고 표시·잔여물 화면이 함께 쓴다. */
+/** 목록의 이 항목이 RobinX 자신인지 (설치 프로그램이 등록하는 이름·게시자, crates/setup PRODUCT·PUBLISHER) */
+export function isSelf(app: InstalledApplication) {
+  return app.displayName === "RobinX" && app.publisher === "yoonrobin"
+}
+
+/** 정해 둔 RobinX 페이지를 기본 브라우저로 연다 (주소는 Rust 쪽에 있다) */
+export const openProjectPage = (page: "home" | "issues") => invoke<void>("open_project_page", { page })
+
 export function needsForce(app: InstalledApplication) {
   return !canUninstall(app)
 }

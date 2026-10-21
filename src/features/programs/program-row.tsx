@@ -2,7 +2,7 @@ import { forwardRef, type CSSProperties } from "react"
 import { Check, MoreHorizontal, TriangleAlert } from "lucide-react"
 import { motion } from "motion/react"
 
-import { needsForce, type InstalledApplication } from "@/lib/api"
+import { isSelf, needsForce, type InstalledApplication } from "@/lib/api"
 import { IconTooltip } from "@/components/icon-tooltip"
 import { formatInstallDate, formatSize } from "@/lib/format"
 import { cn } from "@/lib/utils"
@@ -108,6 +108,11 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
                 <p className="truncate font-medium" title={app.displayName}>
                   <Highlight text={app.displayName} query={query} />
                 </p>
+                {isSelf(app) && (
+                  <span className="shrink-0 rounded-md border border-primary/30 px-1.5 py-0.5 text-[11px] text-primary">
+                    이 앱
+                  </span>
+                )}
                 {needsForce(app) && (
                   <IconTooltip label="언인스톨러 없음">
                     <TriangleAlert className="size-3.5 shrink-0 text-warning" aria-label="언인스톨러 없음" />

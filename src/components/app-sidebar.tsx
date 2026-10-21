@@ -102,20 +102,20 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           <Logo className="size-8 shrink-0" />
           <div className="grid leading-tight group-data-[collapsible=icon]:hidden">
             <span className="font-semibold tracking-tight">RobinX</span>
-            <span className="text-xs text-muted-foreground">{version ? `v${version} · ` : ""}미리보기</span>
+            <span className="text-xs text-muted-foreground">{version ? `v${version} · ` : ""}베타</span>
           </div>
         </div>
       </SidebarHeader>
       {/* 화면 읽기 프로그램이 앱 메뉴로 찾을 수 있게 */}
       <SidebarContent role="navigation" aria-label="앱 메뉴">
         <SidebarGroup>
-          <SidebarGroupLabel>관리</SidebarGroupLabel>
+          <SidebarGroupLabel>정리하기</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>{renderItems(mainItems)}</SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
         <SidebarGroup>
-          <SidebarGroupLabel>도구</SidebarGroupLabel>
+          <SidebarGroupLabel>되돌리기와 설정</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>{renderItems(toolItems)}</SidebarMenu>
           </SidebarGroupContent>

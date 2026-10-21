@@ -18,7 +18,7 @@ import {
 import { toast } from "sonner"
 import { AnimatePresence, motion } from "motion/react"
 
-import { api, storeApi, type InstalledApplication, type UninstallEvent, type UninstallOutcome } from "@/lib/api"
+import { isSelf, api, storeApi, type InstalledApplication, type UninstallEvent, type UninstallOutcome } from "@/lib/api"
 import { cn } from "@/lib/utils"
 import { useLastDefined } from "@/hooks/use-last-defined"
 import { DrawnCheck } from "@/components/drawn-check"
@@ -197,6 +197,12 @@ function ConfirmBody({
           <li className="flex gap-2">
             <ShieldAlert className="size-4 shrink-0 text-warning" />
             모든 사용자용 프로그램이라 관리자 권한 요청(UAC)이 뜰 수 있어요.
+          </li>
+        )}
+        {isSelf(app) && (
+          <li className="flex gap-2 text-warning">
+            <TriangleAlert className="size-4 shrink-0" />
+            지금 쓰고 있는 RobinX 자신이에요. 제거하면 이 창이 닫혀요. 백업과 설정은 따로 고르지 않으면 남아요.
           </li>
         )}
         {shared.data && (
