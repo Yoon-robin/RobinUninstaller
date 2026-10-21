@@ -275,7 +275,7 @@ export default function App() {
                           animate={page === "programs" ? { opacity: 1, y: 0 } : { opacity: 0, y: 6 }}
                           transition={{ duration: 0.25, ease: EASE_OUT_QUINT }}
                         >
-                          <ProgramsPage />
+                          <ProgramsPage active={page === "programs"} />
                         </motion.div>
                         {page === "leftovers" && <LeftoversPage />}
                         {page === "restore" && <RestorePage />}

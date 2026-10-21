@@ -81,7 +81,11 @@ const viewOptions = [
 /** 요약 카드가 한 번 등장했는지 (탭을 오갈 때 다시 틀지 않게, 화면 밖에 둔다) */
 let statsShownOnce = false
 
-export function ProgramsPage() {
+/**
+ * `active`: 지금 보이는 화면인지. 이 화면은 다른 페이지로 가도 숨긴 채 남아 있으므로(스크롤·검색 유지),
+ * 숨어 있는 동안에는 가상 목록을 멈춘다.
+ */
+export function ProgramsPage({ active = true }: { active?: boolean }) {
   const [query, setQuery] = useState("")
   // 검색은 입력을 먼저 그리고 목록·숫자는 조금 미뤄 다시 계산한다 (글자를 칠 때 끊기지 않게)
   const deferredQuery = useDeferredValue(query)
@@ -259,6 +263,10 @@ export function ProgramsPage() {
     overscan: 10,
     scrollMargin,
     getItemKey: (i) => visible[i]?.id ?? i,
+    // 숨어 있으면(display:none) 행 높이가 0으로 재져, 가상 목록이 행을 끝없이 더 그리다 React가 멈췄다
+    // (프로그램 1000개에서 저장공간을 열면 "Maximum update depth exceeded"). 숨어 있는 동안 멈추고, 0은 받지 않는다.
+    enabled: active,
+    measureElement: (el) => el.getBoundingClientRect().height || 57,
   })
   const virtualItems = virtualizer.getVirtualItems()
   // Tab으로 들어올 행: 기억한 행이 지금 그려져 있으면 그 행, 아니면 처음 그려진 행
