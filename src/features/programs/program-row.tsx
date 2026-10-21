@@ -50,6 +50,8 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
           // 여러 개 제거 중에는 체크 상자처럼, 평소에는 세부 정보를 여는 버튼처럼 읽힌다
           role={picked == null ? "button" : "checkbox"}
           tabIndex={0}
+          // 바깥 상자가 잘라 내므로 초점 테두리를 안쪽에 그린다
+          data-focus-inset
           aria-checked={picked == null ? undefined : picked}
           aria-label={
             picked == null

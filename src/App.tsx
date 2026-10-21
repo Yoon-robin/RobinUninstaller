@@ -144,7 +144,7 @@ export default function App() {
                       <WindowControls />
                     </header>
                     <main
-                      className="relative flex-1 overflow-y-auto pt-12"
+                      className="relative flex-1 scroll-pt-16 scroll-pb-4 overflow-y-auto pt-12"
                       onScroll={(e) => setScrolled(e.currentTarget.scrollTop > 4)}
                     >
                       {/* 목록 페이지는 숨기기만 해서 스크롤·검색 상태를 유지한다. */}

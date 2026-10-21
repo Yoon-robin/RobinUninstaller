@@ -116,7 +116,7 @@
   --control: oklch(1 0 0 / 40%);
   --warning: oklch(0.83 0.14 75);
   --success: oklch(0.75 0.14 150);
-  --ring: oklch(0.82 0.12 190 / 60%);
+  --ring: oklch(0.82 0.12 190);
   --chart-1: oklch(0.82 0.12 190);
   --chart-2: oklch(0.72 0.15 285);
   --chart-3: oklch(0.83 0.14 75);
@@ -129,7 +129,7 @@
   --sidebar-accent: oklch(1 0 0 / 9%);
   --sidebar-accent-foreground: oklch(0.97 0.002 260);
   --sidebar-border: oklch(1 0 0 / 8%);
-  --sidebar-ring: oklch(0.82 0.12 190 / 60%);
+  --sidebar-ring: oklch(0.82 0.12 190);
 }
 
 @layer base {
@@ -340,4 +340,18 @@
 /* 페이지를 옮길 때 제목으로 옮긴 포커스는 테두리로 보이지 않게 (스크린리더는 제목을 읽는다) */
 h1[tabindex="-1"]:focus {
   outline: none;
+}
+
+/* ── 키보드 초점 표시 ─────────────────────────────────────
+ * 모든 요소가 같은 표시를 쓴다: 2px 실색 테두리(--ring, 바탕과 3:1 이상) + 2px 간격.
+ * 컴포넌트마다 있던 반투명 ring(box-shadow)·outline-none보다 앞서도록 층 밖에 !important로 둔다.
+ * 잘리는 상자(overflow-hidden) 안의 행은 data-focus-inset으로 안쪽에 그린다.
+ */
+:focus-visible {
+  outline: 2px solid var(--ring) !important;
+  outline-offset: 2px !important;
+  --tw-ring-shadow: 0 0 #0000 !important;
+}
+[data-focus-inset]:focus-visible {
+  outline-offset: -2px !important;
 }
