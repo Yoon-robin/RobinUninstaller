@@ -47,7 +47,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     const mq = matchMedia("(prefers-color-scheme: light)")
     const onChange = () => setSystem(mq.matches ? "light" : "dark")
     mq.addEventListener("change", onChange)
-    return () => mq.removeEventListener("change", onChange)
+    // 창이 받은 Windows 밝기 변경도 따라간다 (WebView의 미디어 쿼리가 늦게 바뀌는 경우가 있어서)
+    const unlisten = getCurrentWindow()
+      .onThemeChanged(({ payload }) => setSystem(payload === "light" ? "light" : "dark"))
+      .catch(() => null)
+    return () => {
+      mq.removeEventListener("change", onChange)
+      void unlisten.then((off) => off?.())
+    }
   }, [])
 
   useEffect(() => {
@@ -81,17 +88,19 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   )
 }
 
-/** 창 제목 표시줄·스크롤바 같은 Windows 쪽 색을 앱 테마에 맞춘다. */
+/**
+ * 창 제목 표시줄·스크롤바 같은 Windows 쪽 색을 앱 테마에 맞춘다.
+ * "시스템"이면 창 테마를 고정하지 않는다(null). 고정해 두면 Windows 밝기를 바꿔도 창이 알림을 받지 못해
+ * 앱이 따라가지 않았다.
+ */
 function WindowMaterialSync() {
-  const { resolvedTheme } = useTheme()
+  const { theme } = useTheme()
 
   useEffect(() => {
-    if (resolvedTheme === "dark" || resolvedTheme === "light") {
-      getCurrentWindow()
-        .setTheme(resolvedTheme)
-        .catch(() => {})
-    }
-  }, [resolvedTheme])
+    getCurrentWindow()
+      .setTheme(theme === "system" ? null : theme)
+      .catch(() => {})
+  }, [theme])
 
   return null
 }
