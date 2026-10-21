@@ -14,8 +14,15 @@ import { Footer } from "@/sections/footer"
 export default function App() {
   return (
     <MotionConfig reducedMotion="user">
+      {/* 키보드로 들어오면 위 막대 링크를 건너뛰고 본문으로 갈 수 있게 */}
+      <a
+        href="#main"
+        className="sr-only rounded-full bg-primary px-4 py-2 text-body font-semibold text-primary-foreground focus:not-sr-only focus:fixed focus:top-3 focus:left-3 focus:z-50"
+      >
+        본문으로 건너뛰기
+      </a>
       <Nav />
-      <main>
+      <main id="main" tabIndex={-1}>
         <Hero />
         <Evidence />
         <Features />

@@ -26,7 +26,7 @@ function SheetOverlay({ className, ...props }: React.ComponentProps<typeof Sheet
     <SheetPrimitive.Overlay
       data-slot="sheet-overlay"
       className={cn(
-        "fixed inset-0 z-50 bg-black/10 duration-100 supports-backdrop-filter:backdrop-blur-xs data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0", // taste-skill-ignore: 메뉴 패널은 실제로 떠 있는 오버레이
+        "fixed inset-0 z-50 bg-black/50 duration-100 data-open:animate-in data-open:fade-in-0 data-closed:animate-out data-closed:fade-out-0", // taste-skill-ignore: 메뉴 패널은 실제로 떠 있는 오버레이
         className,
       )}
       {...props}
@@ -59,7 +59,7 @@ function SheetContent({
         {children}
         {showCloseButton && (
           <SheetPrimitive.Close data-slot="sheet-close" asChild>
-            <Button variant="ghost" className="absolute top-3 right-3" size="icon-sm">
+            <Button variant="ghost" className="absolute top-4 right-4 size-11 rounded-full" size="icon">
               <XIcon />
               <span className="sr-only">닫기</span>
             </Button>

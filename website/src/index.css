@@ -88,6 +88,10 @@
   * {
     @apply border-border outline-ring/50;
   }
+  /* 메뉴 링크·건너뛰기로 옮겨 간 구역에는 초점만 두고 테두리는 그리지 않는다 (누를 수 있는 것이 아니라서) */
+  [tabindex="-1"]:focus-visible {
+    outline: none;
+  }
   html {
     @apply font-sans;
     scroll-behavior: smooth;

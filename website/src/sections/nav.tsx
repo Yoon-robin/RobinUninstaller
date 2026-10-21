@@ -57,6 +57,22 @@ export function Nav() {
   const [menuOpen, setMenuOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
   const pendingTarget = useRef<string | null>(null)
+  // 지금 보고 있는 구역 (메뉴에 표시)
+  const [current, setCurrent] = useState<string | null>(null)
+  useEffect(() => {
+    const sections = links
+      .map((l) => document.querySelector<HTMLElement>(l.href))
+      .filter((el): el is HTMLElement => el != null)
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const e of entries) if (e.isIntersecting) setCurrent("#" + e.target.id)
+      },
+      // 화면 위쪽 1/3 띠에 걸친 구역을 지금 구역으로 본다
+      { rootMargin: "-30% 0px -60% 0px" },
+    )
+    sections.forEach((el) => observer.observe(el))
+    return () => observer.disconnect()
+  }, [])
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24)
@@ -69,7 +85,7 @@ export function Nav() {
     <div
       className={
         "fixed inset-x-0 top-0 z-30 border-b transition-[background-color,border-color,backdrop-filter] duration-300 " +
-        (scrolled ? "border-white/[0.08] bg-background/75 backdrop-blur-xl" : "border-transparent")
+        (scrolled ? "border-white/[0.08] bg-background/95" : "border-transparent")
       }
     >
       <header className="frame relative flex h-16 items-center gap-3 sm:h-20 sm:gap-6">
@@ -85,7 +101,8 @@ export function Nav() {
             <a
               key={l.href}
               href={l.href}
-              className="rounded-full px-4 py-1.5 text-fine font-medium text-foreground/75 transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              aria-current={current === l.href ? "true" : undefined}
+              className="rounded-full px-4 py-1.5 text-fine font-medium text-foreground/75 transition-colors hover:bg-white/[0.06] hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none aria-[current]:bg-white/[0.08] aria-[current]:text-foreground"
             >
               {l.label}
             </a>
@@ -105,7 +122,9 @@ export function Nav() {
           className="ml-auto inline-flex h-10 items-center gap-2 rounded-full bg-primary px-4 text-fine font-semibold text-primary-foreground transition-[transform,background-color] hover:bg-primary/90 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background focus-visible:outline-none active:scale-[0.97] sm:ml-0 sm:h-11 sm:px-5 sm:text-body"
         >
           <Download className="size-4" />
-          다운로드
+          {/* 휴대폰에서 누르면 Windows 설치 파일을 받으므로 그걸 밝힌다 */}
+          <span className="sm:hidden">Windows용</span>
+          <span className="hidden sm:inline">다운로드</span>
         </a>
 
         {/* 좁은 화면: 메뉴 버튼 → 옆에서 나오는 패널 */}
