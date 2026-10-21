@@ -74,7 +74,7 @@ const GridCard = forwardRef<HTMLDivElement, CardProps>(function GridCard(
           onClick={() => handlers.onSelect(app)}
           style={introIndex == null ? undefined : ({ "--i": introIndex } as CSSProperties)}
           className={cn(
-            "group relative flex h-full w-full flex-col items-start gap-3 rounded-xl border bg-background/40 p-4 text-left",
+            "group relative flex cursor-pointer h-full w-full flex-col items-start gap-3 rounded-xl border bg-background/40 p-4 text-left",
             "transition-[transform,border-color,background-color,box-shadow] duration-200 ease-(--ease-out-quint)",
             "hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 hover:border-foreground/15 hover:bg-accent/30 hover:shadow-md active:translate-y-0 active:scale-[0.98] motion-reduce:active:scale-100",
             "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=open]:border-foreground/15",

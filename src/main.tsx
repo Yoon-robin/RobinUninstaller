@@ -7,6 +7,7 @@ import { beginStartupUpdateCheck } from "./features/updates/updates";
 import { toast } from "sonner";
 import { AppErrorBoundary } from "./components/app-error-boundary";
 import "./index.css";
+import { installAutoTitle } from "./lib/auto-title";
 import { getCurrentWindow } from "@tauri-apps/api/window";
 
 // setup.exe로 실행됐으면(= robinx.exe 자체 설치) 설치·제거 화면을, 아니면 앱을 그린다. 브라우저(화면 캡처)에서는 앱.
@@ -21,6 +22,8 @@ invoke<"app" | SetupMode>("app_mode")
     );
     hideBoot();
   });
+
+installAutoTitle();
 
 // 창은 숨긴 채 만들어지고, index.html이 시작 화면을 그리면서 바로 보여 준다. 그게 안 됐을 때를 위한 한 번 더.
 getCurrentWindow().show().catch(() => {});

@@ -99,7 +99,7 @@ export function MissingCleanupDialog({
 
         <AnimatePresence mode="wait" initial={false}>
           {stage.step === "cleaning" ? (
-            <Cleaning key="cleaning" label="백업하고 정리하는 중이에요" />
+            <Cleaning key="cleaning" label="백업하고 정리하는 중이에요" progress={null} />
           ) : stage.step === "done" ? (
             <CleanResult key="done" op={stage.op} onDone={close} onBusyChange={setElevating} />
           ) : (

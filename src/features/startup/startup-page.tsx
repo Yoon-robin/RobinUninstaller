@@ -267,7 +267,7 @@ export function StartupPage() {
               ))}
             </div>
           ) : visible.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 px-5 py-16 text-center">
+            <div className="flex flex-col items-center gap-2 px-5 py-14 text-center">
               <div className="mb-1 flex size-12 items-center justify-center rounded-2xl bg-muted">
                 {all.length === 0 ? (
                   <Rocket className="size-6 text-muted-foreground" />
@@ -361,12 +361,12 @@ function StartupRow({ entry, query }: { entry: StartupEntry; query: string }) {
 
   return (
     <li className={cn(!entry.enabled && "bg-muted/20")}>
-      <div className={cn(LIST_GRID, "px-5 py-2.5")}>
+      <div className={cn(LIST_GRID, "px-5 py-2.5 transition-colors has-[>button[aria-expanded]:hover]:bg-accent/30")}>
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
           aria-expanded={open}
-          className="flex min-w-0 items-center gap-3 text-left"
+          className="flex min-w-0 cursor-pointer items-center gap-3 text-left"
         >
           <ChevronRight
             className={cn(

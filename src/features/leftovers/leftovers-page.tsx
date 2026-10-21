@@ -110,8 +110,8 @@ function Section({
   return (
     <section className="overflow-hidden rounded-2xl border bg-card shadow-sm">
       <div className="border-b px-5 py-3.5">
-        <h2 className="flex items-center gap-2 font-semibold">
-          {warn && <TriangleAlert className="size-4 text-warning" />}
+        <h2 className="flex items-baseline gap-2 font-semibold">
+          {warn && <TriangleAlert className="size-4 self-center text-warning" />}
           {title}
           {!loading && !error && (
             <span className="text-sm font-normal text-muted-foreground tabular-nums">{apps.length}</span>
@@ -138,8 +138,8 @@ function Section({
             <li key={app.id} className="flex items-center gap-3 px-5 py-3">
               <AppIcon app={app} />
               <div className="min-w-0 flex-1">
-                <p className="flex items-center gap-2 truncate font-medium">
-                  {app.displayName}
+                <p className="flex min-w-0 items-center gap-2 font-medium">
+                  <span className="truncate">{app.displayName}</span>
                   {cleaned.has(app.id) && (
                     <span className="inline-flex shrink-0 items-center gap-1 rounded-md bg-chart-5/12 px-1.5 py-0.5 text-[11px] font-medium text-success">
                       <Check className="size-3" />

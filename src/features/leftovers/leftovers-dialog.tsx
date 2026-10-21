@@ -129,18 +129,20 @@ export function LeftoversDialog({
                   </span>
                 </DialogDescription>
               </div>
-              <IconTooltip label="다시 찾기">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="size-9 rounded-lg"
-                  aria-label="다시 찾기"
-                  disabled={scan.isFetching || !ready || locked !== "none"}
-                  onClick={() => scan.refetch()}
-                >
-                  <RefreshCw className={cn(scan.isFetching && "animate-spin")} />
-                </Button>
-              </IconTooltip>
+              {locked === "none" && (
+                <IconTooltip label="다시 찾기">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    className="size-9 rounded-lg"
+                    aria-label="다시 찾기"
+                    disabled={scan.isFetching || !ready}
+                    onClick={() => scan.refetch()}
+                  >
+                    <RefreshCw className={cn(scan.isFetching && "animate-spin")} />
+                  </Button>
+                </IconTooltip>
+              )}
             </div>
 
             {/* popLayout: 나가는 화면을 겹쳐 둔 채 새 화면이 들어온다 (wait이면 그 사이 본문이 잠깐 비었다) */}

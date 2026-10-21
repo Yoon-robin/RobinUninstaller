@@ -400,11 +400,11 @@ function OperationCard({
 
   return (
     <section ref={cardRef} className="scroll-mt-4 overflow-hidden rounded-2xl border bg-card shadow-sm">
-      <div className="flex flex-wrap items-center gap-3 px-5 py-4">
+      <div className="flex flex-wrap items-center gap-3 px-5 py-4 transition-colors has-[>button[aria-expanded]:hover]:bg-accent/30">
         <button
           type="button"
           onClick={() => setOpen((v) => !v)}
-          className="flex min-w-0 flex-1 items-center gap-3 text-left"
+          className="flex min-w-0 flex-1 cursor-pointer items-center gap-3 text-left"
           aria-expanded={open}
         >
           <ChevronRight
