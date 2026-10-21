@@ -25,6 +25,7 @@ import {
   SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
+  useSidebar,
 } from "@/components/ui/sidebar"
 
 export type Page = "programs" | "leftovers" | "storage" | "startup" | "restore" | "settings"
@@ -45,6 +46,7 @@ const toolItems: Item[] = [
 
 export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page: Page) => void }) {
   const { version, available, openUpdate } = useUpdates()
+  const collapsed = useSidebar().state === "collapsed"
   const renderItems = (items: Item[]) =>
     items.map((item) => (
       <SidebarMenuItem key={item.page}>
@@ -123,27 +125,36 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
             </SidebarMenuItem>
           </SidebarMenu>
         )}
-        <div className="flex flex-col gap-2 group-data-[collapsible=icon]:hidden">
-          {available && (
-            <button
-              type="button"
-              onClick={openUpdate}
-              className="flex items-start gap-2.5 rounded-xl bg-primary/10 p-3 text-left border transition-colors hover:bg-primary/15"
-            >
-              <ArrowDownCircle className="mt-0.5 size-4 shrink-0 text-primary" />
-              <span className="text-xs leading-relaxed">
-                <span className="block font-medium">새 버전이 나왔어요 ({available})</span>
-                <span className="block text-muted-foreground">눌러서 설치할 수 있어요. 설정과 백업은 그대로예요.</span>
-              </span>
-            </button>
-          )}
-          <div className="flex items-start gap-2.5 rounded-xl bg-sidebar-accent/60 p-3 border">
-            <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
-            <div className="text-xs leading-relaxed">
-              <p className="font-medium">안전하게 정리해요</p>
-              <p className="text-muted-foreground">
-                남은 흔적은 백업한 뒤 정리해요. 백업을 보관하는 동안 복구 기록에서 되돌릴 수 있어요.
-              </p>
+        {/* 접힐 때 바로 숨기면(hidden) 펼치는 300ms 동안 좁은 폭에서 글자가 한 글자씩 세로로 쌓였다.
+            투명도로 가리고 안쪽 폭은 펼친 폭으로 고정해, 좁을 때는 잘려 보이게 한다. */}
+        <div
+          inert={collapsed}
+          className="overflow-hidden transition-opacity duration-200 group-data-[collapsible=icon]:opacity-0"
+        >
+          <div className="flex w-[calc(var(--sidebar-width)-1.5rem)] flex-col gap-2">
+            {available && (
+              <button
+                type="button"
+                onClick={openUpdate}
+                className="flex items-start gap-2.5 rounded-xl bg-primary/10 p-3 text-left border transition-colors hover:bg-primary/15"
+              >
+                <ArrowDownCircle className="mt-0.5 size-4 shrink-0 text-primary" />
+                <span className="text-xs leading-relaxed">
+                  <span className="block font-medium">새 버전이 나왔어요 ({available})</span>
+                  <span className="block text-muted-foreground">
+                    눌러서 설치할 수 있어요. 설정과 백업은 그대로예요.
+                  </span>
+                </span>
+              </button>
+            )}
+            <div className="flex items-start gap-2.5 rounded-xl bg-sidebar-accent/60 p-3 border">
+              <ShieldCheck className="mt-0.5 size-4 shrink-0 text-primary" />
+              <div className="text-xs leading-relaxed">
+                <p className="font-medium">안전하게 정리해요</p>
+                <p className="text-muted-foreground">
+                  남은 흔적은 백업한 뒤 정리해요. 백업을 보관하는 동안 복구 기록에서 되돌릴 수 있어요.
+                </p>
+              </div>
             </div>
           </div>
         </div>
