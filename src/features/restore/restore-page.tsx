@@ -254,7 +254,7 @@ function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () =
                 : `${count}개, ${formatBytes(preview.data?.bytes ?? 0)}를 지워요.`}
         </p>
         {busy && <ScanProgressView label="오래된 백업을 지우는 중이에요" progress={progress} />}
-        <div className="flex justify-end gap-2">
+        <div className="mt-2 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={busy}>
             취소
           </Button>

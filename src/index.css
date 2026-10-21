@@ -197,7 +197,6 @@
   from {
     opacity: 0;
     transform: translateY(6px);
-    filter: blur(3px);
   }
 }
 
@@ -237,6 +236,12 @@
   }
   [data-slot="button"]:active:not(:disabled) {
     transform: none;
+  }
+  /* 사이드바 접기·펴기는 폭이 바로 바뀐다 */
+  [data-slot="sidebar-gap"],
+  [data-slot="sidebar-container"],
+  [data-slot="sidebar-inner"] {
+    transition: none !important;
   }
   [data-slot="sheet-content"],
   [data-slot="sheet-overlay"],
@@ -290,45 +295,41 @@
   --shadow-floating: 0 1px 2px oklch(0 0 0 / 40%), 0 12px 32px -8px oklch(0 0 0 / 55%);
 }
 
-[data-slot="dialog-content"],
-[data-slot="alert-dialog-content"],
-[data-slot="sheet-content"],
-[data-slot="dropdown-menu-content"],
-[data-slot="dropdown-menu-sub-content"],
-[data-slot="context-menu-content"],
-[data-slot="context-menu-sub-content"],
-[data-slot="popover-content"],
-[data-slot="select-content"] {
-  background-color: var(--popover);
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-floating);
-}
-[data-slot="dialog-content"],
-[data-slot="alert-dialog-content"] {
-  border-radius: 1rem;
-}
-[data-slot="dropdown-menu-content"],
-[data-slot="context-menu-content"] {
-  border-radius: 0.75rem;
-  padding: 0.25rem;
-}
-/* 대화상자 뒤를 어둡게: 밝은 테마는 옅게, 어두운 테마는 진하게 (macOS처럼) */
-[data-slot="dialog-overlay"],
-[data-slot="alert-dialog-overlay"],
-[data-slot="sheet-overlay"] {
-  background-color: oklch(0 0 0 / 18%);
-}
-.dark [data-slot="dialog-overlay"],
-.dark [data-slot="alert-dialog-overlay"],
-.dark [data-slot="sheet-overlay"] {
-  background-color: oklch(0 0 0 / 50%);
-}
-/* 대화상자 아래쪽 버튼 줄은 살짝 다른 면으로 */
-[data-slot="dialog-footer"] {
-  background-color: var(--muted);
-  border-top: 1px solid var(--border);
-  border-bottom-left-radius: 1rem;
-  border-bottom-right-radius: 1rem;
+/* 레이어 안에 두어, 컴포넌트에 적은 클래스(반경·그림자)가 필요하면 이 기본값을 이길 수 있다 */
+@layer components {
+  [data-slot="dialog-content"],
+  [data-slot="alert-dialog-content"],
+  [data-slot="sheet-content"],
+  [data-slot="dropdown-menu-content"],
+  [data-slot="dropdown-menu-sub-content"],
+  [data-slot="context-menu-content"],
+  [data-slot="context-menu-sub-content"],
+  [data-slot="popover-content"],
+  [data-slot="select-content"] {
+    background-color: var(--popover);
+    border: 1px solid var(--border);
+    box-shadow: var(--shadow-floating);
+  }
+  [data-slot="dialog-content"],
+  [data-slot="alert-dialog-content"] {
+    border-radius: 1rem;
+  }
+  [data-slot="dropdown-menu-content"],
+  [data-slot="context-menu-content"] {
+    border-radius: 0.75rem;
+    padding: 0.25rem;
+  }
+  /* 대화상자 뒤를 어둡게: 밝은 테마는 옅게, 어두운 테마는 진하게 (macOS처럼) */
+  [data-slot="dialog-overlay"],
+  [data-slot="alert-dialog-overlay"],
+  [data-slot="sheet-overlay"] {
+    background-color: oklch(0 0 0 / 18%);
+  }
+  .dark [data-slot="dialog-overlay"],
+  .dark [data-slot="alert-dialog-overlay"],
+  .dark [data-slot="sheet-overlay"] {
+    background-color: oklch(0 0 0 / 50%);
+  }
 }
 [data-sonner-toast][data-styled="true"] {
   background-color: var(--popover) !important;
@@ -336,7 +337,6 @@
   border-radius: 0.875rem !important;
   box-shadow: var(--shadow-floating) !important;
 }
-
 /* 페이지를 옮길 때 제목으로 옮긴 포커스는 테두리로 보이지 않게 (스크린리더는 제목을 읽는다) */
 h1[tabindex="-1"]:focus {
   outline: none;

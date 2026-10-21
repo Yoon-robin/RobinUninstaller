@@ -176,7 +176,7 @@ function ConfirmBody({
         </li>
       </ul>
       <CommandPreview command={uninstallCommandPreview(app)} />
-      <div className="flex justify-end gap-2">
+      <div className="mt-2 flex justify-end gap-2">
         <Button variant="outline" onClick={onCancel} data-autofocus>
           취소
         </Button>

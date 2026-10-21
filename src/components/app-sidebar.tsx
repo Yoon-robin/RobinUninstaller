@@ -54,13 +54,13 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
           onClick={() => onNavigate(item.page)}
           tooltip={item.label}
           // 마우스를 올린 항목은 선택된 항목(진한 알약)보다 옅게
-          className="relative isolate h-9 rounded-[0.625rem] hover:bg-sidebar-accent/45 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:hover:bg-transparent"
+          className="relative isolate h-9 rounded-lg hover:bg-sidebar-accent/45 data-[active=true]:bg-transparent data-[active=true]:font-semibold data-[active=true]:hover:bg-transparent"
         >
           {page === item.page && (
             // 선택 표시(둥근 알약)가 메뉴 사이를 미끄러지듯 옮겨 간다.
             <motion.span
               layoutId="sidebar-active"
-              className="absolute inset-0 -z-10 rounded-[0.625rem] bg-sidebar-accent"
+              className="absolute inset-0 -z-10 rounded-lg bg-sidebar-accent"
               transition={{ type: "spring", duration: 0.32, bounce: 0 }}
             />
           )}
@@ -114,7 +114,7 @@ export function AppSidebar({ page, onNavigate }: { page: Page; onNavigate: (page
               <SidebarMenuButton
                 onClick={openUpdate}
                 tooltip={`새 버전 ${available}이 나왔어요`}
-                className="relative h-9 rounded-[0.625rem]"
+                className="relative h-9 rounded-lg"
               >
                 <ArrowDownCircle className="text-primary" />
                 <span>새 버전 설치</span>

@@ -275,7 +275,7 @@ function UpdateDialog({ update, open, onClose }: { update: Update | null; open: 
           </p>
         )}
         {error && <p className="rounded-lg bg-destructive/10 px-3 py-2 text-sm text-destructive">{error}</p>}
-        <div className="mt-1 flex justify-end gap-2">
+        <div className="mt-2 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={busy}>
             나중에
           </Button>

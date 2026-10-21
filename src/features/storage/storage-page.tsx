@@ -642,7 +642,7 @@ function CleanDialog({
                 관리자 권한이 필요한 항목이 있어 UAC 창이 떠요. "아니요"를 누르면 그 항목만 빼고 정리해요.
               </p>
             )}
-            <div className="mt-1 flex justify-end gap-2">
+            <div className="mt-2 flex justify-end gap-2">
               <Button
                 variant="outline"
                 onClick={() => {

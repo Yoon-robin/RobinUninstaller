@@ -41,7 +41,7 @@ export function StatCard({
           "relative flex h-full w-full items-start gap-3 overflow-hidden rounded-2xl border bg-card p-4 text-left shadow-sm lg:gap-4 lg:p-5",
           "transition-[transform,border-color,box-shadow] duration-200 ease-(--ease-out-quint)",
           onClick &&
-            "cursor-pointer hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.99]",
+            "cursor-pointer hover:border-foreground/20 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none active:scale-[0.99] motion-reduce:active:scale-100",
           active && "border-chart-3/60 ring-1 ring-chart-3/40",
         )}
       >
