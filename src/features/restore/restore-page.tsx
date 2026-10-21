@@ -219,7 +219,7 @@ function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () =
   const count = preview.data?.count ?? 0
   return (
     <Dialog open={open} onOpenChange={(v) => !v && !busy && onClose()}>
-      <DialogContent className="top-[18%] translate-y-0 sm:max-w-md" showCloseButton={!busy}>
+      <DialogContent className="sm:max-w-md" showCloseButton={!busy}>
         <DialogTitle>오래된 백업 비우기</DialogTitle>
         <DialogDescription className="leading-relaxed">
           고른 기간보다 오래된 정리 기록과 백업을 지워 공간을 돌려받아요. 지운 백업으로는 다시 되돌릴 수 없어요.
@@ -507,7 +507,7 @@ function DeleteBackupDialog({ op, onClose }: { op: Operation | null; onClose: ()
   return (
     <Dialog open={op != null} onOpenChange={(open) => !open && !busy && onClose()}>
       {/* 진행 표시가 나타나도 창이 위로 튀지 않게 위쪽에 고정한다 */}
-      <DialogContent className="top-[18%] translate-y-0 sm:max-w-md" showCloseButton={!busy}>
+      <DialogContent className="sm:max-w-md" showCloseButton={!busy}>
         <DialogTitle>백업을 완전히 삭제할까요?</DialogTitle>
         <DialogDescription className="leading-relaxed">
           {kept > 0

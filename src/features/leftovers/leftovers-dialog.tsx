@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
+import { Fragment, useEffect, useMemo, useRef, useState, type CSSProperties } from "react"
 import { useQuery } from "@tanstack/react-query"
 import {
   Check,
@@ -95,7 +95,7 @@ export function LeftoversDialog({
       <DialogContent
         showCloseButton={locked !== "busy"}
         // 닫기(X)를 머리글 가운데 높이(다시 찾기 버튼과 같은 줄)에 둔다
-        className="flex h-[min(720px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl [&>[data-slot=dialog-close]]:top-[34px] [&>[data-slot=dialog-close]]:right-3"
+        className="flex h-[min(720px,84vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-3xl [&>[data-slot=dialog-close]]:top-[34px] [&>[data-slot=dialog-close]]:right-3"
       >
         {target && (
           <>
@@ -135,7 +135,8 @@ export function LeftoversDialog({
               </IconTooltip>
             </div>
 
-            <AnimatePresence mode="wait" initial={false}>
+            {/* popLayout: 나가는 화면을 겹쳐 둔 채 새 화면이 들어온다 (wait이면 그 사이 본문이 잠깐 비었다) */}
+            <AnimatePresence mode="popLayout" initial={false}>
               {!ready ? (
                 <ForceGate
                   key="gate"
@@ -385,6 +386,11 @@ function Results({
     }
   }
 
+  // 확인 등 위 화면이 나가는 동안에는 목록을 계속 숨겨 두 화면이 겹쳐 보이지 않게 한다
+  const [listHidden, setListHidden] = useState(false)
+  useEffect(() => {
+    if (stage.step !== "review") setListHidden(true)
+  }, [stage.step])
   const backToReview = () => {
     setStage({ step: "review" })
     // 돌아오면 "선택 항목 정리" 버튼에 포커스를 둔다 (목록은 숨겨 두었을 뿐이라 스크롤·선택이 그대로다)
@@ -446,13 +452,15 @@ function Results({
 
   return (
     <>
-      {overlay}
+      <AnimatePresence initial={false} onExitComplete={() => setListHidden(false)}>
+        {overlay && <Fragment key={stage.step}>{overlay}</Fragment>}
+      </AnimatePresence>
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         exit={{ opacity: 0, transition: { duration: 0.12 } }}
         transition={{ duration: 0.3, ease: EASE_OUT_QUINT }}
-        hidden={overlay != null}
+        hidden={overlay != null || listHidden}
         className="flex min-h-0 flex-1 flex-col"
       >
         {report.items.length === 0 ? (

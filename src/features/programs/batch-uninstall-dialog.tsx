@@ -157,7 +157,7 @@ export function BatchUninstallDialog({
     <Dialog open={appsProp != null && !hidden} onOpenChange={(o) => !o && close()}>
       <DialogContent
         showCloseButton={!running}
-        className="flex max-h-[min(720px,88vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
+        className="flex max-h-[min(720px,84vh)] flex-col gap-0 overflow-hidden p-0 sm:max-w-xl"
         onOpenAutoFocus={focusMarked}
       >
         <div className="flex items-center gap-3 border-b px-5 py-4 pr-12">
