@@ -35,6 +35,8 @@ import { ErrorState, StaleBanner, InlineError } from "@/components/error-state"
 import { useBusy } from "@/lib/busy"
 import { failed, notifyError } from "@/lib/notify"
 import { CopyButton } from "@/components/copy-button"
+import { selectedDrive, useSystemLetter } from "./drive"
+import { DrivePicker } from "./drive-picker"
 
 const SCAN_KEY = ["storage-scan"]
 const DISK_KEY = ["disk-usage"]
@@ -94,7 +96,8 @@ export function StoragePage() {
     [scan.data, partial],
   )
   const finding = scan.isLoading
-  const disk = useQuery({ queryKey: DISK_KEY, queryFn: storageApi.diskUsage })
+  const drive = selectedDrive.use()
+  const disk = useQuery({ queryKey: [...DISK_KEY, drive], queryFn: () => storageApi.diskUsage(drive ?? undefined) })
   // 처음부터 찾지 못했을 때만 오류 화면. 이미 찾은 목록이 있으면 그대로 두고 위에 띠만 보인다.
   const scanFailed = scan.isError && scan.data == null
   const scanStale = scan.isError && scan.data != null
@@ -109,6 +112,13 @@ export function StoragePage() {
   const isSelected = (c: StorageCategory) => cleanable(c) && (picked[c.id] ?? c.defaultSelected)
   const selected = items.filter(isSelected)
   const selectedBytes = selected.reduce((s, c) => s + c.bytes, 0)
+  // 디스크 카드의 "정리 예정"은 보이는 드라이브에 있는 항목만 센다 (D를 보는데 C의 캐시를 빼면 안 맞다).
+  // 위치가 없는 항목(휴지통 등)은 시스템 드라이브로 본다.
+  const systemLetter = useSystemLetter()
+  const shownLetter = disk.data?.drive.slice(0, 1).toUpperCase()
+  const planOnShown = selected
+    .filter((c) => (c.locations[0]?.match(/^([A-Za-z]):/)?.[1]?.toUpperCase() ?? systemLetter ?? "C") === shownLetter)
+    .reduce((s, c) => s + c.bytes, 0)
 
   const refresh = () => {
     queryClient.invalidateQueries({ queryKey: SCAN_KEY })
@@ -125,7 +135,8 @@ export function StoragePage() {
         </p>
       </FadeUp>
 
-      <FadeUp>
+      <FadeUp className="flex flex-col gap-3">
+        <DrivePicker />
         {disk.isError && !disk.data ? (
           <div className="rounded-2xl border bg-card px-5 py-4 shadow-sm">
             <InlineError
@@ -136,7 +147,7 @@ export function StoragePage() {
             />
           </div>
         ) : (
-          <DriveCard used={disk.data ? disk.data.total - disk.data.free : null} disk={disk.data} plan={selectedBytes} />
+          <DriveCard used={disk.data ? disk.data.total - disk.data.free : null} disk={disk.data} plan={planOnShown} />
         )}
       </FadeUp>
 
@@ -581,7 +592,15 @@ function CleanDialog({
     // 먼저 잠근다: 남은 공간을 재는 동안 두 번 눌러 정리가 두 번 시작되지 않게
     setBusy(true)
     setRanItems(selectedItems)
-    const before = await storageApi.diskUsage().catch(() => null)
+    // 늘어난 공간은 정리할 항목이 있는 드라이브에서 잰다 (모두 같은 드라이브일 때, 아니면 시스템 드라이브)
+    const letters = new Set(
+      selectedItems
+        .flatMap((c) => c.locations)
+        .map((l) => l.match(/^([A-Za-z]):/)?.[1]?.toUpperCase())
+        .filter(Boolean),
+    )
+    const measureDrive = letters.size === 1 ? [...letters][0] : undefined
+    const before = await storageApi.diskUsage(measureDrive).catch(() => null)
     const allow = irreversible.length > 0 && understood
     setLive({ startedAt: Date.now(), stage: "normal", current: null, done: [] })
     const onEvent = (e: CleanEvent) =>
@@ -635,7 +654,7 @@ function CleanDialog({
         }
       }
       setResults(all)
-      const after = await storageApi.diskUsage().catch(() => null)
+      const after = await storageApi.diskUsage(measureDrive).catch(() => null)
       setMeasured(before && after ? { drive: after.drive, gained: after.free - before.free } : null)
       onDone()
     } catch (e) {

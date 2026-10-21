@@ -8,6 +8,7 @@ import { ScanProgressView, shortenPath } from "@/components/scan-progress"
 import { InlineError } from "@/components/error-state"
 import { Button } from "@/components/ui/button"
 import { failed } from "@/lib/notify"
+import { driveName, selectedDrive, useSystemLetter } from "./drive"
 
 /**
  * 큰 파일 찾기. 공간을 많이 차지하는 파일을 보여 주고 탐색기로 열어 줄 뿐, 아무것도 지우지 않는다.
@@ -36,7 +37,7 @@ function subscribe(listener: () => void) {
 async function find() {
   set({ loading: true, progress: null, error: null })
   try {
-    const next = await storageApi.findLargeFiles((progress) => set({ progress }))
+    const next = await storageApi.findLargeFiles((progress) => set({ progress }), selectedDrive.get() ?? undefined)
     // 새 찾기가 대신한 결과는 버린다. 사용자가 멈췄으면 찾은 데까지 "중간에 멈춘 결과"로 남긴다.
     if (!next.superseded) set({ result: next, at: Date.now() })
   } catch (e) {
@@ -44,6 +45,12 @@ async function find() {
   } finally {
     set({ loading: false })
   }
+}
+
+/** 드라이브를 바꿨을 때: 다른 드라이브의 결과를 치운다 (돌고 있으면 멈춘다) */
+export function resetLargeFiles() {
+  if (state.loading) void storageApi.cancelLargeFiles()
+  set({ result: null, error: null, at: null })
 }
 
 /** 확장자로 대강의 종류 (설명용) */
@@ -70,6 +77,8 @@ function folderOf(path: string) {
 }
 
 export function LargeFilesCard() {
+  const drive = selectedDrive.use()
+  const systemLetter = useSystemLetter()
   const { result, loading, progress, error, at } = useSyncExternalStore(subscribe, () => state)
   const max = result?.items[0]?.bytes ?? 0
   const total = result?.items.reduce((s, f) => s + f.bytes, 0) ?? 0
@@ -113,13 +122,14 @@ export function LargeFilesCard() {
       {loading ? (
         <ScanProgressView
           className="px-5 py-6"
-          label="C 드라이브에서 큰 파일을 찾는 중이에요"
+          label={`${driveName(drive, systemLetter)}에서 큰 파일을 찾는 중이에요`}
           progress={progress}
           hint="파일이 많으면 1~2분 걸릴 수 있어요. 언제든 멈출 수 있어요."
         />
       ) : !result ? (
         <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-          "찾기"를 누르면 Windows 폴더를 뺀 C 드라이브 전체에서 큰 파일을 찾아요.
+          "찾기"를 누르면 {driveName(drive, systemLetter)} 전체에서 큰 파일을 찾아요
+          {(drive == null || drive === systemLetter) && " (Windows 폴더는 빼요)"}.
         </p>
       ) : result.items.length === 0 ? (
         <p className="px-5 py-10 text-center text-sm text-muted-foreground">

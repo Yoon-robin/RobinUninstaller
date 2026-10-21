@@ -10,6 +10,7 @@ import { ScanProgressView } from "@/components/scan-progress"
 import { InlineError } from "@/components/error-state"
 import { Button } from "@/components/ui/button"
 import { failed } from "@/lib/notify"
+import { driveName, selectedDrive, useSystemLetter } from "./drive"
 
 /**
  * 분석 결과와 진행 상태는 화면 밖(모듈)에 둔다. 다른 탭으로 갔다 와도 결과가 남고, 분석 중이었다면 이어서 보인다.
@@ -45,9 +46,14 @@ function subscribe(listener: () => void) {
 }
 
 async function load(id?: string, label?: string) {
-  setAnalysis({ loading: label ?? "C 드라이브", progress: null, error: null, stopped: false })
+  const drive = selectedDrive.get()
+  setAnalysis({ loading: label ?? driveName(drive), progress: null, error: null, stopped: false })
   try {
-    const next = await storageApi.analyze(id, (progress) => setAnalysis({ progress }))
+    const next = await storageApi.analyze(
+      id,
+      (progress) => setAnalysis({ progress }),
+      id ? undefined : (drive ?? undefined),
+    )
     // 다른 분석을 시작해 멈춘 결과는 버린다
     // 새 분석이 대신한 결과는 조용히 버리고, 사용자가 멈췄으면 그렇다고 남긴다 (반쯤 센 크기는 보이지 않는다)
     if (next.superseded) return
@@ -60,11 +66,19 @@ async function load(id?: string, label?: string) {
   }
 }
 
+/** 드라이브를 바꿨을 때: 다른 드라이브의 결과를 치운다 (돌고 있으면 멈춘다) */
+export function resetFolderAnalysis() {
+  if (analysisState.loading) void storageApi.cancelAnalysis()
+  setAnalysis({ result: null, error: null, stopped: false, at: null })
+}
+
 /** 한 번에 보여 주는 하위 항목 수 */
 const SHOWN = 30
 
 /** 큰 폴더 찾기. 크기를 보여 주고 탐색기로 열어 주기만 한다 (사용자 파일은 지우지 않는다). */
 export function FolderAnalysisCard() {
+  const drive = selectedDrive.use()
+  const systemLetter = useSystemLetter()
   const { result, loading, progress, error, stopped, at } = useSyncExternalStore(subscribe, () => analysisState)
 
   const max = result?.items[0]?.bytes ?? 0
@@ -155,7 +169,7 @@ export function FolderAnalysisCard() {
       )}
       {loading && !result ? null : !result ? (
         <p className="px-5 py-10 text-center text-sm text-muted-foreground">
-          "분석 시작"을 누르면 C 드라이브부터 폴더별 크기를 세요.
+          "분석 시작"을 누르면 {driveName(drive, systemLetter)}부터 폴더별 크기를 세요.
         </p>
       ) : result.items.length === 0 ? (
         <p className="px-5 py-10 text-center text-sm text-muted-foreground">비어 있거나 열 수 없는 폴더예요.</p>

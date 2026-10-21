@@ -1146,10 +1146,63 @@ struct DiskUsage {
     free: u64,
 }
 
-/// 시스템 드라이브 용량
+/// 화면이 넘긴 드라이브 문자를 고정 디스크 목록에서 확인해 `D:\` 형식으로 돌려준다.
+/// 없으면 시스템 드라이브. 화면에서 경로를 그대로 받지 않는다.
+fn checked_drive(letter: Option<String>) -> Result<String, String> {
+    let Some(letter) = letter else {
+        return Ok(system_drive());
+    };
+    let mut chars = letter.chars();
+    let (Some(c), None) = (chars.next(), chars.next()) else {
+        return Err("알 수 없는 드라이브예요".into());
+    };
+    let c = c.to_ascii_uppercase();
+    if !robin_storage::system::fixed_drives().contains(&c) {
+        return Err("고를 수 없는 드라이브예요".into());
+    }
+    Ok(format!("{c}:\\"))
+}
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DriveInfo {
+    /// "C"
+    letter: String,
+    label: Option<String>,
+    total: u64,
+    free: u64,
+    /// Windows가 설치된 드라이브
+    system: bool,
+}
+
+/// 고정 디스크 목록 (읽기 전용). 이동식·네트워크·광학 드라이브는 뺀다.
 #[tauri::command]
-fn disk_usage() -> Result<DiskUsage, String> {
-    let drive = system_drive();
+async fn list_drives() -> Vec<DriveInfo> {
+    tauri::async_runtime::spawn_blocking(|| {
+        let system = system_drive();
+        robin_storage::system::fixed_drives()
+            .into_iter()
+            .filter_map(|c| {
+                let root = format!("{c}:\\");
+                let (total, free) = robin_storage::system::disk_space(&root)?;
+                Some(DriveInfo {
+                    letter: c.to_string(),
+                    label: robin_storage::system::volume_label(&root),
+                    total,
+                    free,
+                    system: root.eq_ignore_ascii_case(&system),
+                })
+            })
+            .collect()
+    })
+    .await
+    .unwrap_or_default()
+}
+
+/// 드라이브 용량 (`drive`가 없으면 시스템 드라이브)
+#[tauri::command]
+fn disk_usage(drive: Option<String>) -> Result<DiskUsage, String> {
+    let drive = checked_drive(drive)?;
     let (total, free) =
         robin_storage::system::disk_space(&drive).ok_or("드라이브 용량을 읽지 못했어요")?;
     Ok(DiskUsage { drive, total, free })
@@ -1365,12 +1418,13 @@ impl Drop for ProgressTicker {
 #[tauri::command]
 async fn analyze_folder(
     id: Option<String>,
+    drive: Option<String>,
     on_progress: Channel<ProgressSnapshot>,
     cache: State<'_, AppCache>,
 ) -> Result<FolderAnalysis, String> {
     let path = match &id {
         Some(id) => cache.folder_path(id).ok_or("알 수 없는 폴더예요")?,
-        None => PathBuf::from(system_drive()),
+        None => PathBuf::from(checked_drive(drive)?),
     };
     if !path.is_dir() {
         return Err("폴더가 없어요".into());
@@ -1437,12 +1491,13 @@ struct LargeFiles {
 /// 화면은 경로 대신 ID만 받아 [`reveal_folder_item`]으로 탐색기에서 연다.
 #[tauri::command]
 async fn find_large_files(
+    drive: Option<String>,
     on_progress: Channel<ProgressSnapshot>,
     cache: State<'_, AppCache>,
 ) -> Result<LargeFiles, String> {
     const MIN_BYTES: u64 = 200 * 1024 * 1024;
     const LIMIT: usize = 40;
-    let root = PathBuf::from(system_drive());
+    let root = PathBuf::from(checked_drive(drive)?);
     let cancel = Cancel::start(&cache.large_files_cancel);
     let progress = Arc::new(Progress::new());
     let _ticker = ProgressTicker::start(progress.clone(), on_progress);
@@ -1575,6 +1630,7 @@ pub fn run() {
             uninstall_may_be_shared,
             open_task_scheduler,
             open_project_page,
+            list_drives,
             startup_prune_result,
             stop_waiting_uninstall,
             recently_removed,

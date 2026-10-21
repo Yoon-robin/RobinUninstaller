@@ -398,8 +398,22 @@ function progressChannel(onProgress?: (p: ScanProgress) => void) {
   return channel
 }
 
+/** 고정 디스크 하나 (이동식·네트워크·광학 드라이브는 목록에 없다) */
+export interface DriveInfo {
+  /** "C" */
+  letter: string
+  label: string | null
+  total: number
+  free: number
+  /** Windows가 설치된 드라이브 */
+  system: boolean
+}
+
 export const storageApi = {
-  diskUsage: () => invoke<DiskUsage>("disk_usage"),
+  /** 고를 수 있는 드라이브. 화면은 드라이브 문자만 넘기고, Rust가 이 목록에 있는지 확인한다. */
+  drives: () => invoke<DriveInfo[]>("list_drives"),
+  /** `drive`가 없으면 시스템 드라이브 */
+  diskUsage: (drive?: string) => invoke<DiskUsage>("disk_usage", { drive: drive ?? null }),
   /** 정리할 수 있는 항목. `onItem`은 항목을 하나 찾을 때마다 (다 찾기 전에 먼저 보여 주려고) */
   scan: (onItem?: (item: StorageCategory) => void, onProgress?: (p: ScanProgress) => void) => {
     const channel = new Channel<StorageCategory>()
@@ -415,13 +429,18 @@ export const storageApi = {
     invoke<CleanResult[]>("clean_storage_elevated", { ids, allowIrreversible }),
   revealCategory: (id: string) => invoke<void>("reveal_storage_category", { id }),
   openSettings: () => invoke<void>("open_storage_settings"),
-  analyze: (id?: string, onProgress?: (p: ScanProgress) => void) =>
-    invoke<FolderAnalysis>("analyze_folder", { id: id ?? null, onProgress: progressChannel(onProgress) }),
+  /** `id`가 없으면 `drive`(없으면 시스템 드라이브)의 맨 위 폴더 */
+  analyze: (id?: string, onProgress?: (p: ScanProgress) => void, drive?: string) =>
+    invoke<FolderAnalysis>("analyze_folder", {
+      id: id ?? null,
+      drive: drive ?? null,
+      onProgress: progressChannel(onProgress),
+    }),
   cancelAnalysis: () => invoke<void>("cancel_folder_analysis"),
   revealFolderItem: (id: string) => invoke<void>("reveal_folder_item", { id }),
-  /** 시스템 드라이브의 큰 파일 (읽기 전용) */
-  findLargeFiles: (onProgress?: (p: ScanProgress) => void) =>
-    invoke<LargeFiles>("find_large_files", { onProgress: progressChannel(onProgress) }),
+  /** 고른 드라이브(없으면 시스템 드라이브)의 큰 파일 (읽기 전용) */
+  findLargeFiles: (onProgress?: (p: ScanProgress) => void, drive?: string) =>
+    invoke<LargeFiles>("find_large_files", { drive: drive ?? null, onProgress: progressChannel(onProgress) }),
   cancelLargeFiles: () => invoke<void>("cancel_large_files"),
 }
 
