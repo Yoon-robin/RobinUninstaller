@@ -41,13 +41,31 @@ function hideBoot() {
   requestAnimationFrame(() => document.getElementById("boot")?.remove());
 }
 
-// 배포판에서는 웹 브라우저 기본 메뉴(뒤로, 새로고침, 검사)를 막는다. 입력칸은 복사·붙여넣기를 위해 둔다.
+// 배포판에서는 웹 브라우저 기본 메뉴(뒤로, 새로고침, 검사)를 막는다. 입력칸은 복사·붙여넣기를 위해 두고,
+// 고를 수 있는 글자(data-selectable)는 실제로 글자를 골랐을 때만 메뉴(복사)를 연다.
 if (import.meta.env.PROD) {
   window.addEventListener("contextmenu", (e) => {
     const target = e.target as HTMLElement;
-    if (!e.defaultPrevented && !target.closest("input, textarea, [data-selectable]")) e.preventDefault();
+    if (e.defaultPrevented || target.closest("input, textarea")) return;
+    const picked = target.closest("[data-selectable]") && window.getSelection()?.toString().trim();
+    if (!picked) e.preventDefault();
   });
 }
+
+// 웹 브라우저 단축키 중 앱에서 문제가 되는 것만 막는다: 새로고침(작업 중 화면과 진행 상태가 날아간다),
+// 인쇄·페이지 저장·소스 보기, 뒤로 가기. 확대(Ctrl+휠·Ctrl+±)와 복사·붙여넣기는 그대로 둔다.
+window.addEventListener("keydown", (e) => {
+  const key = e.key.toLowerCase();
+  const ctrl = e.ctrlKey || e.metaKey;
+  const blocked =
+    key === "f5" ||
+    key === "browserback" ||
+    key === "browserforward" ||
+    key === "browserrefresh" ||
+    (e.altKey && (key === "arrowleft" || key === "arrowright")) ||
+    (ctrl && ["r", "p", "s", "u"].includes(key));
+  if (blocked) e.preventDefault();
+});
 
 // 어디서도 처리하지 않은 실패는 조용히 사라지지 않게 알린다 (Tauri가 창을 닫을 때 내는 이벤트 정리 오류는 뺀다).
 window.addEventListener("unhandledrejection", (e) => {
