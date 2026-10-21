@@ -204,6 +204,48 @@ export function ProgramsPage() {
     setTimeout(() => setRemovingId((id) => (id === app.id ? null : id)), 1500)
     setSelected((current) => (current?.id === app.id ? null : current))
   }
+  // 키보드: 목록은 Tab 한 번으로 들어가고 ↑/↓/Home/End로 행을 옮긴다.
+  const listRef = useRef<HTMLDivElement>(null)
+  const [rowFocus, setRowFocus] = useState(0)
+  const moveRowFocus = (e: React.KeyboardEvent) => {
+    const rows = [...(listRef.current?.querySelectorAll<HTMLElement>("[data-app-row]") ?? [])]
+    const at = rows.indexOf(e.target as HTMLElement)
+    if (at < 0) return
+    const next =
+      e.key === "ArrowDown"
+        ? at + 1
+        : e.key === "ArrowUp"
+          ? at - 1
+          : e.key === "Home"
+            ? 0
+            : e.key === "End"
+              ? rows.length - 1
+              : null
+    if (next == null) return
+    e.preventDefault()
+    rows[Math.max(0, Math.min(next, rows.length - 1))]?.focus()
+  }
+  // 제거·흔적 창을 닫았을 때 포커스가 갈 곳을 잃었으면(행이 사라짐 등) 목록의 같은 자리(없으면 다음) 행으로 돌린다
+  const dialogOpen = selected != null || uninstallTarget != null || leftoversTarget != null || batch != null
+  // 창을 닫은 시각. 제거한 행은 닫은 뒤 조금 있다가 목록에서 빠지므로 몇 초 동안은 다시 확인한다.
+  const closedAt = useRef(0)
+  useEffect(() => {
+    if (dialogOpen) {
+      closedAt.current = -1
+      return
+    }
+    if (closedAt.current === -1) closedAt.current = Date.now()
+    // 처음 화면이 뜰 때는 건드리지 않는다. 창을 닫은 뒤 잠깐 동안만.
+    if (closedAt.current === 0 || Date.now() - closedAt.current > 4000) return
+    // 창은 닫히는 애니메이션이 끝난 뒤에야 포커스를 놓으므로 몇 번 나눠 확인한다
+    const refocus = () => {
+      if (document.activeElement && document.activeElement !== document.body) return
+      const rows = listRef.current?.querySelectorAll<HTMLElement>("[data-app-row]")
+      if (rows?.length) rows[Math.min(rowFocus, rows.length - 1)].focus()
+    }
+    const timers = [60, 350, 700].map((ms) => setTimeout(refocus, ms))
+    return () => timers.forEach(clearTimeout)
+  }, [dialogOpen, visible.length, rowFocus])
   const togglePick = (app: InstalledApplication) =>
     setPicked((p) => {
       if (!p) return p
@@ -522,7 +564,7 @@ export function ProgramsPage() {
                     transition={{ duration: 0.18, ease: [0.22, 1, 0.36, 1] }}
                   >
                     {view === "list" || picked ? (
-                      <div className="divide-y">
+                      <div className="divide-y" ref={listRef} onKeyDown={moveRowFocus}>
                         <AnimatePresence initial={false}>
                           {visible.map((app, i) => (
                             <ProgramRow
@@ -534,6 +576,8 @@ export function ProgramsPage() {
                               introIndex={intro && i < 16 ? i : undefined}
                               picked={picked ? picked.has(app.id) : undefined}
                               onPick={togglePick}
+                              tabbable={i === Math.min(rowFocus, visible.length - 1)}
+                              onRowFocus={() => setRowFocus(i)}
                               {...handlers}
                             />
                           ))}

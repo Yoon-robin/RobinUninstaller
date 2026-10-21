@@ -34,10 +34,14 @@ type Props = {
   /** 여러 개 고르는 중이면 선택 상태 (undefined면 고르는 중이 아님). 이때 행을 누르면 열지 않고 선택을 바꾼다. */
   picked?: boolean
   onPick?: (app: InstalledApplication) => void
+  /** 이 행이 Tab으로 들어오는 행인지 (목록에서 하나만 true) */
+  tabbable?: boolean
+  /** 행에 포커스가 들어오면 (다음에 Tab으로 돌아올 행을 기억) */
+  onRowFocus?: () => void
 } & AppActionHandlers
 
 export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
-  { app, maxKb, query, removing, introIndex, picked, onPick, ...handlers },
+  { app, maxKb, query, removing, introIndex, picked, onPick, tabbable = true, onRowFocus, ...handlers },
   ref,
 ) {
   // 큰 프로그램 몇 개가 막대를 독차지하지 않도록 제곱근 비율로 그린다.
@@ -50,7 +54,12 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
         <div
           // 여러 개 제거 중에는 체크 상자처럼, 평소에는 세부 정보를 여는 버튼처럼 읽힌다
           role={picked == null ? "button" : "checkbox"}
-          tabIndex={0}
+          // 목록에서 Tab으로 들어오는 행은 하나뿐이다. 행 사이는 ↑/↓로 옮긴다 (programs-page.tsx)
+          tabIndex={tabbable ? 0 : -1}
+          data-app-row={app.id}
+          onFocus={(e) => {
+            if (e.target === e.currentTarget) onRowFocus?.()
+          }}
           // 바깥 상자가 잘라 내므로 초점 테두리를 안쪽에 그린다
           data-focus-inset
           aria-checked={picked == null ? undefined : picked}
@@ -154,6 +163,8 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
                 <Button
                   variant="ghost"
                   size="icon"
+                  // 마우스용 버튼이다. 키보드에서는 행에서 메뉴 키(또는 Shift+F10)로 같은 메뉴를 연다.
+                  tabIndex={-1}
                   className="size-8 opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 focus-visible:opacity-100 data-[state=open]:opacity-100"
                   aria-label={`${app.displayName} 작업`}
                 >

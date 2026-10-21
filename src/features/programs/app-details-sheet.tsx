@@ -42,7 +42,14 @@ export function AppDetailsSheet({
 
   return (
     <Sheet open={appProp != null} onOpenChange={onOpenChange}>
-      <SheetContent className="w-[460px] gap-0 sm:max-w-[460px]" onOpenAutoFocus={(e) => e.preventDefault()}>
+      <SheetContent
+        className="w-[460px] gap-0 sm:max-w-[460px]" // 시트 자체로 포커스를 옮긴다 (첫 버튼이 "제거"라 거기로 가면 Enter 한 번에 제거 창이 열린다).
+        // 닫으면 Radix가 열기 전에 포커스가 있던 곳(목록의 행)으로 돌려준다.
+        onOpenAutoFocus={(e) => {
+          e.preventDefault()
+          ;(e.currentTarget as HTMLElement).focus()
+        }}
+      >
         {app && (
           <>
             <SheetHeader className="items-center gap-3 border-b px-6 pt-8 pb-6 text-center">
@@ -133,7 +140,12 @@ function CodeField({ label, value }: { label: string; value: string | null }) {
   const [copied, setCopied] = useState(false)
   const copy = async () => {
     if (!value) return
-    await navigator.clipboard.writeText(value)
+    try {
+      await navigator.clipboard.writeText(value)
+    } catch (e) {
+      toast.error("복사하지 못했어요", { description: String(e) })
+      return
+    }
     setCopied(true)
     setTimeout(() => setCopied(false), 1200)
   }
@@ -144,8 +156,10 @@ function CodeField({ label, value }: { label: string; value: string | null }) {
         <span className="text-muted-foreground">{label}</span>
         {value && (
           <button
+            type="button"
             onClick={copy}
-            className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-opacity duration-150 hover:bg-muted hover:text-foreground group-hover/code:opacity-100 ${copied ? "opacity-100" : "opacity-0"}`}
+            aria-label={copied ? `${label} 복사했어요` : `${label} 복사`}
+            className={`flex items-center gap-1 rounded-md px-1.5 py-0.5 text-xs text-muted-foreground transition-opacity duration-150 group-hover/code:opacity-100 hover:bg-muted hover:text-foreground focus-visible:opacity-100 ${copied ? "opacity-100" : "opacity-0"}`}
           >
             <AnimatePresence mode="popLayout" initial={false}>
               <motion.span
