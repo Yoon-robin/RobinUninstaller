@@ -81,6 +81,8 @@ pub(crate) struct AppCache {
     store_apps: Mutex<HashMap<String, StoreApp>>,
     /// 마지막으로 직접 잰 설치 폴더 크기 (앱 ID → KB, 목록 내보내기에 쓴다)
     sizes: Mutex<HashMap<String, u64>>,
+    /// 크기를 이미 재 본 프로그램 (ID → 그때의 설치 위치). 위치가 같으면 다시 재지 않는다.
+    sized: Mutex<HashMap<String, Option<String>>>,
     /// 제거한 프로그램 (제거된 뒤에도 잔여물을 찾을 수 있도록 정보를 남겨 둔다).
     /// 데이터 폴더의 removed.json에도 저장해 앱을 다시 켜도 보인다.
     removed: Mutex<Vec<removed::RemovedApp>>,
@@ -200,11 +202,24 @@ async fn measure_app_sizes(
     }
     // 이번 측정은 지금까지 들어온 요청을 모두 맡는다 (모두 지금 목록으로 잰다)
     let covers = REQUESTS.load(Ordering::SeqCst);
-    let apps: Vec<InstalledApplication> = cache
+    let all: Vec<InstalledApplication> = cache
         .apps
         .lock()
         .map(|m| m.values().cloned().collect())
         .unwrap_or_default();
+    // 이미 잰 프로그램(같은 ID·같은 설치 위치)은 다시 재지 않는다. 목록을 다시 읽을 때마다 설치 폴더 전체를
+    // 처음부터 다시 훑어 몇 초씩 걸렸다. 새로 생겼거나 위치가 바뀐 것만 잰다.
+    let apps: Vec<InstalledApplication> = {
+        let sized = cache.sized.lock().map(|m| m.clone()).unwrap_or_default();
+        all.iter()
+            .filter(|a| sized.get(&a.id) != Some(&a.install_location))
+            .cloned()
+            .collect()
+    };
+    let measuring: Vec<(String, Option<String>)> = apps
+        .iter()
+        .map(|a| (a.id.clone(), a.install_location.clone()))
+        .collect();
     let progress = Arc::new(Progress::new());
     let _ticker = ProgressTicker::start(progress.clone(), on_progress);
     let sizes = tauri::async_runtime::spawn_blocking(move || {
@@ -222,11 +237,23 @@ async fn measure_app_sizes(
     })
     .await
     .map_err(|e| e.to_string())?;
-    if let Ok(mut map) = cache.sizes.lock() {
-        *map = sizes.clone();
+    // 지금 목록에 있는 것만 남기고 새로 잰 것을 더한다
+    let current: std::collections::HashSet<&str> = all.iter().map(|a| a.id.as_str()).collect();
+    let merged = {
+        let mut map = cache.sizes.lock().map_err(|e| e.to_string())?;
+        map.retain(|id, _| current.contains(id.as_str()));
+        for (id, _) in &measuring {
+            map.remove(id);
+        }
+        map.extend(sizes);
+        map.clone()
+    };
+    if let Ok(mut sized) = cache.sized.lock() {
+        sized.retain(|id, _| current.contains(id.as_str()));
+        sized.extend(measuring);
     }
     COVERED.store(covers, Ordering::SeqCst);
-    Ok(sizes)
+    Ok(merged)
 }
 
 /// 프로그램 목록(데스크톱 + Store 앱)을 CSV로 저장한다. 저장 위치는 사용자가 저장 창에서 고른다.

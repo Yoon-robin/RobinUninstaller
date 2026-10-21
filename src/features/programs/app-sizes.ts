@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from "react"
 
-import { api, type ScanProgress } from "@/lib/api"
+import { api, type InstalledApplication, type ScanProgress } from "@/lib/api"
 
 /**
  * 크기 기록이 없는 프로그램의 설치 폴더 재기. 프로그램 화면과 저장공간 화면이 같은 쿼리(["app-sizes", …])로 쓰므로,
@@ -17,6 +17,19 @@ function emit(next: ScanProgress | null) {
 function subscribe(listener: () => void) {
   listeners.add(listener)
   return () => listeners.delete(listener)
+}
+
+/**
+ * 크기 쿼리 키. 설치 목록의 ID·설치 위치가 같으면 같은 키라 다시 재지 않는다
+ * (예전에는 목록을 다시 읽은 시각을 키로 써서, 같은 목록을 다시 읽을 때마다 모두 다시 쟀다).
+ */
+export function appSizesKey(apps: InstalledApplication[] | undefined) {
+  let hash = 5381
+  for (const a of apps ?? []) {
+    const s = a.id + "|" + (a.installLocation ?? "")
+    for (let i = 0; i < s.length; i++) hash = ((hash << 5) + hash + s.charCodeAt(i)) | 0
+  }
+  return ["app-sizes", apps?.length ?? 0, hash] as const
 }
 
 /** 쿼리 함수로 쓴다 */

@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button"
 import { AppIcon } from "@/features/programs/app-icon"
 import { UninstallDialog } from "@/features/programs/uninstall-dialog"
 import { LeftoversDialog, type LeftoverTarget } from "@/features/leftovers/leftovers-dialog"
-import { measureAppSizes, sizeProgressText, useAppSizeProgress } from "@/features/programs/app-sizes"
+import { measureAppSizes, sizeProgressText, useAppSizeProgress, appSizesKey } from "@/features/programs/app-sizes"
 
 const TOP = 5
 /** 이보다 작은 프로그램은 공간 확보 추천에 넣지 않는다 (1 GB) */
@@ -24,7 +24,7 @@ export function BigProgramsCard() {
   // 프로그램 화면과 같은 쿼리를 써서, 이미 읽은 목록과 직접 잰 크기를 다시 계산하지 않는다
   const apps = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
   const sizes = useQuery({
-    queryKey: ["app-sizes", apps.dataUpdatedAt],
+    queryKey: appSizesKey(apps.data),
     queryFn: measureAppSizes,
     enabled: apps.data != null,
     staleTime: Infinity,

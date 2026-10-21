@@ -43,7 +43,7 @@ import { ProgramGrid } from "./program-grid"
 import { LIST_GRID, ProgramRow, WIDE_ONLY } from "./program-row"
 import { FilterChips, IconSegmented, TextTabs } from "./segmented"
 import { StatCard } from "./stat-card"
-import { measureAppSizes, sizeProgressText, useAppSizeProgress } from "./app-sizes"
+import { measureAppSizes, sizeProgressText, useAppSizeProgress, appSizesKey } from "./app-sizes"
 import { UninstallDialog } from "./uninstall-dialog"
 import { BatchUninstallDialog } from "./batch-uninstall-dialog"
 import { StoreAppsSection, matchesStoreApp } from "./store-apps-section"
@@ -121,9 +121,9 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
   const appsFailed = apps.isError && apps.data == null
   const appsStale = apps.isError && apps.data != null
   const storeApps = useQuery({ queryKey: ["store-apps"], queryFn: storeApi.list })
-  // 크기 기록이 없는 프로그램은 설치 폴더를 직접 잰다 (목록을 다시 읽을 때마다)
+  // 크기 기록이 없는 프로그램은 설치 폴더를 직접 잰다 (새로 생긴 프로그램만, appSizesKey)
   const sizes = useQuery({
-    queryKey: ["app-sizes", apps.dataUpdatedAt],
+    queryKey: appSizesKey(apps.data),
     queryFn: measureAppSizes,
     enabled: apps.data != null,
     staleTime: Infinity,
