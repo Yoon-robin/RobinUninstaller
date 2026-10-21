@@ -49,6 +49,9 @@ export const sortLabels: Record<SortKey, string> = {
   date: "최근 설치순",
 }
 
+/** 이름 비교. 비교할 때마다 locale 옵션으로 localeCompare를 부르면 매번 Collator를 새로 만들어 1000개 정렬이 느렸다. */
+const nameCollator = new Intl.Collator("ko", { numeric: true })
+
 export function compareApps(a: InstalledApplication, b: InstalledApplication, key: SortKey) {
   switch (key) {
     case "size":
@@ -57,6 +60,13 @@ export function compareApps(a: InstalledApplication, b: InstalledApplication, ke
       return installDateSortKey(b.installDate).localeCompare(installDateSortKey(a.installDate))
     default:
       // "이름 5"가 "이름 45"보다 앞에 오게 숫자는 수로 비교한다
-      return a.displayName.localeCompare(b.displayName, "ko", { numeric: true })
+      return nameCollator.compare(a.displayName, b.displayName)
   }
+}
+
+/** 정렬한 새 배열. 설치일 순서는 날짜 키를 한 번만 만든다 (비교마다 정규식을 돌리지 않게). */
+export function sortApps(apps: InstalledApplication[], key: SortKey) {
+  if (key !== "date") return [...apps].sort((a, b) => compareApps(a, b, key))
+  const keys = new Map(apps.map((a) => [a.id, installDateSortKey(a.installDate)]))
+  return [...apps].sort((a, b) => keys.get(b.id)!.localeCompare(keys.get(a.id)!))
 }

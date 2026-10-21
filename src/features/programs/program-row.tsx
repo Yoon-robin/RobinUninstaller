@@ -1,6 +1,5 @@
-import { forwardRef, type CSSProperties } from "react"
+import { memo, type CSSProperties } from "react"
 import { Check, MoreHorizontal, TriangleAlert } from "lucide-react"
-import { motion } from "motion/react"
 
 import { isSelf, needsForce, type InstalledApplication } from "@/lib/api"
 import { IconTooltip } from "@/components/icon-tooltip"
@@ -20,13 +19,6 @@ export const LIST_GRID =
   "grid grid-cols-[minmax(0,1fr)_minmax(0,8rem)_6rem_2rem] items-center gap-4 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,9rem)_6.5rem_5.75rem_5.5rem_2rem]"
 export const WIDE_ONLY = "hidden @3xl:flex"
 
-/** 제거된 항목이 목록에서 접히며 사라지는 모션. 검색·필터로 빠질 때는 쓰지 않는다. */
-export const removedExit = {
-  opacity: 0,
-  height: 0,
-  transition: { duration: 0.35, ease: [0.22, 1, 0.36, 1] as const },
-}
-
 type Props = {
   app: InstalledApplication
   maxKb: number
@@ -39,20 +31,33 @@ type Props = {
   onPick?: (app: InstalledApplication) => void
   /** 이 행이 Tab으로 들어오는 행인지 (목록에서 하나만 true) */
   tabbable?: boolean
+  /** 목록에서 몇 번째 행인지 (onRowFocus로 돌려준다) */
+  index?: number
   /** 행에 포커스가 들어오면 (다음에 Tab으로 돌아올 행을 기억) */
-  onRowFocus?: () => void
+  onRowFocus?: (index: number) => void
 } & AppActionHandlers
 
-export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
-  { app, maxKb, query, removing, introIndex, picked, onPick, tabbable = true, onRowFocus, ...handlers },
-  ref,
-) {
+/** 목록 행. 가상 목록이 스크롤·검색마다 다시 그려도 바뀐 행만 다시 그리게 memo로 둔다 (손잡이는 고정된 것을 받는다). */
+export const ProgramRow = memo(function ProgramRow({
+  app,
+  maxKb,
+  query,
+  removing,
+  introIndex,
+  picked,
+  onPick,
+  tabbable = true,
+  index = 0,
+  onRowFocus,
+  ...handlers
+}: Props) {
   // 큰 프로그램 몇 개가 막대를 독차지하지 않도록 제곱근 비율로 그린다.
   const sizeRatio = app.estimatedSizeKb ? Math.max(0.03, Math.sqrt(app.estimatedSizeKb / maxKb)) : 0
   const introStyle = introIndex == null ? undefined : ({ "--i": introIndex } as CSSProperties)
 
   return (
-    <motion.div ref={ref} exit={removing ? removedExit : undefined} className="overflow-hidden">
+    // 제거된 행은 잠깐 흐려졌다가 목록에서 빠진다 (가상 목록이라 높이를 접는 움직임은 쓰지 않는다)
+    <div className={cn("overflow-hidden transition-opacity duration-150", removing && "opacity-40")}>
       <AppContextMenu app={app} {...handlers}>
         <div
           // 여러 개 제거 중에는 체크 상자처럼, 평소에는 세부 정보를 여는 버튼처럼 읽힌다
@@ -61,7 +66,7 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
           tabIndex={tabbable ? 0 : -1}
           data-app-row={app.id}
           onFocus={(e) => {
-            if (e.target === e.currentTarget) onRowFocus?.()
+            if (e.target === e.currentTarget) onRowFocus?.(index)
           }}
           // 바깥 상자가 잘라 내므로 초점 테두리를 안쪽에 그린다
           data-focus-inset
@@ -186,6 +191,6 @@ export const ProgramRow = forwardRef<HTMLDivElement, Props>(function ProgramRow(
           </div>
         </div>
       </AppContextMenu>
-    </motion.div>
+    </div>
   )
 })

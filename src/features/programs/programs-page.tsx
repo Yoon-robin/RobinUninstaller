@@ -1,4 +1,4 @@
-import { useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useDeferredValue, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react"
 import { useVirtualizer } from "@tanstack/react-virtual"
 import { keepPreviousData, useQuery } from "@tanstack/react-query"
 import {
@@ -31,7 +31,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Skeleton } from "@/components/ui/skeleton"
 import { AppDetailsSheet } from "./app-details-sheet"
 import {
-  compareApps,
+  sortApps,
   matchesFilter,
   matchesQuery,
   quickFilters,
@@ -149,12 +149,11 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
       }),
     [apps.data, sizes.data],
   )
+  // 정렬은 목록·정렬 방식이 바뀔 때만, 검색·필터는 정렬된 목록에서 거르기만 한다 (글자마다 1000개를 다시 정렬하지 않게)
+  const sorted = useMemo(() => sortApps(all, sort), [all, sort])
   const visible = useMemo(
-    () =>
-      all
-        .filter((a) => matchesFilter(a, filter) && matchesQuery(a, deferredQuery))
-        .sort((a, b) => compareApps(a, b, sort)),
-    [all, deferredQuery, sort, filter],
+    () => sorted.filter((a) => matchesFilter(a, filter) && matchesQuery(a, deferredQuery)),
+    [sorted, deferredQuery, filter],
   )
   // 같은 검색어로 Store 앱 탭에서 찾은 수 (데스크톱 목록에 없을 때 알려 준다)
   const storeMatches = useMemo(
@@ -214,20 +213,24 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
   }, [apps.data, ready])
 
   // 언인스톨러가 있으면 실행하고, 없으면 강제 제거(확인 → 스캔 → 백업 정리)로 간다.
-  const startUninstall = (app: InstalledApplication) => {
+  // 행은 memo라서 손잡이를 한 번만 만든다 (매번 새로 만들면 스크롤·글자마다 모든 행이 다시 그려졌다).
+  const startUninstall = useCallback((app: InstalledApplication) => {
     if (canUninstall(app)) {
       setUninstallTarget(app)
     } else {
       setSelected(null)
       setLeftoversTarget({ id: app.id, name: app.displayName, removed: false, force: true })
     }
-  }
-  const handlers = {
-    onSelect: setSelected,
-    onUninstall: startUninstall,
-    onFindLeftovers: (app: InstalledApplication) =>
-      setLeftoversTarget({ id: app.id, name: app.displayName, removed: false }),
-  }
+  }, [])
+  const handlers = useMemo(
+    () => ({
+      onSelect: setSelected,
+      onUninstall: startUninstall,
+      onFindLeftovers: (app: InstalledApplication) =>
+        setLeftoversTarget({ id: app.id, name: app.displayName, removed: false }),
+    }),
+    [startUninstall],
+  )
   const markRemoved = (app: InstalledApplication) => {
     setRemovingId(app.id)
     setTimeout(() => setRemovingId((id) => (id === app.id ? null : id)), 1500)
@@ -311,14 +314,17 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
     const timers = [60, 350, 700].map((ms) => setTimeout(refocus, ms))
     return () => timers.forEach(clearTimeout)
   }, [dialogOpen, visible.length, rowFocus])
-  const togglePick = (app: InstalledApplication) =>
-    setPicked((p) => {
-      if (!p) return p
-      const next = new Set(p)
-      if (next.has(app.id)) next.delete(app.id)
-      else next.add(app.id)
-      return next
-    })
+  const togglePick = useCallback(
+    (app: InstalledApplication) =>
+      setPicked((p) => {
+        if (!p) return p
+        const next = new Set(p)
+        if (next.has(app.id)) next.delete(app.id)
+        else next.add(app.id)
+        return next
+      }),
+    [],
+  )
   const [exporting, setExporting] = useState(false)
   const exportList = async () => {
     if (exporting) return
@@ -678,7 +684,8 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
                                 picked={picked ? picked.has(app.id) : undefined}
                                 onPick={togglePick}
                                 tabbable={v.index === tabIndexRow}
-                                onRowFocus={() => setRowFocus(v.index)}
+                                index={v.index}
+                                onRowFocus={setRowFocus}
                                 {...handlers}
                               />
                             </div>
@@ -688,9 +695,9 @@ export function ProgramsPage({ active = true }: { active?: boolean }) {
                     ) : (
                       <ProgramGrid
                         apps={visible}
+                        active={active}
                         intro={intro}
-                        animateOnMount={false}
-                        query={query}
+                        query={deferredQuery}
                         removingId={removingId}
                         {...handlers}
                       />

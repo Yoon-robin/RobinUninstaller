@@ -1,6 +1,6 @@
-import { forwardRef, useEffect, useState, type CSSProperties } from "react"
+import { memo, useLayoutEffect, useRef, useState, type CSSProperties } from "react"
+import { useVirtualizer } from "@tanstack/react-virtual"
 import { TriangleAlert } from "lucide-react"
-import { AnimatePresence, motion } from "motion/react"
 
 import { needsForce, type InstalledApplication } from "@/lib/api"
 import { formatSize } from "@/lib/format"
@@ -9,43 +9,96 @@ import { Highlight } from "@/components/highlight"
 import { AppContextMenu, type AppActionHandlers } from "./app-actions"
 import { AppIcon } from "./app-icon"
 
-/** 카드 보기. 처음 나타날 때(보기 전환 직후)만 앞쪽 카드가 차례로 등장한다. */
+/** 카드 최소 폭(12.5rem)·간격(gap-3)·안쪽 여백(p-4). 열 수를 직접 계산해 줄 단위로 가상화한다. */
+const CARD_MIN = 200
+const GAP = 12
+const PAD = 16
+/** 카드 한 줄 높이 추정 (실제 높이는 그린 뒤 잰다) */
+const ROW_ESTIMATE = 178
+
+/**
+ * 카드 보기. 보이는 줄(과 앞뒤 몇 줄)만 그린다 — 1000개를 다 그리면 보기를 바꾸는 데 4초 걸렸다.
+ * 처음 화면이 뜰 때만 앞쪽 카드가 차례로 등장한다.
+ */
 export function ProgramGrid({
   apps,
+  active,
   intro,
-  animateOnMount = true,
   query,
   removingId,
   ...handlers
 }: {
   apps: InstalledApplication[]
+  /** 프로그램 화면이 보이는지 (숨어 있으면 가상 목록을 멈춘다) */
+  active: boolean
   intro: boolean
-  /** 처음 나타날 때 앞쪽 카드를 차례로 등장시킬지 (고르기를 막 끝내고 돌아올 때는 끈다) */
-  animateOnMount?: boolean
   query: string
   removingId: string | null
 } & AppActionHandlers) {
-  const [justMounted, setJustMounted] = useState(true)
-  useEffect(() => {
-    const t = setTimeout(() => setJustMounted(false), 900)
-    return () => clearTimeout(t)
+  const ref = useRef<HTMLDivElement>(null)
+  const [width, setWidth] = useState(0)
+  const [scrollMargin, setScrollMargin] = useState(0)
+  // 너비가 바뀌면 열 수를, 위치가 바뀌면 스크롤 기준(목록이 <main> 안에서 얼마나 아래에 있는지)을 다시 잰다
+  useLayoutEffect(() => {
+    const el = ref.current
+    const main = el?.closest("main")
+    if (!el || !main) return
+    const measure = () => {
+      if (!el.offsetParent) return
+      setWidth(el.clientWidth)
+      setScrollMargin(Math.round(el.getBoundingClientRect().top - main.getBoundingClientRect().top + main.scrollTop))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(el)
+    return () => observer.disconnect()
   }, [])
-  const animate = intro || (justMounted && animateOnMount)
+
+  const cols = Math.max(1, Math.floor((width - PAD * 2 + GAP) / (CARD_MIN + GAP)))
+  const rows = Math.ceil(apps.length / cols)
+  const virtualizer = useVirtualizer({
+    count: rows,
+    getScrollElement: () => ref.current?.closest("main") ?? null,
+    estimateSize: () => ROW_ESTIMATE,
+    overscan: 3,
+    scrollMargin,
+    enabled: active && width > 0,
+    measureElement: (el) => el.getBoundingClientRect().height || ROW_ESTIMATE,
+  })
 
   return (
-    <div className="grid grid-cols-[repeat(auto-fill,minmax(12.5rem,1fr))] gap-3 p-4">
-      <AnimatePresence initial={false}>
-        {apps.map((app, i) => (
-          <GridCard
-            key={app.id}
-            app={app}
-            query={query}
-            removing={app.id === removingId}
-            introIndex={animate && i < 15 ? i : undefined}
-            {...handlers}
-          />
-        ))}
-      </AnimatePresence>
+    <div
+      ref={ref}
+      className="relative"
+      style={{ height: width > 0 ? virtualizer.getTotalSize() + PAD * 2 : undefined }}
+    >
+      {virtualizer.getVirtualItems().map((row) => {
+        const start = row.index * cols
+        return (
+          <div
+            key={row.key}
+            data-index={row.index}
+            ref={virtualizer.measureElement}
+            className="absolute inset-x-0 top-0 grid gap-3 px-4 pb-3"
+            style={{
+              gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+              transform: `translateY(${row.start - scrollMargin + PAD}px)`,
+            }}
+          >
+            {apps.slice(start, start + cols).map((app, i) => (
+              <GridCard
+                key={app.id}
+                app={app}
+                query={query}
+                removing={app.id === removingId}
+                // 처음 등장은 앞 두 줄까지만
+                introIndex={intro && row.index < 2 ? start + i : undefined}
+                {...handlers}
+              />
+            ))}
+          </div>
+        )
+      })}
     </div>
   )
 }
@@ -57,26 +110,18 @@ type CardProps = {
   introIndex?: number
 } & AppActionHandlers
 
-const GridCard = forwardRef<HTMLDivElement, CardProps>(function GridCard(
-  { app, query, removing, introIndex, ...handlers },
-  ref,
-) {
+const GridCard = memo(function GridCard({ app, query, removing, introIndex, ...handlers }: CardProps) {
   return (
-    <motion.div
-      ref={ref}
-      exit={
-        removing ? { opacity: 0, scale: 0.94, transition: { duration: 0.25, ease: [0.22, 1, 0.36, 1] } } : undefined
-      }
-    >
+    <div className={cn("transition-opacity duration-150", removing && "opacity-40")}>
       <AppContextMenu app={app} {...handlers}>
         <button
           type="button"
           onClick={() => handlers.onSelect(app)}
           style={introIndex == null ? undefined : ({ "--i": introIndex } as CSSProperties)}
           className={cn(
-            "group relative flex cursor-pointer h-full w-full flex-col items-start gap-3 rounded-xl border bg-background/40 p-4 text-left",
-            "transition-[transform,border-color,background-color,box-shadow] duration-200 ease-(--ease-out-quint)",
-            "hover:-translate-y-0.5 motion-reduce:hover:translate-y-0 hover:border-foreground/15 hover:bg-accent/30 hover:shadow-md active:translate-y-0 active:scale-[0.98] motion-reduce:active:scale-100",
+            "group relative flex h-full w-full cursor-pointer flex-col items-start gap-3 rounded-xl border bg-background/40 p-4 text-left",
+            "transition-[transform,border-color,background-color] duration-150 ease-(--ease-out-quint)",
+            "hover:-translate-y-0.5 hover:border-foreground/15 hover:bg-accent/30 active:translate-y-0 active:scale-[0.98] motion-reduce:hover:translate-y-0 motion-reduce:active:scale-100",
             "focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none data-[state=open]:border-foreground/15",
             introIndex != null && "row-intro",
           )}
@@ -84,10 +129,7 @@ const GridCard = forwardRef<HTMLDivElement, CardProps>(function GridCard(
           {needsForce(app) && (
             <TriangleAlert className="absolute top-3 right-3 size-4 text-warning" aria-label="언인스톨러 없음" />
           )}
-          <AppIcon
-            app={app}
-            className="size-12 rounded-xl text-lg transition-transform duration-300 ease-(--ease-out-quint) group-hover:scale-105 motion-reduce:group-hover:scale-100"
-          />
+          <AppIcon app={app} className="size-12 rounded-xl text-lg" />
           <div className="min-w-0 self-stretch">
             <p className="line-clamp-2 leading-snug font-medium" title={app.displayName}>
               <Highlight text={app.displayName} query={query} />
@@ -117,6 +159,6 @@ const GridCard = forwardRef<HTMLDivElement, CardProps>(function GridCard(
           </div>
         </button>
       </AppContextMenu>
-    </motion.div>
+    </div>
   )
 })

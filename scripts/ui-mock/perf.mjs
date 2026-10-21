@@ -76,7 +76,8 @@ await measure(
   `!!document.querySelector("[role=dialog]")`,
 )
 await page.keyboard.press("Escape")
-await page.waitForTimeout(800)
+// 창을 닫은 뒤 4초 동안은 포커스를 잃으면 마지막 행으로 돌아가므로(스크롤도 따라감) 기다린다
+await page.waitForTimeout(4500)
 await measure(
   "카드 보기",
   () => page.evaluate(() => [...document.querySelectorAll("[role=radio]")].find((b) => /카드/.test(b.getAttribute("aria-label") ?? b.textContent)).click()),
