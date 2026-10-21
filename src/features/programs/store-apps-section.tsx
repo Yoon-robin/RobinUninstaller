@@ -12,7 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Skeleton } from "@/components/ui/skeleton"
 import { AppIcon } from "./app-icon"
-import { ErrorState } from "@/components/error-state"
+import { ErrorState, StaleBanner } from "@/components/error-state"
 
 /** 목록 열. 좁은 창에서는 설치일·출처를 숨겨 이름 칸이 사라지지 않게 한다 (숨긴 칸에는 `STORE_WIDE_ONLY`). */
 const STORE_GRID =
@@ -56,6 +56,9 @@ export function StoreAppsSection({
   searchRef?: RefObject<HTMLInputElement | null>
 }) {
   const apps = useQuery({ queryKey: ["store-apps"], queryFn: storeApi.list })
+  // 처음부터 읽지 못했을 때만 오류 화면. 이미 읽은 목록이 있으면 그대로 두고 위에 띠만 보인다.
+  const appsFailed = apps.isError && apps.data == null
+  const appsStale = apps.isError && apps.data != null
   const visible = useMemo(() => (apps.data ?? []).filter((a) => matchesStoreApp(a, query)), [apps.data, query])
 
   return (
@@ -131,7 +134,8 @@ export function StoreAppsSection({
         )}
       </div>
 
-      {apps.isError ? (
+      {appsStale && <StaleBanner error={apps.error} onRetry={() => void apps.refetch()} retrying={apps.isFetching} />}
+      {appsFailed ? (
         <ErrorState
           title="Store 앱 목록을 읽지 못했어요"
           error={apps.error}

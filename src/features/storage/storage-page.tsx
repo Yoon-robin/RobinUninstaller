@@ -32,7 +32,7 @@ import { ScanProgressView, shortenPath } from "@/components/scan-progress"
 import { FolderAnalysisCard } from "./folder-analysis"
 import { LargeFilesCard } from "./large-files"
 import { BigProgramsCard } from "./big-programs"
-import { ErrorState } from "@/components/error-state"
+import { ErrorState, StaleBanner, InlineError } from "@/components/error-state"
 import { useBusy } from "@/lib/busy"
 
 const SCAN_KEY = ["storage-scan"]
@@ -85,6 +85,9 @@ export function StoragePage() {
   )
   const finding = scan.isLoading
   const disk = useQuery({ queryKey: DISK_KEY, queryFn: storageApi.diskUsage })
+  // 처음부터 찾지 못했을 때만 오류 화면. 이미 찾은 목록이 있으면 그대로 두고 위에 띠만 보인다.
+  const scanFailed = scan.isError && scan.data == null
+  const scanStale = scan.isError && scan.data != null
   // 사용자가 직접 바꾼 선택. 없으면 기본 선택(다시 만들어지는 항목)을 따른다.
   const [picked, setPicked] = useState<Record<string, boolean>>({})
   // 확인 창을 연 순간의 항목. 그 뒤에 다시 찾기가 끝나도 창 안의 목록·합계가 바뀌지 않는다 (보지 못한 항목이 끼어들지 않게)
@@ -113,7 +116,18 @@ export function StoragePage() {
       </FadeUp>
 
       <FadeUp>
-        <DriveCard used={disk.data ? disk.data.total - disk.data.free : null} disk={disk.data} plan={selectedBytes} />
+        {disk.isError && !disk.data ? (
+          <div className="rounded-2xl border bg-card px-5 py-4 shadow-sm">
+            <InlineError
+              message="디스크 사용량을 읽지 못했어요"
+              error={disk.error}
+              onRetry={() => void disk.refetch()}
+              retrying={disk.isFetching}
+            />
+          </div>
+        ) : (
+          <DriveCard used={disk.data ? disk.data.total - disk.data.free : null} disk={disk.data} plan={selectedBytes} />
+        )}
       </FadeUp>
 
       <FadeUp>
@@ -136,7 +150,10 @@ export function StoragePage() {
             </IconTooltip>
           </div>
 
-          {scan.isError ? (
+          {scanStale && (
+            <StaleBanner error={scan.error} onRetry={() => void scan.refetch()} retrying={scan.isFetching} />
+          )}
+          {scanFailed ? (
             <ErrorState
               title="정리할 수 있는 항목을 찾지 못했어요"
               error={scan.error}

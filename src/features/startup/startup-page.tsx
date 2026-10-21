@@ -32,7 +32,7 @@ import { FilterChips } from "@/features/programs/segmented"
 import { StatCard } from "@/features/programs/stat-card"
 import { MissingCleanupDialog } from "./missing-cleanup-dialog"
 import { HiddenTasksCard } from "./hidden-tasks"
-import { ErrorState } from "@/components/error-state"
+import { ErrorState, StaleBanner } from "@/components/error-state"
 
 const QUERY_KEY = ["startup-items"]
 
@@ -78,6 +78,9 @@ const formatDate = (seconds: number) => formatDateTime(seconds * 1000)
 
 export function StartupPage() {
   const items = useQuery({ queryKey: QUERY_KEY, queryFn: startupApi.list })
+  // 처음부터 읽지 못했을 때만 오류 화면. 이미 읽은 목록이 있으면 그대로 두고 위에 띠만 보인다.
+  const itemsFailed = items.isError && items.data == null
+  const itemsStale = items.isError && items.data != null
   const [filter, setFilter] = useState<Filter>("all")
   const [query, setQuery] = useState("")
   const [cleanupOpen, setCleanupOpen] = useState(false)
@@ -124,7 +127,7 @@ export function StartupPage() {
           icon={Power}
           tone="chart-1"
           label="켜진 항목"
-          value={loading ? null : items.isError ? "—" : <CountUp id="startup-on" value={counts.on} />}
+          value={loading ? null : itemsFailed ? "—" : <CountUp id="startup-on" value={counts.on} />}
           unit="개"
           hint={filter === "on" ? "필터 적용 중 · 다시 누르면 해제" : "로그인할 때 실행돼요"}
           active={filter === "on"}
@@ -134,7 +137,7 @@ export function StartupPage() {
           icon={PowerOff}
           tone="chart-2"
           label="꺼진 항목"
-          value={loading ? null : items.isError ? "—" : <CountUp id="startup-off" value={counts.off} />}
+          value={loading ? null : itemsFailed ? "—" : <CountUp id="startup-off" value={counts.off} />}
           unit="개"
           hint={filter === "off" ? "필터 적용 중 · 다시 누르면 해제" : "다시 켜면 원래대로 돌아가요"}
           active={filter === "off"}
@@ -144,12 +147,12 @@ export function StartupPage() {
           icon={FileWarning}
           tone={counts.missing > 0 ? "chart-3" : "chart-5"}
           label="파일 없음"
-          value={loading ? null : items.isError ? "—" : <CountUp id="startup-missing" value={counts.missing} />}
+          value={loading ? null : itemsFailed ? "—" : <CountUp id="startup-missing" value={counts.missing} />}
           unit="개"
           hint={
             filter === "missing"
               ? "필터 적용 중 · 다시 누르면 해제"
-              : items.isError
+              : itemsFailed
                 ? "읽지 못했어요"
                 : counts.missing > 0
                   ? "실행할 파일이 사라진 항목이에요"
@@ -238,7 +241,10 @@ export function StartupPage() {
             )}
           </div>
 
-          {items.isError ? (
+          {itemsStale && (
+            <StaleBanner error={items.error} onRetry={() => void items.refetch()} retrying={items.isFetching} />
+          )}
+          {itemsFailed ? (
             <ErrorState
               title="시작 항목을 읽지 못했어요"
               error={items.error}

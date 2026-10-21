@@ -37,7 +37,7 @@ import { IconTooltip } from "@/components/icon-tooltip"
 import { cn } from "@/lib/utils"
 import { EASE_OUT_QUINT, FadeUp, Stagger } from "@/components/motion"
 import { Button } from "@/components/ui/button"
-import { ErrorState } from "@/components/error-state"
+import { ErrorState, InlineError, StaleBanner } from "@/components/error-state"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
 import { rovingKeyDown } from "@/features/programs/segmented"
@@ -83,6 +83,17 @@ export function RestorePage() {
         </p>
       </FadeUp>
 
+      {unreadable.isError && (
+        <FadeUp>
+          <InlineError
+            className="rounded-2xl border px-4 py-3"
+            message="기록을 읽지 못한 백업이 있는지 확인하지 못했어요"
+            error={unreadable.error}
+            onRetry={() => void unreadable.refetch()}
+            retrying={unreadable.isFetching}
+          />
+        </FadeUp>
+      )}
       {(unreadable.data?.length ?? 0) > 0 && (
         <FadeUp>
           <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-chart-3/40 bg-chart-3/8 px-4 py-3 text-sm">
@@ -102,11 +113,21 @@ export function RestorePage() {
         </FadeUp>
       )}
 
+      {backups.isError && backups.data && (
+        <FadeUp>
+          <StaleBanner
+            className="rounded-2xl border"
+            error={backups.error}
+            onRetry={() => void backups.refetch()}
+            retrying={backups.isFetching}
+          />
+        </FadeUp>
+      )}
       {backups.isLoading ? (
         <FadeUp>
           <Skeleton className="h-28 w-full rounded-2xl" />
         </FadeUp>
-      ) : backups.isError ? (
+      ) : backups.isError && !backups.data ? (
         <FadeUp>
           <ErrorState
             className="rounded-2xl border border-destructive/40"
@@ -171,9 +192,11 @@ function HeldSpace({ ops }: { ops: Operation[] }) {
       <p className="text-muted-foreground">
         백업으로 보관 중인 파일이 <span className="font-semibold text-foreground">{formatBytes(held)}</span>예요. 이
         공간은 백업을 지워야 돌아와요.{" "}
-        {days == null
-          ? "지금은 직접 지울 때까지 보관하도록 설정돼 있어요."
-          : `보관 기간 ${days}일이 지난 백업은 자동으로 지워져요.`}
+        {!settings.data
+          ? ""
+          : days == null
+            ? "지금은 직접 지울 때까지 보관하도록 설정돼 있어요."
+            : `보관 기간 ${days}일이 지난 백업은 자동으로 지워져요.`}
       </p>
     </div>
   )
@@ -254,21 +277,34 @@ function EmptyOldBackupsDialog({ open, onClose }: { open: boolean; onClose: () =
             </Button>
           ))}
         </div>
+        {settings.isError && (
+          <InlineError
+            message="설정을 읽지 못해 기간을 보여 줄 수 없어요"
+            onRetry={() => void settings.refetch()}
+            retrying={settings.isFetching}
+          />
+        )}
         <p className="min-h-5 text-sm text-muted-foreground" aria-live="polite">
           {days == null
             ? "기간을 먼저 골라 주세요."
-            : preview.isLoading
-              ? "찾는 중이에요"
-              : count === 0
-                ? `${days}일 지난 백업이 없어요.`
-                : `${count}개를 지워요 (${formatBytes(preview.data?.bytes ?? 0)}).`}
+            : preview.isError
+              ? `지울 백업을 세지 못했어요 (${String(preview.error)})`
+              : preview.isLoading
+                ? "찾는 중이에요"
+                : count === 0
+                  ? `${days}일 지난 백업이 없어요.`
+                  : `${count}개를 지워요 (${formatBytes(preview.data?.bytes ?? 0)}).`}
         </p>
         {busy && <ScanProgressView work label="오래된 백업을 지우는 중이에요" progress={progress} />}
         <div className="mt-2 flex justify-end gap-2">
           <Button variant="outline" onClick={onClose} disabled={busy}>
             취소
           </Button>
-          <Button variant="destructive" onClick={run} disabled={busy || days == null || count === 0}>
+          <Button
+            variant="destructive"
+            onClick={run}
+            disabled={busy || days == null || count === 0 || !preview.isSuccess}
+          >
             {busy ? <Loader2 className="animate-spin" /> : <Trash2 />}
             영구 삭제
           </Button>

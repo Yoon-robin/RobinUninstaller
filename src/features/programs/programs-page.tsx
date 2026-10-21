@@ -51,7 +51,7 @@ import { UninstallDialog } from "./uninstall-dialog"
 import { BatchUninstallDialog } from "./batch-uninstall-dialog"
 import { StoreAppsSection, matchesStoreApp } from "./store-apps-section"
 import { LeftoversDialog, type LeftoverTarget } from "@/features/leftovers/leftovers-dialog"
-import { ErrorState } from "@/components/error-state"
+import { ErrorState, StaleBanner } from "@/components/error-state"
 
 type ViewMode = "list" | "grid"
 
@@ -114,6 +114,9 @@ export function ProgramsPage() {
   const [storeQuery, setStoreQuery] = useState("")
   const searchRef = useRef<HTMLInputElement>(null)
   const apps = useQuery({ queryKey: ["installed-apps"], queryFn: api.listInstalledApps })
+  // 처음부터 읽지 못했을 때만 오류 화면. 이미 읽은 목록이 있으면 그대로 두고 위에 띠만 보인다.
+  const appsFailed = apps.isError && apps.data == null
+  const appsStale = apps.isError && apps.data != null
   const storeApps = useQuery({ queryKey: ["store-apps"], queryFn: storeApi.list })
   // 크기 기록이 없는 프로그램은 설치 폴더를 직접 잰다 (목록을 다시 읽을 때마다)
   const sizes = useQuery({
@@ -192,7 +195,7 @@ export function ProgramsPage() {
 
   const loading = apps.isLoading
   // 목록을 다 읽어 숫자를 믿을 수 있는지 (읽는 중·못 읽음이면 "0개"나 초록 표시를 하지 않는다)
-  const known = !loading && !apps.isError
+  const known = !loading && !appsFailed
   const noneInstalled = known && (apps.data?.length ?? 0) === 0
   const reduceMotion = useReducedMotion()
 
@@ -419,25 +422,23 @@ export function ProgramsPage() {
               icon={Package}
               tone="chart-1"
               label="설치된 프로그램"
-              value={
-                loading || !ready ? null : apps.isError ? "—" : <CountUp id="programs-total" value={stats.total} />
-              }
+              value={loading || !ready ? null : appsFailed ? "—" : <CountUp id="programs-total" value={stats.total} />}
               unit="개"
-              hint={loading || apps.isError ? undefined : `EXE ${stats.total - stats.msi} · MSI ${stats.msi}`}
+              hint={loading || appsFailed ? undefined : `EXE ${stats.total - stats.msi} · MSI ${stats.msi}`}
             />
             <StatCard
               icon={HardDrive}
               tone="chart-2"
               label="전체 예상 용량"
               value={
-                loading || !ready ? null : apps.isError ? (
+                loading || !ready ? null : appsFailed ? (
                   "—"
                 ) : (
                   <CountUp id="programs-size" value={stats.totalKb} format={formatSize} />
                 )
               }
               hint={
-                loading || apps.isError
+                loading || appsFailed
                   ? undefined
                   : sizes.isFetching
                     ? `크기를 재는 중${sizeProgressText(sizeProgress)}`
@@ -452,7 +453,7 @@ export function ProgramsPage() {
               tone={!known ? "muted" : stats.broken > 0 ? "chart-3" : "chart-5"}
               label="언인스톨러 없음"
               value={
-                loading || !ready ? null : apps.isError ? "—" : <CountUp id="programs-broken" value={stats.broken} />
+                loading || !ready ? null : appsFailed ? "—" : <CountUp id="programs-broken" value={stats.broken} />
               }
               unit="개"
               hint={
@@ -613,7 +614,10 @@ export function ProgramsPage() {
                 )}
               </div>
 
-              {apps.isError ? (
+              {appsStale && (
+                <StaleBanner error={apps.error} onRetry={() => void apps.refetch()} retrying={apps.isFetching} />
+              )}
+              {appsFailed ? (
                 <ErrorState
                   title="설치된 프로그램 목록을 읽지 못했어요"
                   error={apps.error}

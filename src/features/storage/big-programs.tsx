@@ -4,6 +4,7 @@ import { Loader2, Package, Trash2 } from "lucide-react"
 
 import { api, canUninstall, navigate, type InstalledApplication } from "@/lib/api"
 import { formatSize } from "@/lib/format"
+import { InlineError } from "@/components/error-state"
 import { Button } from "@/components/ui/button"
 import { AppIcon } from "@/features/programs/app-icon"
 import { UninstallDialog } from "@/features/programs/uninstall-dialog"
@@ -50,6 +51,17 @@ export function BigProgramsCard() {
   return (
     <>
       {/* 목록이 비어도 대화상자는 남긴다: 마지막 큰 프로그램을 지우면 목록이 비는데, 그때 결과·남은 흔적 창이 같이 사라지면 안 된다 */}
+      {apps.isError && !apps.data && (
+        <section className="rounded-2xl border bg-card px-5 py-4 shadow-sm">
+          <h2 className="mb-2 font-semibold">용량이 큰 프로그램</h2>
+          <InlineError
+            message="설치된 프로그램 목록을 읽지 못했어요"
+            error={apps.error}
+            onRetry={() => void apps.refetch()}
+            retrying={apps.isFetching}
+          />
+        </section>
+      )}
       {top.length > 0 && (
         <section className="overflow-clip rounded-2xl border bg-card shadow-sm">
           <div className="flex flex-wrap items-center gap-3 border-b px-5 py-4">

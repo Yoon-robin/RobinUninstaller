@@ -26,6 +26,7 @@ import { cn } from "@/lib/utils"
 import { FadeUp, Stagger } from "@/components/motion"
 import { useTheme } from "@/components/theme"
 import { rovingKeyDown } from "@/features/programs/segmented"
+import { InlineError } from "@/components/error-state"
 import { Button } from "@/components/ui/button"
 import { Dialog, DialogContent, DialogDescription, DialogTitle } from "@/components/ui/dialog"
 import { Skeleton } from "@/components/ui/skeleton"
@@ -247,6 +248,8 @@ export function SettingsPage() {
                 <b className="text-foreground tabular-nums">
                   {usage.data.count}개 · {formatBytes(usage.data.bytes)}
                 </b>
+              ) : usage.isError ? (
+                <span className="text-destructive">— 읽지 못했어요</span>
               ) : (
                 <span className="inline-block h-4 w-24 animate-pulse rounded bg-muted align-middle" />
               )}
@@ -256,6 +259,13 @@ export function SettingsPage() {
             <p className="mb-2 text-sm font-medium">보관 기간</p>
             {settings.isLoading ? (
               <Skeleton className="h-10 w-80 rounded-xl" />
+            ) : settings.isError ? (
+              <InlineError
+                message="설정 파일을 읽지 못해 보관 기간을 바꿀 수 없어요. 그동안 백업은 지우지 않아요."
+                error={settings.error}
+                onRetry={() => void settings.refetch()}
+                retrying={settings.isFetching}
+              />
             ) : (
               <Choice
                 label="백업 보관 기간"
@@ -265,11 +275,13 @@ export function SettingsPage() {
                 options={retentionOptions}
               />
             )}
-            <p className="mt-2 text-xs text-muted-foreground">
-              {retention == null
-                ? "백업을 직접 지울 때까지 계속 보관해요."
-                : `앱을 켤 때 ${retention}일이 지난 백업을 지워요.`}
-            </p>
+            {settings.data && (
+              <p className="mt-2 text-xs text-muted-foreground">
+                {retention == null
+                  ? "백업을 직접 지울 때까지 계속 보관해요."
+                  : `앱을 켤 때 ${retention}일이 지난 백업을 지워요.`}
+              </p>
+            )}
           </div>
           {(usage.data?.expired ?? 0) > 0 && (
             <div className="mt-4 flex flex-wrap items-center gap-3 rounded-xl border border-chart-3/40 bg-chart-3/8 px-4 py-3 text-sm">
@@ -292,6 +304,12 @@ export function SettingsPage() {
         >
           {settings.isLoading ? (
             <Skeleton className="h-16 w-full rounded-xl" />
+          ) : settings.isError ? (
+            <InlineError
+              message="설정 파일을 읽지 못해 뺀 항목을 보여 줄 수 없어요"
+              onRetry={() => void settings.refetch()}
+              retrying={settings.isFetching}
+            />
           ) : (settings.data?.exclusions ?? []).length === 0 ? (
             <p className="py-4 text-center text-sm text-muted-foreground">
               뺀 항목이 없어요. 잔여물 결과의 항목에 마우스를 올리면 "다음부터 제외" 버튼이 보여요.
@@ -340,17 +358,22 @@ export function SettingsPage() {
           </DialogDescription>
           {/* 지금 기준으로 다음에 켤 때 지워질 것 */}
           <p className="rounded-lg bg-muted/50 px-3 py-2 text-sm" role="status">
-            {retentionPreview.isLoading
-              ? "지금 기준으로 지워질 백업을 세는 중이에요"
-              : (retentionPreview.data?.count ?? 0) === 0
-                ? `지금은 ${shownRetention}일이 지난 백업이 없어요.`
-                : `지금 기준으로 ${retentionPreview.data?.count}개(${formatBytes(retentionPreview.data?.bytes ?? 0)})가 다음에 켤 때 지워져요.`}
+            {retentionPreview.isError
+              ? `지금 기준으로 지워질 백업을 세지 못했어요 (${String(retentionPreview.error)})`
+              : retentionPreview.isLoading
+                ? "지금 기준으로 지워질 백업을 세는 중이에요"
+                : (retentionPreview.data?.count ?? 0) === 0
+                  ? `지금은 ${shownRetention}일이 지난 백업이 없어요.`
+                  : `지금 기준으로 ${retentionPreview.data?.count}개(${formatBytes(retentionPreview.data?.bytes ?? 0)})가 다음에 켤 때 지워져요.`}
           </p>
           <div className="mt-2 flex justify-end gap-2">
             <Button variant="outline" onClick={() => setPendingRetention(undefined)} disabled={busy}>
               취소
             </Button>
-            <Button onClick={() => pendingRetention != null && applyRetention(pendingRetention)} disabled={busy}>
+            <Button
+              onClick={() => pendingRetention != null && applyRetention(pendingRetention)}
+              disabled={busy || retentionPreview.isError}
+            >
               {busy && <Loader2 className="animate-spin" />}
               {pendingRetention}일로 정하기
             </Button>
